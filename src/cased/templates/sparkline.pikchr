@@ -1,0 +1,62 @@
+# Sparkline Template — Code Audit Skill
+#
+# Bar chart showing 12 months of commit activity.
+# In final reports, these render at ~80x16px inline with text.
+# This template shows the pattern at readable scale.
+#
+# Sample data: declining activity pattern
+# Monthly commits: [8, 10, 5, 8, 3, 5, 3, 1, 3, 1, 3, 1]
+#
+# Color rules:
+#   0x6b7280 (mid-gray) — all months except most recent
+#   0x1a1a1a (near-black) — most recent 1-2 months
+
+$bw = 0.15in    # bar width
+$g = 0.06in     # gap between bars
+
+# Month 1 (oldest): 8/10 scaled
+B1: box width $bw height 0.375in fill 0x6b7280 color 0x6b7280
+
+# Month 2: 10/10 (peak)
+B2: box width $bw height 0.500in fill 0x6b7280 color 0x6b7280 \
+    with .sw at B1.se + ($g, 0)
+
+# Month 3: 5/10
+B3: box width $bw height 0.250in fill 0x6b7280 color 0x6b7280 \
+    with .sw at B2.se + ($g, 0)
+
+# Month 4: 8/10
+B4: box width $bw height 0.375in fill 0x6b7280 color 0x6b7280 \
+    with .sw at B3.se + ($g, 0)
+
+# Month 5: 3/10
+B5: box width $bw height 0.125in fill 0x6b7280 color 0x6b7280 \
+    with .sw at B4.se + ($g, 0)
+
+# Month 6: 5/10
+B6: box width $bw height 0.250in fill 0x6b7280 color 0x6b7280 \
+    with .sw at B5.se + ($g, 0)
+
+# Month 7: 3/10
+B7: box width $bw height 0.125in fill 0x6b7280 color 0x6b7280 \
+    with .sw at B6.se + ($g, 0)
+
+# Month 8: 1/10
+B8: box width $bw height 0.036in fill 0x6b7280 color 0x6b7280 \
+    with .sw at B7.se + ($g, 0)
+
+# Month 9: 3/10
+B9: box width $bw height 0.125in fill 0x6b7280 color 0x6b7280 \
+    with .sw at B8.se + ($g, 0)
+
+# Month 10: 1/10
+B10: box width $bw height 0.036in fill 0x6b7280 color 0x6b7280 \
+    with .sw at B9.se + ($g, 0)
+
+# Month 11 (recent — dark): 3/10
+B11: box width $bw height 0.125in fill 0x1a1a1a color 0x1a1a1a \
+    with .sw at B10.se + ($g, 0)
+
+# Month 12 (most recent — dark): 1/10
+B12: box width $bw height 0.036in fill 0x1a1a1a color 0x1a1a1a \
+    with .sw at B11.se + ($g, 0)

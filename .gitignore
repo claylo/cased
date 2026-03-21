@@ -1,0 +1,5 @@
+PRIVATE_MEMORY.md
+.private-journal/
+node_modules/
+build/
+dist/
