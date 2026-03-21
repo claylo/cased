@@ -1,5 +1,5 @@
 import YAML from 'yaml';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
 
@@ -278,11 +278,17 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(1);
   }
   const scriptDir = dirname(fileURLToPath(import.meta.url));
-  const { writeFileSync } = await import('node:fs');
+  // Resolve assets: flat layout (dist/ or skill) first, then dev layout (src/viewer/)
+  const fontsDir = existsSync(join(scriptDir, 'fonts'))
+    ? join(scriptDir, 'fonts')
+    : join(scriptDir, '..', '..', 'vendor', 'fonts');
+  const viewerJs = existsSync(join(scriptDir, 'viewer.js'))
+    ? join(scriptDir, 'viewer.js')
+    : join(scriptDir, '..', '..', 'dist', 'viewer.js');
   const html = assembleReport(auditDir, {
     viewerDir: scriptDir,
-    fontsDir: join(scriptDir, '..', '..', 'vendor', 'fonts'),
-    viewerJs: join(scriptDir, '..', '..', 'dist', 'viewer.js'),
+    fontsDir,
+    viewerJs,
   });
   const outPath = join(auditDir, 'report.html');
   writeFileSync(outPath, html);

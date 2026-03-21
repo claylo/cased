@@ -10,6 +10,12 @@ npx rolldown src/viewer/viewer.js --format iife --file dist/viewer.js
 echo "=== bundling build-report.js (node script) ==="
 npx rolldown src/viewer/build-report.mjs --format cjs --file dist/build-report.js --platform node
 
+echo "=== copying assets to dist/ (for local testing) ==="
+mkdir -p dist/fonts
+cp src/viewer/template.html dist/template.html
+cp src/viewer/style.css     dist/style.css
+cp vendor/fonts/*.woff2     dist/fonts/
+
 echo "=== copying assets to skill directory ==="
 mkdir -p src/cased/scripts src/cased/templates/fonts
 
