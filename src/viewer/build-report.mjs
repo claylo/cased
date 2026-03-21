@@ -1,4 +1,7 @@
 import YAML from 'yaml';
+import { readFileSync, existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join, basename } from 'node:path';
 
 // Required top-level fields per findings.schema.json
 const FINDINGS_REQUIRED = ['audit_date', 'scope', 'commit', 'assessment', 'narratives', 'summary'];
@@ -192,4 +195,96 @@ ${rows.join('\n')}
         </tbody>
       </table>
     </section>`;
+}
+
+/**
+ * Assemble a single self-contained report.html from audit YAML, template, CSS, and fonts.
+ * @param {string} auditDir — path to audit directory (contains recon.yaml, findings.yaml)
+ * @param {object} opts
+ * @param {string} opts.viewerDir — path to viewer source directory (contains template.html, style.css)
+ * @param {string} opts.fontsDir — path to fonts directory (contains woff2 files)
+ * @param {string|null} opts.viewerJs — path to viewer JS bundle, or null to skip
+ * @returns {string} — assembled HTML
+ */
+export function assembleReport(auditDir, opts = {}) {
+  const { viewerDir, fontsDir, viewerJs } = opts;
+
+  // 1. Read YAML files
+  const findingsYaml = readFileSync(join(auditDir, 'findings.yaml'), 'utf8');
+  const reconYaml = readFileSync(join(auditDir, 'recon.yaml'), 'utf8');
+
+  // 2. Parse
+  const findings = parseFindings(findingsYaml);
+  const recon = parseRecon(reconYaml);
+
+  // 3. Render content sections
+  const headerHtml = renderHeader(findings);
+  const narrativeHtmls = (findings.narratives || []).map(renderNarrative);
+  const ledgerHtml = renderLedger(findings);
+
+  // 4. Add terrain map placeholder
+  const terrainHtml = `    <section id="terrain-map"><canvas id="terrain-canvas"></canvas></section>`;
+
+  // 5. Concatenate content
+  const contentHtml = [headerHtml, ...narrativeHtmls, terrainHtml, ledgerHtml].join('\n');
+
+  // 6. Read template and CSS
+  const template = readFileSync(join(viewerDir, 'template.html'), 'utf8');
+  const css = readFileSync(join(viewerDir, 'style.css'), 'utf8');
+
+  // 7. Base64-encode fonts and generate @font-face declarations
+  const fontFiles = [
+    { file: 'AtkinsonHyperlegibleNextVF-Variable.woff2', family: 'Atkinson Hyperlegible Next' },
+    { file: 'AtkinsonHyperlegibleMonoVF-Variable.woff2', family: 'Atkinson Hyperlegible Mono' },
+  ];
+
+  const fontFaceDecls = fontFiles.map(({ file, family }) => {
+    const fontPath = join(fontsDir, file);
+    const b64 = readFileSync(fontPath).toString('base64');
+    return `@font-face {
+  font-family: '${family}';
+  src: url(data:font/woff2;base64,${b64}) format('woff2');
+  font-display: swap;
+}`;
+  }).join('\n');
+
+  // 8. Build JSON data blob
+  const dataBlob = { ...recon, ...findings };
+
+  // 9. Read viewer JS bundle if provided
+  let viewerJsContent = '';
+  if (viewerJs && existsSync(viewerJs)) {
+    viewerJsContent = readFileSync(viewerJs, 'utf8');
+  }
+
+  // 10. Replace SLOT markers
+  const title = `Cased Report: ${findings.scope} — ${findings.audit_date}`;
+  const html = template
+    .replace('<!-- SLOT:title -->', escHtml(title))
+    .replace('<!-- SLOT:fonts -->', fontFaceDecls)
+    .replace('<!-- SLOT:style -->', css)
+    .replace('<!-- SLOT:content -->', contentHtml)
+    .replace('<!-- SLOT:data -->', JSON.stringify(dataBlob))
+    .replace('<!-- SLOT:viewer -->', viewerJsContent);
+
+  return html;
+}
+
+// CLI entry point
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const auditDir = process.argv[2];
+  if (!auditDir) {
+    console.error('Usage: node build-report.mjs <audit-directory>');
+    process.exit(1);
+  }
+  const scriptDir = dirname(fileURLToPath(import.meta.url));
+  const { writeFileSync } = await import('node:fs');
+  const html = assembleReport(auditDir, {
+    viewerDir: scriptDir,
+    fontsDir: join(scriptDir, '..', '..', 'vendor', 'fonts'),
+    viewerJs: join(scriptDir, '..', '..', 'dist', 'viewer.js'),
+  });
+  const outPath = join(auditDir, 'report.html');
+  writeFileSync(outPath, html);
+  console.log(`wrote ${outPath} (${(html.length / 1024).toFixed(0)}KB)`);
 }

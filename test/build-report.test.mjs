@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseFindings, parseRecon, renderHeader, renderNarrative, renderLedger } from '../src/viewer/build-report.mjs';
+import { parseFindings, parseRecon, renderHeader, renderNarrative, renderLedger, assembleReport } from '../src/viewer/build-report.mjs';
 import { readFileSync } from 'node:fs';
 import YAML from 'yaml';
 
@@ -51,5 +51,21 @@ describe('renderLedger', () => {
     const html = renderLedger(findings);
     assert.ok(html.includes('<table'));
     assert.ok(html.includes('curate-validation-suppresses'));
+  });
+});
+
+describe('assembleReport', () => {
+  it('produces valid HTML from example data', () => {
+    const html = assembleReport('example/2026-03-21-current-repo-review', {
+      viewerDir: 'src/viewer',
+      fontsDir: 'vendor/fonts',
+      viewerJs: null  // skip JS inlining for this test
+    });
+    assert.ok(html.startsWith('<!DOCTYPE html>'));
+    assert.ok(html.includes('@font-face'));
+    assert.ok(html.includes('Atkinson'));
+    assert.ok(html.includes('cased-data'));
+    assert.ok(html.includes('location-truthfulness'));
+    assert.ok(html.includes('Remediation Ledger'));
   });
 });
