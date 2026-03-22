@@ -341,17 +341,18 @@ canvas.sparkline {
   border-color: var(--c-mid);
 }
 
-/* Mode label visibility — default is scroll mode */
-.mode-label[data-mode="present"] {
+/* Mode label visibility — show the action, not the current state.
+   In scroll mode: show "Present" (switch to). In present mode: show "Scroll" (switch to). */
+.mode-label[data-mode="scroll"] {
   display: none;
 }
 
 [data-mode="present"] .mode-label[data-mode="scroll"] {
-  display: none;
+  display: inline;
 }
 
 [data-mode="present"] .mode-label[data-mode="present"] {
-  display: inline;
+  display: none;
 }
 
 /* --------------------------------------------------------------------------

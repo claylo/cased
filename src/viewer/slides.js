@@ -36,6 +36,7 @@ function toggleMode(body) {
 
 function enterPresent(body) {
   if (!built) buildSlides();
+  document.getElementById('slides').hidden = false;
   body.dataset.mode = 'present';
   showSlide(0);
 }
@@ -116,7 +117,7 @@ function buildSlides() {
 function addSlide(container, content, sourceEl) {
   const slide = document.createElement('div');
   slide.className = 'slide';
-  slide.hidden = true;
+  slide.style.display = 'none';
   slide.appendChild(content);
   container.appendChild(slide);
   slides.push({ el: slide, sourceEl });
@@ -126,8 +127,8 @@ function showSlide(index) {
   if (index < 0 || index >= slides.length) return;
 
   // Hide all, show target
-  for (const s of slides) s.el.hidden = true;
-  slides[index].el.hidden = false;
+  for (const s of slides) s.el.style.display = 'none';
+  slides[index].el.style.display = '';
   currentSlide = index;
 
   // Update counter
