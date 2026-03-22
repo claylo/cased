@@ -91,14 +91,14 @@ ${Object.entries(counts).filter(([, v]) => v > 0).map(([level, count]) =>
  * @param {object} narrative — one element from findings.narratives
  * @returns {string}
  */
-export function renderNarrative(narrative) {
-  const findingHtml = (narrative.findings || []).map(renderFinding).join('\n');
+export function renderNarrative(narrative, slugToTitle) {
+  const findingHtml = (narrative.findings || []).map(f => renderFinding(f, slugToTitle)).join('\n');
 
   return `    <section class="narrative" data-slug="${escHtml(narrative.slug)}">
       <h2>${escHtml(narrative.title)}</h2>
-      <p class="thesis">${escHtml(narrative.thesis)}</p>
+      <p class="thesis"><em>${escHtml(narrative.thesis)}</em></p>
 ${findingHtml}
-      <p class="verdict">${escHtml(narrative.verdict)}</p>
+      <p class="verdict"><em>${escHtml(narrative.verdict)}</em></p>
     </section>`;
 }
 
@@ -107,7 +107,7 @@ ${findingHtml}
  * @param {object} finding
  * @returns {string}
  */
-function renderFinding(finding) {
+function renderFinding(finding, slugToTitle) {
   const locations = finding.locations || [];
   const locationCodes = locations.map(loc =>
     `<code class="location">${escHtml(loc.path)}:${loc.line_start}-${loc.line_end}</code>`
@@ -124,12 +124,24 @@ function renderFinding(finding) {
   const enabledBy = (chainRefs && Array.isArray(chainRefs.enabled_by)) ? chainRefs.enabled_by : [];
   const related = (chainRefs && Array.isArray(chainRefs.related)) ? chainRefs.related : [];
 
-  const chainLinks = [...enables, ...enabledBy, ...related];
-  const chainHtml = chainLinks.length > 0
-    ? `
-        <div class="chain-references">
-          ${chainLinks.map(slug => `<a href="#${escHtml(slug)}" class="chain-link">${escHtml(slug)}</a>`).join('\n          ')}
-        </div>`
+  const chainParts = [];
+  if (enables.length > 0) {
+    chainParts.push('Enables: ' + enables.map(slug =>
+      `<a href="#${escHtml(slug)}" class="chain-ref">${escHtml(slugToTitle?.[slug] || slug)}</a>`
+    ).join(', '));
+  }
+  if (enabledBy.length > 0) {
+    chainParts.push('Enabled by: ' + enabledBy.map(slug =>
+      `<a href="#${escHtml(slug)}" class="chain-ref">${escHtml(slugToTitle?.[slug] || slug)}</a>`
+    ).join(', '));
+  }
+  if (related.length > 0) {
+    chainParts.push('Related: ' + related.map(slug =>
+      `<a href="#${escHtml(slug)}" class="chain-ref">${escHtml(slugToTitle?.[slug] || slug)}</a>`
+    ).join(', '));
+  }
+  const chainHtml = chainParts.length > 0
+    ? `\n        <div class="chains">${chainParts.join(' · ')}</div>`
     : '';
 
   return `      <article id="${escHtml(finding.slug)}" class="finding" data-slug="${escHtml(finding.slug)}" data-concern="${escHtml(finding.concern)}">
@@ -154,7 +166,7 @@ function renderFinding(finding) {
  * @param {object} findings — parsed findings object
  * @returns {string}
  */
-export function renderLedger(findings) {
+export function renderLedger(findings, slugToTitle) {
   const rows = [];
 
   for (const narrative of (findings.narratives || [])) {
@@ -172,11 +184,11 @@ export function renderLedger(findings) {
       const related = (chainRefs && Array.isArray(chainRefs.related)) ? chainRefs.related : [];
       const allChains = [...enables, ...enabledBy, ...related];
       const chainsCell = allChains.length > 0
-        ? allChains.map(slug => `<a href="#${escHtml(slug)}">${escHtml(slug)}</a>`).join('<br>')
+        ? allChains.map(slug => `<a href="#${escHtml(slug)}">${escHtml(slugToTitle?.[slug] || slug)}</a>`).join('<br>')
         : '—';
 
       rows.push(`        <tr>
-          <td><a href="#${escHtml(finding.slug)}">${escHtml(finding.slug)}</a></td>
+          <td><a href="#${escHtml(finding.slug)}">${escHtml(finding.title)}</a></td>
           <td><span class="concern-badge" data-concern="${escHtml(finding.concern)}">${escHtml(finding.concern)}</span></td>
           <td>${locationCell}</td>
           <td>${effort}</td>
@@ -224,10 +236,18 @@ export function assembleReport(auditDir, opts = {}) {
   const findings = parseFindings(findingsYaml);
   const recon = parseRecon(reconYaml);
 
-  // 3. Render content sections
+  // 3. Build slug→title map for chain reference resolution
+  const slugToTitle = {};
+  for (const n of (findings.narratives || [])) {
+    for (const f of (n.findings || [])) {
+      slugToTitle[f.slug] = f.title;
+    }
+  }
+
+  // 4. Render content sections
   const headerHtml = renderHeader(findings);
-  const narrativeHtmls = (findings.narratives || []).map(renderNarrative);
-  const ledgerHtml = renderLedger(findings);
+  const narrativeHtmls = (findings.narratives || []).map(n => renderNarrative(n, slugToTitle));
+  const ledgerHtml = renderLedger(findings, slugToTitle);
 
   // 4. Add terrain map placeholder
   const terrainHtml = `    <section id="terrain-map"><canvas id="terrain-canvas"></canvas></section>`;
