@@ -9,6 +9,7 @@ import { pluginFrames } from '@expressive-code/plugin-frames'
 import { pluginLineNumbers } from '@expressive-code/plugin-line-numbers'
 import { pluginPrebuiltShiki } from './shiki-plugin.js'
 import { getHighlighter, inferLangFromPath } from './highlighter.js'
+import githubLightTheme from '@shikijs/themes/github-light'
 
 // Re-export for tests
 export { inferLangFromPath } from './highlighter.js'
@@ -135,7 +136,7 @@ export function buildMetaString(markers) {
  */
 async function createEC() {
   const highlighter = await getHighlighter()
-  const githubLight = (await import('@shikijs/themes/github-light')).default
+  const githubLight = githubLightTheme
 
   return new ExpressiveCodeEngine({
     themes: [new ExpressiveCodeTheme(githubLight)],

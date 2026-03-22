@@ -1,0 +1,430 @@
+/* ==========================================================================
+   Cased Report Viewer
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Color tokens
+   -------------------------------------------------------------------------- */
+:root {
+  --c-black: #111;
+  --c-mid: #6b7280;
+  --c-light: #d1d5db;
+  --c-red: #dc2626;
+  --c-green: #059669;
+  --c-bg: #fffff8;
+}
+
+/* --------------------------------------------------------------------------
+   Base / Reset
+   -------------------------------------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif;
+  background: var(--c-bg);
+  color: var(--c-black);
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+}
+
+code, pre, kbd, samp {
+  font-family: 'Atkinson Hyperlegible Mono', ui-monospace, monospace;
+  line-height: 1.4;
+}
+
+/* --------------------------------------------------------------------------
+   Main report container
+   -------------------------------------------------------------------------- */
+main#report {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 2rem 2rem 2rem 12%;
+}
+
+/* --------------------------------------------------------------------------
+   Text column constraint
+   -------------------------------------------------------------------------- */
+header,
+.summary-bar,
+section.narrative > h2,
+section.narrative > p,
+section.ledger {
+  max-width: 40rem;
+}
+
+/* --------------------------------------------------------------------------
+   Header / metadata
+   -------------------------------------------------------------------------- */
+h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--c-black);
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+h2 {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--c-black);
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+p.meta {
+  color: var(--c-mid);
+  font-size: 0.875rem;
+  font-weight: 300;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+p.assessment {
+  font-size: 1rem;
+  font-weight: 450;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   Summary bar
+   -------------------------------------------------------------------------- */
+.summary-bar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.summary-count {
+  display: inline-block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.2rem 0.6rem;
+  border: 1.5px solid var(--c-mid);
+  border-radius: 999px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.summary-count[data-concern="critical"] {
+  border-color: var(--c-red);
+}
+
+.summary-count[data-concern="significant"] {
+  border-color: rgba(220, 38, 38, 0.5);
+}
+
+.summary-total {
+  color: var(--c-mid);
+  margin-left: auto;
+  font-size: 0.875rem;
+}
+
+/* --------------------------------------------------------------------------
+   Narrative sections
+   -------------------------------------------------------------------------- */
+section.narrative {
+  border-top: 1px solid var(--c-light);
+  padding-top: 1.5rem;
+  margin-top: 2rem;
+}
+
+p.thesis {
+  font-style: italic;
+  font-weight: 300;
+  margin-top: 0;
+}
+
+p.verdict {
+  font-style: italic;
+  font-weight: 300;
+  margin-top: 1.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   Finding articles
+   -------------------------------------------------------------------------- */
+article.finding {
+  margin-bottom: 3rem;
+  max-width: 40rem;
+}
+
+article.finding h3 {
+  font-weight: 400;
+}
+
+article.finding[data-concern="critical"] h3,
+article.finding[data-concern="significant"] h3 {
+  font-weight: 600;
+}
+
+article.finding[data-concern="moderate"] h3 {
+  font-weight: 500;
+}
+
+.finding-meta {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--c-mid);
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.concern-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.concern-badge[data-concern="critical"] {
+  background: var(--c-red);
+  color: white;
+}
+
+.concern-badge[data-concern="significant"] {
+  background: #fecaca;
+  color: var(--c-red);
+}
+
+.concern-badge[data-concern="moderate"] {
+  background: #e5e7eb;
+  color: var(--c-black);
+}
+
+.concern-badge[data-concern="advisory"] {
+  background: var(--c-light);
+  color: var(--c-mid);
+}
+
+.concern-badge[data-concern="note"] {
+  background: var(--c-light);
+  color: var(--c-mid);
+}
+
+/* --------------------------------------------------------------------------
+   Inline code
+   -------------------------------------------------------------------------- */
+code {
+  background: #f0f0f0;
+  padding: 0.1rem 0.3rem;
+  border-radius: 2px;
+  font-size: 0.9em;
+}
+
+/* --------------------------------------------------------------------------
+   Sidenotes (Tufte-style)
+   -------------------------------------------------------------------------- */
+.sidenote {
+  float: right;
+  clear: right;
+  margin-right: -45%;
+  width: 40%;
+  font-size: 0.85rem;
+  font-weight: 300;
+  line-height: 1.4;
+  color: var(--c-mid);
+  margin-bottom: 0.75rem;
+}
+
+.sidenote a {
+  color: var(--c-mid);
+  text-decoration: underline;
+  text-decoration-thickness: 0.05em;
+  text-underline-offset: 0.1em;
+}
+
+.sidenote a:hover {
+  color: var(--c-black);
+}
+
+/* --------------------------------------------------------------------------
+   Expressive Code overrides
+   -------------------------------------------------------------------------- */
+.expressive-code pre,
+.expressive-code code {
+  font-family: 'Atkinson Hyperlegible Mono', ui-monospace, monospace;
+  font-weight: 400;
+}
+
+.expressive-code .gutter .ln {
+  font-weight: 300;
+}
+
+article.finding .expressive-code {
+  max-width: 40rem;
+}
+
+/* --------------------------------------------------------------------------
+   Remediation
+   -------------------------------------------------------------------------- */
+.remediation {
+  margin-top: 1rem;
+}
+
+/* --------------------------------------------------------------------------
+   Remediation ledger
+   -------------------------------------------------------------------------- */
+#remediation-ledger table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+#remediation-ledger th {
+  text-align: left;
+  border-bottom: 2px solid var(--c-black);
+  padding: 0.5rem;
+}
+
+#remediation-ledger td {
+  border-bottom: 1px solid var(--c-light);
+  padding: 0.5rem;
+  vertical-align: top;
+}
+
+#remediation-ledger td a {
+  color: var(--c-black);
+}
+
+/* --------------------------------------------------------------------------
+   Terrain map
+   -------------------------------------------------------------------------- */
+#terrain-map {
+  text-align: center;
+  margin: 2rem 0;
+}
+
+#terrain-canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+/* --------------------------------------------------------------------------
+   Sparklines
+   -------------------------------------------------------------------------- */
+canvas.sparkline {
+  display: inline-block;
+  width: 80px;
+  height: 16px;
+  vertical-align: middle;
+}
+
+/* --------------------------------------------------------------------------
+   Mode toggle (fixed UI chrome)
+   -------------------------------------------------------------------------- */
+#mode-toggle {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 100;
+}
+
+#toggle-btn {
+  background: var(--c-bg);
+  border: 1px solid var(--c-light);
+  border-radius: 4px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--c-mid);
+  font-family: inherit;
+}
+
+#toggle-btn:hover {
+  border-color: var(--c-mid);
+}
+
+/* Mode label visibility — show the action, not the current state.
+   In scroll mode: show "Present" (switch to). In present mode: show "Scroll" (switch to). */
+.mode-label[data-mode="scroll"] {
+  display: none;
+}
+
+[data-mode="present"] .mode-label[data-mode="scroll"] {
+  display: inline;
+}
+
+[data-mode="present"] .mode-label[data-mode="present"] {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+   Presentation mode
+   -------------------------------------------------------------------------- */
+
+/* Hide the scroll report, show slides */
+[data-mode="present"] #report {
+  display: none;
+}
+
+#slides {
+  display: none;
+}
+
+[data-mode="present"] #slides {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.slide {
+  max-width: 48rem;
+  width: 100%;
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.slide-counter {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  font-size: 0.8rem;
+  color: var(--c-mid);
+}
+
+/* --------------------------------------------------------------------------
+   Print styles
+   -------------------------------------------------------------------------- */
+@media print {
+  #mode-toggle,
+  #slides,
+  .slide-counter {
+    display: none;
+  }
+
+  main#report {
+    max-width: none;
+    padding: 2rem;
+  }
+
+  article.finding {
+    break-inside: avoid;
+  }
+
+  .sidenote {
+    float: none;
+    margin-right: 0;
+    width: auto;
+    display: block;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+  }
+}
