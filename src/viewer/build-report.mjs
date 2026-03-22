@@ -57,6 +57,13 @@ export function escHtml(s) {
 }
 
 /**
+ * Render inline prose: escape HTML, then convert `backticks` to <code> tags.
+ */
+export function renderProse(s) {
+  return escHtml(String(s)).replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+
+/**
  * Generate the <header> HTML fragment.
  * @param {object} findings — parsed findings object
  * @returns {string}
@@ -69,7 +76,7 @@ export function renderHeader(findings) {
   return `    <header>
       <h1>${escHtml(findings.scope || 'Audit')} Audit</h1>
       <p class="meta">${findings.audit_date} &middot; <code>${(findings.commit || '').slice(0, 12)}</code> &middot; ${escHtml(findings.scope || '')}</p>
-${assessment ? `      <p class="assessment">${escHtml(assessment)}</p>` : ''}
+${assessment ? `      <p class="assessment">${renderProse(assessment)}</p>` : ''}
       <div class="summary-bar">
 ${Object.entries(counts).filter(([, v]) => v > 0).map(([level, count]) =>
   `        <span class="summary-count" data-concern="${level}">${count} ${level}</span>`
@@ -132,11 +139,11 @@ function renderFinding(finding) {
           ${locationCodes}${sparkline}
         </div>
         <div class="mechanism">
-          <p>${escHtml(finding.mechanism)}</p>
+          <p>${renderProse(finding.mechanism)}</p>
         </div>
         <pre class="evidence"><code>${escHtml(finding.evidence)}</code></pre>${chainHtml}
         <div class="remediation">
-          <p>${escHtml(finding.remediation)}</p>
+          <p>${renderProse(finding.remediation)}</p>
         </div>
       </article>`;
 }
@@ -226,7 +233,7 @@ export function assembleReport(auditDir, opts = {}) {
   const terrainHtml = `    <section id="terrain-map"><canvas id="terrain-canvas"></canvas></section>`;
 
   // 5. Concatenate content
-  const contentHtml = [headerHtml, ...narrativeHtmls, terrainHtml, ledgerHtml].join('\n');
+  const contentHtml = [headerHtml, terrainHtml, ...narrativeHtmls, ledgerHtml].join('\n');
 
   // 6. Read template and CSS
   const template = readFileSync(join(viewerDir, 'template.html'), 'utf8');
@@ -249,7 +256,7 @@ export function assembleReport(auditDir, opts = {}) {
   }).join('\n');
 
   // 8. Build JSON data blob
-  const dataBlob = { ...recon, ...findings };
+  const dataBlob = { recon, findings };
 
   // 9. Read viewer JS bundle if provided
   let viewerJsContent = '';
@@ -278,13 +285,19 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(1);
   }
   const scriptDir = dirname(fileURLToPath(import.meta.url));
-  // Resolve assets: flat layout (dist/ or skill) first, then dev layout (src/viewer/)
+  const repoRoot = join(scriptDir, '..', '..');
+  // Resolve assets: check flat layout (bundled in dist/ or skill dir) vs dev layout
   const fontsDir = existsSync(join(scriptDir, 'fonts'))
     ? join(scriptDir, 'fonts')
-    : join(scriptDir, '..', '..', 'vendor', 'fonts');
-  const viewerJs = existsSync(join(scriptDir, 'viewer.js'))
-    ? join(scriptDir, 'viewer.js')
-    : join(scriptDir, '..', '..', 'dist', 'viewer.js');
+    : join(repoRoot, 'vendor', 'fonts');
+  // Always use the IIFE bundle, never the ESM source. In dev mode (src/viewer/),
+  // the bundle is at dist/viewer.js. In bundled mode (dist/ or skill), it's a sibling.
+  const viewerJsCandidates = [
+    join(repoRoot, 'dist', 'viewer.js'),     // dev mode
+    join(scriptDir, 'viewer.iife.js'),        // skill dir (explicit name)
+    join(scriptDir, '..', 'templates', 'viewer.js'), // skill: scripts/ -> templates/
+  ];
+  const viewerJs = viewerJsCandidates.find(p => existsSync(p)) || null;
   const html = assembleReport(auditDir, {
     viewerDir: scriptDir,
     fontsDir,
