@@ -41,6 +41,22 @@
                   }
                 },
                 "evidence": { "type": "string" },
+                "evidence_lang": {
+                  "type": "string",
+                  "description": "Language identifier for syntax highlighting. Inferred from locations[0].path extension if absent."
+                },
+                "evidence_markers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "lines": { "type": "string", "description": "Line or range, e.g. '3' or '3-7'" },
+                      "type": { "type": "string", "enum": ["mark", "ins", "del"] },
+                      "label": { "type": "string", "description": "Optional label shown on first line of range" }
+                    },
+                    "required": ["lines", "type"]
+                  }
+                },
                 "mechanism": { "type": "string" },
                 "remediation": { "type": "string" },
                 "effort": { "type": "string", "enum": ["trivial", "small", "medium", "large"] },

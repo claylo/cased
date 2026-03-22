@@ -1,0 +1,15 @@
+{
+  "devDependencies": {
+    "@expressive-code/core": "^0.41.7",
+    "@expressive-code/plugin-frames": "^0.41.7",
+    "@expressive-code/plugin-line-numbers": "^0.41.7",
+    "@expressive-code/plugin-text-markers": "^0.41.7",
+    "@shikijs/core": "^4.0.2",
+    "@shikijs/langs": "^4.0.2",
+    "@shikijs/themes": "^4.0.2",
+    "rolldown": "^1.0.0-rc.10",
+    "rough-notation": "^0.5.1",
+    "roughjs": "^4.6.6",
+    "yaml": "^2.8.3"
+  }
+}
