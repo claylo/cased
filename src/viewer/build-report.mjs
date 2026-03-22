@@ -67,10 +67,34 @@ export function escHtml(s) {
 }
 
 /**
- * Render inline prose: escape HTML, then convert `backticks` to <code> tags.
+ * Render inline prose: convert markdown-ish patterns to HTML, then escape remaining text.
+ * Order matters: extract markdown patterns first, escape the rest.
  */
 export function renderProse(s) {
-  return escHtml(String(s)).replace(/`([^`]+)`/g, '<code>$1</code>');
+  if (s == null) return '';
+  const str = String(s);
+
+  const tokens = [];
+  let lastIndex = 0;
+  const pattern = /\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`/g;
+  let match;
+  while ((match = pattern.exec(str)) !== null) {
+    if (match.index > lastIndex) {
+      tokens.push(escHtml(str.slice(lastIndex, match.index)));
+    }
+    if (match[1] !== undefined) {
+      tokens.push(`<a href="${escHtml(match[2])}">${escHtml(match[1])}</a>`);
+    } else if (match[3] !== undefined) {
+      tokens.push(`<strong>${escHtml(match[3])}</strong>`);
+    } else if (match[4] !== undefined) {
+      tokens.push(`<code>${escHtml(match[4])}</code>`);
+    }
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < str.length) {
+    tokens.push(escHtml(str.slice(lastIndex)));
+  }
+  return tokens.join('');
 }
 
 /**
