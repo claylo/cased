@@ -20,4 +20,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize presentation mode
   initSlides();
+
+  // Summary pill click-to-scroll
+  for (const pill of document.querySelectorAll('.summary-count')) {
+    const concern = pill.getAttribute('data-concern');
+    if (!concern) continue;
+    pill.setAttribute('role', 'button');
+    pill.setAttribute('tabindex', '0');
+    pill.addEventListener('click', () => {
+      const target = document.querySelector(`article.finding[data-concern="${concern}"]`);
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    pill.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        pill.click();
+      }
+    });
+  }
 });
