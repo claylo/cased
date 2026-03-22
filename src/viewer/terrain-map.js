@@ -111,8 +111,13 @@ export function drawTerrainMap(canvas, reconData, findingsData) {
       roughness: 1,
     });
 
-    // Short label: last path segment
-    const label = file.path.split('/').pop() || file.path;
+    // Short label: use 2 segments for ambiguous filenames (mod.rs, lib.rs, main.rs)
+    const segments = file.path.split('/');
+    const filename = segments.pop() || file.path;
+    const AMBIGUOUS = new Set(['mod.rs', 'lib.rs', 'main.rs', 'index.js', 'index.ts', 'mod.ts']);
+    const label = (AMBIGUOUS.has(filename) && segments.length > 0)
+      ? `${segments.pop()}/${filename}`
+      : filename;
     const labelX = rect.cellX + Math.round(CELL_W / 2);
     const labelY = rect.y + rect.h + 4;
 
