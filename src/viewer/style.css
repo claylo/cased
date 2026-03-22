@@ -6,12 +6,12 @@
    Color tokens
    -------------------------------------------------------------------------- */
 :root {
-  --c-black: #1a1a1a;
+  --c-black: #111;
   --c-mid: #6b7280;
   --c-light: #d1d5db;
   --c-red: #dc2626;
   --c-green: #059669;
-  --c-bg: #fafafa;
+  --c-bg: #fffff8;
 }
 
 /* --------------------------------------------------------------------------
@@ -39,9 +39,20 @@ code, pre, kbd, samp {
    Main report container
    -------------------------------------------------------------------------- */
 main#report {
-  max-width: 48rem;
+  max-width: 72rem;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 2rem 2rem 2rem 12%;
+}
+
+/* --------------------------------------------------------------------------
+   Text column constraint
+   -------------------------------------------------------------------------- */
+header,
+.summary-bar,
+section.narrative > h2,
+section.narrative > p,
+section.ledger {
+  max-width: 40rem;
 }
 
 /* --------------------------------------------------------------------------
@@ -49,6 +60,7 @@ main#report {
    -------------------------------------------------------------------------- */
 h1 {
   font-size: 1.75rem;
+  font-weight: 600;
   color: var(--c-black);
   margin-top: 0;
   margin-bottom: 0.5rem;
@@ -56,6 +68,7 @@ h1 {
 
 h2 {
   font-size: 1.25rem;
+  font-weight: 500;
   color: var(--c-black);
   margin-top: 0;
   margin-bottom: 0.75rem;
@@ -64,12 +77,14 @@ h2 {
 p.meta {
   color: var(--c-mid);
   font-size: 0.875rem;
+  font-weight: 300;
   margin-top: 0;
   margin-bottom: 0.5rem;
 }
 
 p.assessment {
   font-size: 1rem;
+  font-weight: 450;
   line-height: 1.6;
   margin-bottom: 1.5rem;
 }
@@ -89,10 +104,12 @@ p.assessment {
 .summary-count {
   display: inline-block;
   font-size: 0.85rem;
+  font-weight: 500;
   padding: 0.2rem 0.6rem;
   border: 1.5px solid var(--c-mid);
   border-radius: 999px;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .summary-count[data-concern="critical"] {
@@ -120,11 +137,13 @@ section.narrative {
 
 p.thesis {
   font-style: italic;
+  font-weight: 300;
   margin-top: 0;
 }
 
 p.verdict {
   font-style: italic;
+  font-weight: 300;
   margin-top: 1.5rem;
 }
 
@@ -132,29 +151,21 @@ p.verdict {
    Finding articles
    -------------------------------------------------------------------------- */
 article.finding {
-  border-left: 3px solid var(--c-light);
-  padding-left: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 3rem;
+  max-width: 40rem;
 }
 
-article.finding[data-concern="critical"] {
-  border-left-color: var(--c-red);
+article.finding h3 {
+  font-weight: 400;
 }
 
-article.finding[data-concern="significant"] {
-  border-left-color: rgba(220, 38, 38, 0.7);
+article.finding[data-concern="critical"] h3,
+article.finding[data-concern="significant"] h3 {
+  font-weight: 600;
 }
 
-article.finding[data-concern="moderate"] {
-  border-left-color: var(--c-mid);
-}
-
-article.finding[data-concern="advisory"] {
-  border-left-color: var(--c-light);
-}
-
-article.finding[data-concern="note"] {
-  border-left-color: var(--c-light);
+article.finding[data-concern="moderate"] h3 {
+  font-weight: 500;
 }
 
 .finding-meta {
@@ -204,26 +215,8 @@ article.finding[data-concern="note"] {
 }
 
 /* --------------------------------------------------------------------------
-   Code / evidence blocks
+   Inline code
    -------------------------------------------------------------------------- */
-pre.evidence {
-  background: #f8f8f8;
-  border: 1px solid var(--c-light);
-  border-radius: 4px;
-  padding: 1rem;
-  overflow-x: auto;
-  font-size: 0.875rem;
-  margin: 0.75rem 0;
-}
-
-pre.evidence code {
-  font-family: inherit;
-  background: none;
-  padding: 0;
-  border-radius: 0;
-  font-size: inherit;
-}
-
 code {
   background: #f0f0f0;
   padding: 0.1rem 0.3rem;
@@ -232,23 +225,46 @@ code {
 }
 
 /* --------------------------------------------------------------------------
-   Chain references
+   Sidenotes (Tufte-style)
    -------------------------------------------------------------------------- */
-.chains {
+.sidenote {
+  float: right;
+  clear: right;
+  margin-right: -45%;
+  width: 40%;
   font-size: 0.85rem;
+  font-weight: 300;
+  line-height: 1.4;
   color: var(--c-mid);
-  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
-.chains a,
-a.chain-ref {
+.sidenote a {
   color: var(--c-mid);
   text-decoration: underline;
+  text-decoration-thickness: 0.05em;
+  text-underline-offset: 0.1em;
 }
 
-.chains a:hover,
-a.chain-ref:hover {
+.sidenote a:hover {
   color: var(--c-black);
+}
+
+/* --------------------------------------------------------------------------
+   Expressive Code overrides
+   -------------------------------------------------------------------------- */
+.expressive-code pre,
+.expressive-code code {
+  font-family: 'Atkinson Hyperlegible Mono', ui-monospace, monospace;
+  font-weight: 400;
+}
+
+.expressive-code .gutter .ln {
+  font-weight: 300;
+}
+
+article.finding .expressive-code {
+  max-width: 40rem;
 }
 
 /* --------------------------------------------------------------------------
@@ -256,16 +272,6 @@ a.chain-ref:hover {
    -------------------------------------------------------------------------- */
 .remediation {
   margin-top: 1rem;
-}
-
-.remediation pre {
-  background: #f8f8f8;
-  border: 1px solid var(--c-light);
-  border-left: 3px solid var(--c-green);
-  border-radius: 4px;
-  padding: 1rem;
-  overflow-x: auto;
-  font-size: 0.875rem;
 }
 
 /* --------------------------------------------------------------------------
@@ -406,9 +412,19 @@ canvas.sparkline {
 
   main#report {
     max-width: none;
+    padding: 2rem;
   }
 
   article.finding {
     break-inside: avoid;
+  }
+
+  .sidenote {
+    float: none;
+    margin-right: 0;
+    width: auto;
+    display: block;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
   }
 }
