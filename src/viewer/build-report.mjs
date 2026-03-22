@@ -169,6 +169,7 @@ async function renderEvidence(ec, finding) {
     props: {
       title: title || undefined,
       showLineNumbers: true,
+      startLineNumber: finding.locations?.[0]?.line_start || 1,
     },
   })
 
