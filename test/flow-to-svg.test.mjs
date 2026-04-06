@@ -159,6 +159,62 @@ describe('finding annotations', () => {
   });
 });
 
+describe('chain references', () => {
+  const findings = [
+    {
+      slug: 'first',
+      title: 'First Issue',
+      concern: 'significant',
+      chain_references: { enables: ['second'] },
+    },
+    {
+      slug: 'second',
+      title: 'Second Issue',
+      concern: 'moderate',
+      chain_references: { enabled_by: ['first'] },
+    },
+  ];
+
+  it('renders vertical chain ref as dashed line between stems', () => {
+    const flow = [
+      { id: 's1', label: 'A', type: 'start' },
+      { id: 's2', label: 'B', findings: ['first'] },
+      { id: 's3', label: 'C' },
+      { id: 's4', label: 'D', findings: ['second'] },
+      { id: 's5', label: 'E', type: 'end' },
+    ];
+    const svg = flowToSvg(flow, findings);
+    assert.ok(svg.includes('stroke-dasharray="3,2"'));
+    assert.ok(svg.includes('enables'));
+  });
+
+  it('renders horizontal chain ref as dashed line between columns', () => {
+    const flow = [
+      { id: 's1', label: 'A', type: 'start', findings: ['first'] },
+      { id: 's2', label: 'B', findings: ['second'] },
+      { id: 's3', label: 'C', type: 'end' },
+    ];
+    const svg = flowToSvg(flow, findings);
+    assert.ok(svg.includes('stroke-dasharray="3,2"'));
+    assert.ok(svg.includes('enables'));
+  });
+
+  it('skips chain ref when target finding has no flow step', () => {
+    const partialFindings = [
+      { slug: 'orphan', title: 'Orphan', concern: 'note', chain_references: { enables: ['missing'] } },
+    ];
+    const flow = [
+      { id: 's1', label: 'A', type: 'start' },
+      { id: 's2', label: 'B', findings: ['orphan'] },
+      { id: 's3', label: 'C' },
+      { id: 's4', label: 'D' },
+      { id: 's5', label: 'E', type: 'end' },
+    ];
+    const svg = flowToSvg(flow, partialFindings);
+    assert.ok(!svg.includes('stroke-dasharray'));
+  });
+});
+
 describe('renderShape', () => {
   it('renders start as solid circle', () => {
     const svg = renderShape('start', 100, 50);
