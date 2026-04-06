@@ -2,6 +2,7 @@ import { drawTerrainMap } from './terrain-map.js';
 import { initAnnotations } from './annotations.js';
 import { initSparklines } from './sparklines.js';
 import { initSlides } from './slides.js';
+import { initNavBar } from './nav-bar.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // Parse embedded data
@@ -20,6 +21,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize presentation mode
   initSlides();
+
+  // Sticky navigation bar
+  initNavBar();
 
   // Summary pill click-to-scroll
   for (const pill of document.querySelectorAll('.summary-count')) {

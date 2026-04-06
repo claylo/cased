@@ -22,6 +22,35 @@ export function initSlides() {
       else if (e.key === 'ArrowLeft') prevSlide();
     }
   });
+
+  // Click left/right edges to navigate slides
+  document.addEventListener('click', (e) => {
+    if (body.dataset.mode !== 'present') return;
+    // Don't intercept clicks on interactive elements
+    const tag = e.target.closest('a, button, [role="button"], .summary-count, .expressive-code');
+    if (tag) return;
+    const x = e.clientX / window.innerWidth;
+    if (x < 0.25) prevSlide();
+    else if (x > 0.75) nextSlide();
+  });
+
+  // Touch/swipe navigation for smartboards and tablets
+  let touchStartX = 0;
+  let touchStartY = 0;
+  document.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].clientX;
+    touchStartY = e.changedTouches[0].clientY;
+  }, { passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    if (body.dataset.mode !== 'present') return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    // Only count horizontal swipes (not taps or vertical scrolls)
+    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return;
+    if (dx < 0) nextSlide();
+    else prevSlide();
+  }, { passive: true });
 }
 
 function isInputFocused() {
@@ -61,7 +90,8 @@ function buildSlides() {
   // Title slide
   const header = document.querySelector('main#report header');
   if (header) {
-    addSlide(container, header.cloneNode(true), header);
+    const titleContent = header.cloneNode(true);
+    addSlide(container, titleContent, header);
   }
 
   // Terrain map slide
@@ -111,10 +141,45 @@ function buildSlides() {
   counter.className = 'slide-counter';
   container.appendChild(counter);
 
+  // Wire up summary pills on the title slide to jump to first finding of that concern
+  const titleSlide = slides[0]?.el;
+  if (titleSlide) {
+    for (const pill of titleSlide.querySelectorAll('.summary-count')) {
+      const concern = pill.dataset.concern;
+      if (!concern) continue;
+      pill.addEventListener('click', () => {
+        const idx = slides.findIndex(s =>
+          s.el.querySelector(`article.finding[data-concern="${concern}"]`)
+        );
+        if (idx >= 0) showSlide(idx);
+      });
+    }
+  }
+
+  // Wire up chain-ref and ledger links to navigate between slides
+  container.addEventListener('click', (e) => {
+    const link = e.target.closest('a[href^="#"]');
+    if (!link) return;
+    const slug = link.getAttribute('href').slice(1);
+    if (!slug) return;
+    const idx = slides.findIndex(s =>
+      s.el.querySelector(`#${CSS.escape(slug)}`) ||
+      s.el.querySelector(`article.finding[data-slug="${slug}"]`)
+    );
+    if (idx >= 0) {
+      e.preventDefault();
+      showSlide(idx);
+    }
+  });
+
   built = true;
 }
 
 function addSlide(container, content, sourceEl) {
+  // Strip rough-notation SVGs carried over from scroll-mode cloneNode
+  for (const svg of content.querySelectorAll('svg.rough-annotation')) {
+    svg.remove();
+  }
   const slide = document.createElement('div');
   slide.className = 'slide';
   slide.style.display = 'none';

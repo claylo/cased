@@ -50,8 +50,7 @@ main#report {
 header,
 .summary-bar,
 section.narrative > h2,
-section.narrative > p,
-section.ledger {
+section.narrative > p {
   max-width: 40rem;
 }
 
@@ -130,8 +129,10 @@ p.assessment {
    Narrative sections
    -------------------------------------------------------------------------- */
 section.narrative {
-  border-top: 1px solid var(--c-light);
-  padding-top: 1.5rem;
+  margin-top: 3.5rem;
+}
+
+section.narrative:first-of-type {
   margin-top: 2rem;
 }
 
@@ -144,7 +145,7 @@ p.thesis {
 p.verdict {
   font-style: italic;
   font-weight: 300;
-  margin-top: 1.5rem;
+  margin-top: 2rem;
 }
 
 /* --------------------------------------------------------------------------
@@ -219,8 +220,8 @@ article.finding[data-concern="moderate"] h3 {
    -------------------------------------------------------------------------- */
 code {
   background: #f0f0f0;
-  padding: 0.1rem 0.3rem;
-  border-radius: 2px;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
   font-size: 0.9em;
 }
 
@@ -237,6 +238,16 @@ code {
   line-height: 1.4;
   color: var(--c-mid);
   margin-bottom: 0.75rem;
+}
+
+.sidenote.glossary {
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.sidenote.glossary strong {
+  font-weight: 500;
+  color: var(--c-black);
 }
 
 .sidenote a {
@@ -277,26 +288,43 @@ article.finding .expressive-code {
 /* --------------------------------------------------------------------------
    Remediation ledger
    -------------------------------------------------------------------------- */
-#remediation-ledger table {
+section.ledger {
+  margin-top: 4rem;
+  max-width: 60rem;
+}
+
+section.ledger h2 {
+  max-width: 40rem;
+}
+
+.ledger-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
 }
 
-#remediation-ledger th {
+.ledger-table th {
   text-align: left;
   border-bottom: 2px solid var(--c-black);
-  padding: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
-#remediation-ledger td {
+.ledger-table td {
   border-bottom: 1px solid var(--c-light);
-  padding: 0.5rem;
+  padding: 0.5rem 0.75rem;
   vertical-align: top;
 }
 
-#remediation-ledger td a {
+.ledger-table td a {
   color: var(--c-black);
+}
+
+.ledger-table td code {
+  font-size: 0.8em;
+  background: none;
+  padding: 0;
 }
 
 /* --------------------------------------------------------------------------
@@ -320,6 +348,75 @@ canvas.sparkline {
   width: 80px;
   height: 16px;
   vertical-align: middle;
+}
+
+/* --------------------------------------------------------------------------
+   Sticky navigation bar
+   -------------------------------------------------------------------------- */
+#sticky-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.5rem 2rem;
+  background: rgba(255, 255, 248, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--c-light);
+  transform: translateY(-100%);
+  transition: transform 0.25s ease;
+  font-size: 0.8rem;
+}
+
+#sticky-nav.visible {
+  transform: translateY(0);
+}
+
+a.nav-title {
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--c-black);
+  text-decoration: none;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+a.nav-title:hover {
+  color: var(--c-mid);
+}
+
+.nav-links {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nav-links a {
+  color: var(--c-mid);
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 0.15rem 0;
+  border-bottom: 1.5px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.nav-links a:hover {
+  color: var(--c-black);
+}
+
+.nav-links a.active {
+  color: var(--c-black);
+  border-bottom-color: var(--c-black);
+}
+
+/* Hide nav bar in presentation mode */
+[data-mode="present"] #sticky-nav {
+  display: none;
 }
 
 /* --------------------------------------------------------------------------
@@ -406,7 +503,8 @@ canvas.sparkline {
 @media print {
   #mode-toggle,
   #slides,
-  .slide-counter {
+  .slide-counter,
+  #sticky-nav {
     display: none;
   }
 

@@ -75,12 +75,12 @@ narratives:
 **Choosing narratives**: Group by *attack surface* or *failure domain*, not
 by OWASP category or CWE number. Good narratives:
 
-- "The Authentication Surface" — everything about identity, sessions, tokens
-- "The Data Boundary" — input validation, serialization, output encoding
-- "Supply Chain Exposure" — dependencies, build pipeline, vendored code
-- "Error Handling Under Pressure" — panics, error swallowing, fallback behavior
+- "The Authentication Surface" — identity, sessions, tokens
+- "The Data Boundary Surface" — input validation, serialization, output encoding
+- "The Supply Chain Surface" — dependencies, build pipeline, vendored code
+- "The Error Handling Surface" — panics, error swallowing, fallback behavior
 - "The Configuration Surface" — environment variables, secrets, defaults
-- "Concurrency and State" — race conditions, shared mutable state, atomicity
+- "The Concurrency Surface" — race conditions, shared mutable state, atomicity
 
 Bad narratives (these are just categories with a hat on):
 

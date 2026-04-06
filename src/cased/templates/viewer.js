@@ -2096,6 +2096,27 @@
 				else if (e.key === "ArrowLeft") prevSlide();
 			}
 		});
+		document.addEventListener("click", (e) => {
+			if (body.dataset.mode !== "present") return;
+			if (e.target.closest("a, button, [role=\"button\"], .summary-count, .expressive-code")) return;
+			const x = e.clientX / window.innerWidth;
+			if (x < .25) prevSlide();
+			else if (x > .75) nextSlide();
+		});
+		let touchStartX = 0;
+		let touchStartY = 0;
+		document.addEventListener("touchstart", (e) => {
+			touchStartX = e.changedTouches[0].clientX;
+			touchStartY = e.changedTouches[0].clientY;
+		}, { passive: true });
+		document.addEventListener("touchend", (e) => {
+			if (body.dataset.mode !== "present") return;
+			const dx = e.changedTouches[0].clientX - touchStartX;
+			const dy = e.changedTouches[0].clientY - touchStartY;
+			if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return;
+			if (dx < 0) nextSlide();
+			else prevSlide();
+		}, { passive: true });
 	}
 	function isInputFocused() {
 		const tag = document.activeElement?.tagName;
@@ -2155,9 +2176,30 @@
 		const counter = document.createElement("div");
 		counter.className = "slide-counter";
 		container.appendChild(counter);
+		const titleSlide = slides[0]?.el;
+		if (titleSlide) for (const pill of titleSlide.querySelectorAll(".summary-count")) {
+			const concern = pill.dataset.concern;
+			if (!concern) continue;
+			pill.addEventListener("click", () => {
+				const idx = slides.findIndex((s) => s.el.querySelector(`article.finding[data-concern="${concern}"]`));
+				if (idx >= 0) showSlide(idx);
+			});
+		}
+		container.addEventListener("click", (e) => {
+			const link = e.target.closest("a[href^=\"#\"]");
+			if (!link) return;
+			const slug = link.getAttribute("href").slice(1);
+			if (!slug) return;
+			const idx = slides.findIndex((s) => s.el.querySelector(`#${CSS.escape(slug)}`) || s.el.querySelector(`article.finding[data-slug="${slug}"]`));
+			if (idx >= 0) {
+				e.preventDefault();
+				showSlide(idx);
+			}
+		});
 		built = true;
 	}
 	function addSlide(container, content, sourceEl) {
+		for (const svg of content.querySelectorAll("svg.rough-annotation")) svg.remove();
 		const slide = document.createElement("div");
 		slide.className = "slide";
 		slide.style.display = "none";
@@ -2218,6 +2260,91 @@
 		showSlide(currentSlide - 1);
 	}
 	//#endregion
+	//#region src/viewer/nav-bar.js
+	/**
+	* Sticky navigation bar — appears on scroll, links to report sections.
+	* Hidden in presentation mode.
+	*/
+	let navEl = null;
+	let links = [];
+	let sections = [];
+	function initNavBar() {
+		const report = document.getElementById("report");
+		if (!report) return;
+		sections = [];
+		for (const narrative of report.querySelectorAll("section.narrative")) {
+			const h2 = narrative.querySelector("h2");
+			if (!h2) continue;
+			const slug = narrative.dataset.slug || "";
+			sections.push({
+				el: narrative,
+				label: h2.textContent,
+				slug
+			});
+		}
+		const ledger = document.getElementById("remediation-ledger");
+		if (ledger) sections.push({
+			el: ledger,
+			label: "Ledger",
+			slug: "remediation-ledger"
+		});
+		if (sections.length === 0) return;
+		navEl = document.createElement("nav");
+		navEl.id = "sticky-nav";
+		navEl.setAttribute("aria-label", "Report sections");
+		const h1 = report.querySelector("h1");
+		if (h1) {
+			const title = document.createElement("a");
+			title.className = "nav-title";
+			title.href = "#";
+			title.textContent = h1.textContent;
+			title.addEventListener("click", (e) => {
+				e.preventDefault();
+				window.scrollTo({
+					top: 0,
+					behavior: "smooth"
+				});
+			});
+			navEl.appendChild(title);
+		}
+		const linkList = document.createElement("div");
+		linkList.className = "nav-links";
+		links = [];
+		for (const section of sections) {
+			const a = document.createElement("a");
+			a.href = `#${section.slug}`;
+			a.textContent = section.label;
+			a.addEventListener("click", (e) => {
+				e.preventDefault();
+				section.el.scrollIntoView({
+					behavior: "smooth",
+					block: "start"
+				});
+			});
+			linkList.appendChild(a);
+			links.push({
+				a,
+				el: section.el
+			});
+		}
+		navEl.appendChild(linkList);
+		document.body.appendChild(navEl);
+		const header = report.querySelector("header");
+		if (header) new IntersectionObserver(([entry]) => {
+			navEl.classList.toggle("visible", !entry.isIntersecting);
+		}, { threshold: 0 }).observe(header);
+		const sectionObserver = new IntersectionObserver((entries) => {
+			for (const entry of entries) {
+				const link = links.find((l) => l.el === entry.target);
+				if (link) link.a.classList.toggle("active", entry.isIntersecting);
+			}
+		}, {
+			rootMargin: "-20% 0px -60% 0px",
+			threshold: 0
+		});
+		for (const { el } of links) sectionObserver.observe(el);
+	}
+	//#endregion
 	//#region src/viewer/viewer.js
 	document.addEventListener("DOMContentLoaded", () => {
 		const dataEl = document.getElementById("cased-data");
@@ -2227,6 +2354,7 @@
 		initAnnotations();
 		initSparklines();
 		initSlides();
+		initNavBar();
 		for (const pill of document.querySelectorAll(".summary-count")) {
 			const concern = pill.getAttribute("data-concern");
 			if (!concern) continue;

@@ -181,15 +181,35 @@ async function renderEvidence(ec, finding) {
  * @param {object} findings — parsed findings object
  * @returns {string}
  */
+/**
+ * Build a glossary sidenote from concern levels present in this report.
+ */
+function buildGlossary(counts) {
+  const defs = {
+    critical: 'active exploitability or data loss path',
+    significant: 'meaningful risk under realistic conditions',
+    moderate: 'defense-in-depth gap or robustness issue',
+    advisory: 'design choice that limits future safety',
+    note: 'observation worth recording',
+  };
+  const lines = Object.entries(counts)
+    .filter(([, v]) => v > 0)
+    .map(([level]) => `<strong>${level}</strong> \u2014 ${defs[level] || level}`)
+    .join('<br>');
+  if (!lines) return '';
+  return `<span class="sidenote glossary"><strong>Concern levels</strong><br>${lines}<br><br>Each <strong>surface</strong> groups findings into a coherent concern area, not a category.</span>`;
+}
+
 export function renderHeader(findings) {
   const counts = findings.summary?.counts || {};
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   const assessment = findings.assessment || '';
+  const glossary = buildGlossary(counts);
 
   return `    <header>
       <h1>${escHtml(findings.scope || 'Audit')} Audit</h1>
       <p class="meta">${findings.audit_date} &middot; <code>${(findings.commit || '').slice(0, 12)}</code> &middot; ${escHtml(findings.scope || '')}</p>
-${assessment ? `      <p class="assessment">${renderProse(assessment)}</p>` : ''}
+${assessment ? `      <p class="assessment">${glossary}${renderProse(assessment)}</p>` : ''}
       <div class="summary-bar">
 ${Object.entries(counts).filter(([, v]) => v > 0).map(([level, count]) =>
   `        <span class="summary-count" data-concern="${level}">${count} ${level}</span>`
@@ -318,7 +338,7 @@ export function renderLedger(findings, slugToTitle) {
     }
   }
 
-  return `    <section class="ledger">
+  return `    <section id="remediation-ledger" class="ledger">
       <h2>Remediation Ledger</h2>
       <table class="ledger-table">
         <thead>
@@ -444,6 +464,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       : join(repoRoot, 'vendor', 'fonts');
     const viewerJsCandidates = [
       join(repoRoot, 'dist', 'viewer.js'),
+      join(scriptDir, 'viewer.js'),
       join(scriptDir, 'viewer.iife.js'),
       join(scriptDir, '..', 'templates', 'viewer.js'),
     ];
