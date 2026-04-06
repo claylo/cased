@@ -146,6 +146,19 @@ describe('finding annotations', () => {
     assert.ok(svg.includes('stroke-width="2.5"'));
   });
 
+  it('uses label override when finding entry is an object', () => {
+    const flow = [
+      { id: 's1', label: 'Start', type: 'start' },
+      { id: 's2', label: 'Step', findings: [{ slug: 'finding-a', label: 'Short name' }] },
+      { id: 's3', label: 'Next' },
+      { id: 's4', label: 'More' },
+      { id: 's5', label: 'End', type: 'end' },
+    ];
+    const svg = flowToSvg(flow, findings);
+    assert.ok(svg.includes('Short name'));
+    assert.ok(!svg.includes('Problem Found'));
+  });
+
   it('skips annotation for unknown finding slug', () => {
     const flow = [
       { id: 's1', label: 'A', type: 'start' },

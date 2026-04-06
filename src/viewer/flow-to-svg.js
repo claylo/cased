@@ -34,6 +34,11 @@ const FONT = 'system-ui, -apple-system, sans-serif';
 
 // --- Helpers ---
 
+// Normalize a findings entry: string → { slug }, object → passthrough
+function normalizeFindingEntry(entry) {
+  return typeof entry === 'string' ? { slug: entry } : entry;
+}
+
 function esc(s) {
   if (s == null) return '';
   return String(s)
@@ -115,13 +120,14 @@ function renderVertical(steps, findingMap) {
     parts.push(`<text x="${V.labelX}" y="${y + 4}" text-anchor="end" font-size="11" fill="${isEnd ? C.muted : C.shape}">${esc(step.label)}</text>`);
 
     // Finding annotations
-    const slugs = step.findings || [];
-    for (let fi = 0; fi < slugs.length; fi++) {
-      const slug = slugs[fi];
+    const entries = (step.findings || []).map(normalizeFindingEntry);
+    for (let fi = 0; fi < entries.length; fi++) {
+      const { slug, label } = entries[fi];
       const finding = findingMap[slug];
       if (!finding) continue;
 
       const style = CONCERN_STYLES[finding.concern] || CONCERN_STYLES.note;
+      const displayTitle = label || finding.title;
       const titleY = y - 2 + fi * 24;
       const badgeY = titleY + 12;
       const stemTop = titleY - 5;
@@ -132,7 +138,7 @@ function renderVertical(steps, findingMap) {
       // Vertical stem
       parts.push(`<line x1="${V.stemX}" y1="${stemTop}" x2="${V.stemX}" y2="${stemBottom}" stroke="${style.stroke}" stroke-width="${style.width}"/>`);
       // Title
-      parts.push(`<text x="${V.textX}" y="${titleY}" font-size="10" font-weight="600" fill="${style.fill}">${esc(finding.title)}</text>`);
+      parts.push(`<text x="${V.textX}" y="${titleY}" font-size="10" font-weight="600" fill="${style.fill}">${esc(displayTitle)}</text>`);
       // Badge
       parts.push(`<text x="${V.textX}" y="${badgeY}" font-size="7.5" fill="${style.badge}" font-weight="500" letter-spacing="0.5">${finding.concern.toUpperCase()}</text>`);
       findingPositions[slug] = { stemTop, stemBottom };
@@ -141,7 +147,7 @@ function renderVertical(steps, findingMap) {
 
   // Chain references
   for (const step of steps) {
-    for (const slug of (step.findings || [])) {
+    for (const { slug } of (step.findings || []).map(normalizeFindingEntry)) {
       const finding = findingMap[slug];
       if (!finding?.chain_references) continue;
       for (const targetSlug of (finding.chain_references.enables || [])) {
@@ -178,20 +184,21 @@ function renderHorizontal(steps, findingMap) {
     parts.push(`<text x="${x}" y="${H.labelY}" text-anchor="middle" font-size="11" fill="${isEnd ? C.muted : C.shape}">${esc(step.label)}</text>`);
 
     // Finding annotations
-    const slugs = step.findings || [];
-    for (let fi = 0; fi < slugs.length; fi++) {
-      const slug = slugs[fi];
+    const entries = (step.findings || []).map(normalizeFindingEntry);
+    for (let fi = 0; fi < entries.length; fi++) {
+      const { slug, label } = entries[fi];
       const finding = findingMap[slug];
       if (!finding) continue;
 
       const style = CONCERN_STYLES[finding.concern] || CONCERN_STYLES.note;
+      const displayTitle = label || finding.title;
       const titleY = H.textYStart + fi * 24;
       const badgeY = titleY + 12;
 
       // Vertical connector from shape down
       parts.push(`<line x1="${x}" y1="${H.spineY + 7}" x2="${x}" y2="${H.connEndY}" stroke="${style.stroke}" stroke-width="${style.width}"/>`);
       // Title
-      parts.push(`<text x="${x}" y="${titleY}" text-anchor="middle" font-size="10" font-weight="600" fill="${style.fill}">${esc(finding.title)}</text>`);
+      parts.push(`<text x="${x}" y="${titleY}" text-anchor="middle" font-size="10" font-weight="600" fill="${style.fill}">${esc(displayTitle)}</text>`);
       // Badge
       parts.push(`<text x="${x}" y="${badgeY}" text-anchor="middle" font-size="7.5" fill="${style.badge}" font-weight="500" letter-spacing="0.5">${finding.concern.toUpperCase()}</text>`);
       findingPositions[slug] = { x };
@@ -200,7 +207,7 @@ function renderHorizontal(steps, findingMap) {
 
   // Chain references
   for (const step of steps) {
-    for (const slug of (step.findings || [])) {
+    for (const { slug } of (step.findings || []).map(normalizeFindingEntry)) {
       const finding = findingMap[slug];
       if (!finding?.chain_references) continue;
       for (const targetSlug of (finding.chain_references.enables || [])) {

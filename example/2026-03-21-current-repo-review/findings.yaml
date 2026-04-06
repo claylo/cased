@@ -25,14 +25,16 @@ narratives:
         label: Alias available?
         type: decision
         findings:
-          - curate-validation-suppresses-unresolved-without-suggestion
+          - slug: curate-validation-suppresses-unresolved-without-suggestion
+            label: Suppresses unresolved
       - id: detect
         label: Detect main files
       - id: identity
         label: Path identity?
         type: decision
         findings:
-          - main-file-detection-uses-substring-match
+          - slug: main-file-detection-uses-substring-match
+            label: Substring match
       - id: build
         label: Build index
         type: end

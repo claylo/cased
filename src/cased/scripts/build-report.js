@@ -3918,6 +3918,7 @@ var require_resolve_block_scalar = /* @__PURE__ */ __commonJSMin(((exports) => {
 					onError(token, "UNEXPECTED_TOKEN", token.message);
 					length += token.source.length;
 					break;
+				/* istanbul ignore next should not happen */
 				default: {
 					onError(token, "UNEXPECTED_TOKEN", `Unexpected token in block scalar header: ${token.type}`);
 					const ts = token.source;
@@ -3967,6 +3968,7 @@ var require_resolve_flow_scalar = /* @__PURE__ */ __commonJSMin(((exports) => {
 				_type = Scalar.Scalar.QUOTE_DOUBLE;
 				value = doubleQuotedValue(source, _onError);
 				break;
+			/* istanbul ignore next should not happen */
 			default:
 				onError(scalar, "UNEXPECTED_TOKEN", `Expected a flow scalar value, but found: ${type}`);
 				return {
@@ -3996,6 +3998,7 @@ var require_resolve_flow_scalar = /* @__PURE__ */ __commonJSMin(((exports) => {
 	function plainValue(source, onError) {
 		let badChar = "";
 		switch (source[0]) {
+			/* istanbul ignore next should not happen */
 			case "	":
 				badChar = "a tab character";
 				break;
@@ -5656,6 +5659,7 @@ var require_parser$2 = /* @__PURE__ */ __commonJSMin(((exports) => {
 				return it.sep ?? it.start;
 			}
 			case "block-seq": return parent.items[parent.items.length - 1].start;
+			/* istanbul ignore next should not happen */
 			default: return [];
 		}
 	}
@@ -5908,6 +5912,7 @@ var require_parser$2 = /* @__PURE__ */ __commonJSMin(((exports) => {
 						});
 						return;
 					}
+					/* istanbul ignore next should not happen */
 					default:
 						yield* this.pop();
 						yield* this.pop(token);
@@ -6025,6 +6030,7 @@ var require_parser$2 = /* @__PURE__ */ __commonJSMin(((exports) => {
 					}
 					yield* this.pop();
 					break;
+				/* istanbul ignore next should not happen */
 				default:
 					yield* this.pop();
 					yield* this.step();
@@ -28911,7 +28917,7 @@ function u(e, t) {
 }
 //#endregion
 //#region node_modules/oniguruma-parser/dist/tokenizer/tokenize.js
-const m$1 = o$1`\[\^?`, b$1 = `c.? | C(?:-.?)?|${o$1`[pP]\{(?:\^?[-\x20_]*[A-Za-z][-\x20\w]*\})?`}|${o$1`x[89A-Fa-f]\p{AHex}(?:\\x[89A-Fa-f]\p{AHex})*`}|${o$1`u(?:\p{AHex}{4})? | x\{[^\}]*\}? | x\p{AHex}{0,2}`}|${o$1`o\{[^\}]*\}?`}|${o$1`\d{1,3}`}`, y$1 = /[?*+][?+]?|\{(?:\d+(?:,\d*)?|,\d+)\}\??/, C$1 = new RegExp(o$1`
+const m$1 = o$1`\[\^?`, b$1 = `c.? | C(?:-.?)?|${o$1`[pP]\{(?:\^?[-\x20_]*[A-Za-z][-\x20\w]*\})?`}|${o$1`x[89A-Fa-f]\p{AHex}(?:\\x[89A-Fa-f]\p{AHex})*`}|${o$1`u(?:\p{AHex}{4})? | x\{[^\}]*\}? | x\p{AHex}{0,2}`}|${o$1`o\{[^\}]*\}?`}|${o$1`\d{1,3}`}`, y$1 = /[?*+][?+]?|\{(?:\d+(?:,\d*)?|,\d+)\}\??/, C$2 = new RegExp(o$1`
   \\ (?:
     ${b$1}
     | [gk]<[^>]*>?
@@ -28972,9 +28978,9 @@ function M$1(e, n = {}) {
 		singleline: t.rules.singleline
 	};
 	let r = [], i;
-	for (C$1.lastIndex = 0; i = C$1.exec(e);) {
-		const u = F$1(a, e, i[0], C$1.lastIndex);
-		u.tokens ? r.push(...u.tokens) : u.token && r.push(u.token), u.lastIndex !== void 0 && (C$1.lastIndex = u.lastIndex);
+	for (C$2.lastIndex = 0; i = C$2.exec(e);) {
+		const u = F$1(a, e, i[0], C$2.lastIndex);
+		u.tokens ? r.push(...u.tokens) : u.token && r.push(u.token), u.lastIndex !== void 0 && (C$2.lastIndex = u.lastIndex);
 	}
 	const l = [];
 	let c = 0;
@@ -29084,7 +29090,7 @@ function X$1(e) {
 			negate: !!n.groups.negate
 		});
 	}
-	return e === "-" ? U$1(e) : e === "&&" ? H(e) : d(r$2(e), e);
+	return e === "-" ? U$1(e) : e === "&&" ? H$1(e) : d(r$2(e), e);
 }
 function x(e, { inCharClass: n }) {
 	const t = e[1];
@@ -29093,7 +29099,7 @@ function x(e, { inCharClass: n }) {
 	if (e.startsWith(o$1`\o{`)) throw new Error(`Incomplete, invalid, or unsupported octal code point "${e}"`);
 	if (/^\\[pP]\{/.test(e)) {
 		if (e.length === 3) throw new Error(`Incomplete or invalid Unicode property "${e}"`);
-		return V$1(e);
+		return V$2(e);
 	}
 	if (/^\\x[89A-Fa-f]\p{AHex}/u.test(e)) try {
 		const o = e.split(/\\x/).slice(1).map((i) => parseInt(i, 16)), s = new TextDecoder("utf-8", {
@@ -29153,7 +29159,7 @@ function U$1(e) {
 		raw: e
 	};
 }
-function H(e) {
+function H$1(e) {
 	return {
 		type: "CharacterClassIntersector",
 		raw: e
@@ -29322,7 +29328,7 @@ function q(e) {
 		w: "word"
 	}[n], e, { negate: e[1] !== n });
 }
-function V$1(e) {
+function V$2(e) {
 	const { p: n, neg: t, value: o } = /^\\(?<p>[pP])\{(?<neg>\^?)(?<value>[^}]+)/.exec(e).groups;
 	return k$1("property", e, {
 		value: o,
@@ -29538,17 +29544,17 @@ function ee(e, r, n) {
 	return m(r$2("-"));
 }
 function re({ negate: e }, r, n) {
-	const { tokens: t, walk: s } = r, o = t[r.nextIndex], i = [C()];
+	const { tokens: t, walk: s } = r, o = t[r.nextIndex], i = [C$1()];
 	let d = z(o);
 	for (; d.type !== "CharacterClassClose";) {
-		if (d.type === "CharacterClassIntersector") i.push(C()), r.nextIndex++;
+		if (d.type === "CharacterClassIntersector") i.push(C$1()), r.nextIndex++;
 		else {
 			const l = i.at(-1);
 			l.body.push(s(l, n));
 		}
 		d = z(t[r.nextIndex], o);
 	}
-	const a = C({ negate: e });
+	const a = C$1({ negate: e });
 	return i.length === 1 ? a.body = i[0].body : (a.kind = "intersection", a.body = i.map((l) => l.body.length === 1 ? l.body[0] : l)), r.nextIndex++, a;
 }
 function ne({ kind: e, negate: r, value: n }, t) {
@@ -29621,7 +29627,7 @@ function G(e, r) {
 function b(e) {
 	return {
 		type: "Alternative",
-		body: V(e?.body)
+		body: V$1(e?.body)
 	};
 }
 function F(e, r) {
@@ -29669,7 +29675,7 @@ function m(e, r) {
 		value: e
 	};
 }
-function C(e) {
+function C$1(e) {
 	const r = {
 		kind: "union",
 		negate: !1,
@@ -29679,7 +29685,7 @@ function C(e) {
 		type: "CharacterClass",
 		kind: r.kind,
 		negate: r.negate,
-		body: V(e?.body)
+		body: V$1(e?.body)
 	};
 }
 function L(e, r) {
@@ -29818,7 +29824,7 @@ function h(e) {
 	else if (!Array.isArray(e) || !e.length || !e.every((r) => r.type === "Alternative")) throw new Error("Invalid body; expected array of one or more Alternative nodes");
 	return e;
 }
-function V(e) {
+function V$1(e) {
 	if (e === void 0) e = [];
 	else if (!Array.isArray(e) || !e.every((r) => !!r.type)) throw new Error("Invalid body; expected array of nodes");
 	return e;
@@ -30833,7 +30839,7 @@ var FirstPassVisitor = {
 		if (name) subroutineRefMap.set(name, node);
 	},
 	CharacterClassRange({ node, parent, replaceWith }) {
-		if (parent.kind === "intersection") replaceWith(setParentDeep(C({ body: [node] }), parent), { traverse: true });
+		if (parent.kind === "intersection") replaceWith(setParentDeep(C$1({ body: [node] }), parent), { traverse: true });
 	},
 	CharacterSet({ node, parent, replaceWith }, { accuracy, minTargetEs2024, digitIsAscii, spaceIsAscii, wordIsAscii }) {
 		const { kind, negate, value } = node;
@@ -32060,6 +32066,190 @@ function inferLangFromPath(filePath) {
 	return EXT_MAP[filePath.slice(dot).toLowerCase()] || "text";
 }
 //#endregion
+//#region src/viewer/flow-to-svg.js
+const CONCERN_STYLES = {
+	critical: {
+		stroke: "#dc2626",
+		width: 2.5,
+		fill: "#dc2626",
+		badge: "#dc2626"
+	},
+	significant: {
+		stroke: "#dc2626",
+		width: 1.5,
+		fill: "#dc2626",
+		badge: "rgba(220,38,38,0.7)"
+	},
+	moderate: {
+		stroke: "#1a1a1a",
+		width: 1.5,
+		fill: "#1a1a1a",
+		badge: "#6b7280"
+	},
+	advisory: {
+		stroke: "#6b7280",
+		width: 1,
+		fill: "#6b7280",
+		badge: "#6b7280"
+	},
+	note: {
+		stroke: "#6b7280",
+		width: 1,
+		fill: "#6b7280",
+		badge: "#6b7280"
+	}
+};
+const C = {
+	shape: "#1a1a1a",
+	shapeFill: "#fffff8",
+	spine: "#d1d5db",
+	muted: "#6b7280"
+};
+const V = {
+	spineX: 150,
+	stepSpacing: 60,
+	labelX: 140,
+	connStartX: 157,
+	stemX: 195,
+	textX: 205,
+	padY: 24,
+	viewBoxW: 440
+};
+const H = {
+	spineY: 50,
+	stepSpacing: 120,
+	labelY: 38,
+	connEndY: 72,
+	textYStart: 84,
+	chainRefY: 115,
+	padX: 50,
+	viewBoxH: 130
+};
+const FONT = "system-ui, -apple-system, sans-serif";
+function esc(s) {
+	if (s == null) return "";
+	return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function renderShape(type, x, y) {
+	switch (type || "process") {
+		case "start": return `<circle cx="${x}" cy="${y}" r="4" fill="${C.shape}"/>`;
+		case "end": return [`<circle cx="${x}" cy="${y}" r="4" fill="${C.shape}"/>`, `<circle cx="${x}" cy="${y}" r="2" fill="${C.shapeFill}"/>`].join("\n  ");
+		case "decision": return `<rect x="${x - 4}" y="${y - 4}" width="8" height="8" fill="${C.shapeFill}" stroke="${C.shape}" stroke-width="1.5" transform="rotate(45 ${x} ${y})"/>`;
+		case "input": {
+			const w = 5, h = 4, skew = 2;
+			return `<polygon points="${x - w + skew},${y - h} ${x + w + skew},${y - h} ${x + w - skew},${y + h} ${x - w - skew},${y + h}" fill="${C.shapeFill}" stroke="${C.shape}" stroke-width="1.5"/>`;
+		}
+		case "store": {
+			const rx = 6, ry = 3, half = 5;
+			return [
+				`<ellipse cx="${x}" cy="${y - half}" rx="${rx}" ry="${ry}" fill="${C.shapeFill}" stroke="${C.shape}" stroke-width="1.5"/>`,
+				`<line x1="${x - rx}" y1="${y - half}" x2="${x - rx}" y2="${y + half}" stroke="${C.shape}" stroke-width="1.5"/>`,
+				`<line x1="${x + rx}" y1="${y - half}" x2="${x + rx}" y2="${y + half}" stroke="${C.shape}" stroke-width="1.5"/>`,
+				`<ellipse cx="${x}" cy="${y + half}" rx="${rx}" ry="${ry}" fill="${C.shapeFill}" stroke="${C.shape}" stroke-width="1.5"/>`
+			].join("\n  ");
+		}
+		case "ref": return `<circle cx="${x}" cy="${y}" r="3" fill="${C.muted}"/>`;
+		default: return `<circle cx="${x}" cy="${y}" r="4" fill="${C.shapeFill}" stroke="${C.shape}" stroke-width="1.5"/>`;
+	}
+}
+function flowToSvg(flow, findings = []) {
+	if (!Array.isArray(flow) || flow.length === 0) return "";
+	const spineSteps = flow.filter((s) => s.spine !== false);
+	if (spineSteps.length === 0) return "";
+	const findingMap = {};
+	for (const f of findings) findingMap[f.slug] = f;
+	return spineSteps.length <= 4 ? renderHorizontal(spineSteps, findingMap) : renderVertical(spineSteps, findingMap);
+}
+function renderVertical(steps, findingMap) {
+	const parts = [];
+	const height = (steps.length - 1) * V.stepSpacing + V.padY * 2;
+	const y0 = V.padY;
+	const y1 = V.padY + (steps.length - 1) * V.stepSpacing;
+	parts.push(`<line x1="${V.spineX}" y1="${y0}" x2="${V.spineX}" y2="${y1}" stroke="${C.spine}" stroke-width="1"/>`);
+	const findingPositions = {};
+	for (let i = 0; i < steps.length; i++) {
+		const step = steps[i];
+		const y = V.padY + i * V.stepSpacing;
+		const isEnd = step.type === "end";
+		parts.push(renderShape(step.type, V.spineX, y));
+		parts.push(`<text x="${V.labelX}" y="${y + 4}" text-anchor="end" font-size="11" fill="${isEnd ? C.muted : C.shape}">${esc(step.label)}</text>`);
+		const slugs = step.findings || [];
+		for (let fi = 0; fi < slugs.length; fi++) {
+			const slug = slugs[fi];
+			const finding = findingMap[slug];
+			if (!finding) continue;
+			const style = CONCERN_STYLES[finding.concern] || CONCERN_STYLES.note;
+			const titleY = y - 2 + fi * 24;
+			const badgeY = titleY + 12;
+			const stemTop = titleY - 5;
+			const stemBottom = badgeY + 2;
+			parts.push(`<line x1="${V.connStartX}" y1="${y}" x2="${V.stemX}" y2="${y}" stroke="${style.stroke}" stroke-width="${style.width}"/>`);
+			parts.push(`<line x1="${V.stemX}" y1="${stemTop}" x2="${V.stemX}" y2="${stemBottom}" stroke="${style.stroke}" stroke-width="${style.width}"/>`);
+			parts.push(`<text x="${V.textX}" y="${titleY}" font-size="10" font-weight="600" fill="${style.fill}">${esc(finding.title)}</text>`);
+			parts.push(`<text x="${V.textX}" y="${badgeY}" font-size="7.5" fill="${style.badge}" font-weight="500" letter-spacing="0.5">${finding.concern.toUpperCase()}</text>`);
+			findingPositions[slug] = {
+				stemTop,
+				stemBottom
+			};
+		}
+	}
+	for (const step of steps) for (const slug of step.findings || []) {
+		const finding = findingMap[slug];
+		if (!finding?.chain_references) continue;
+		for (const targetSlug of finding.chain_references.enables || []) {
+			const from = findingPositions[slug];
+			const to = findingPositions[targetSlug];
+			if (!from || !to) continue;
+			parts.push(`<line x1="${V.stemX}" y1="${from.stemBottom}" x2="${V.stemX}" y2="${to.stemTop}" stroke="${C.muted}" stroke-width="1" stroke-dasharray="3,2"/>`);
+			const midY = Math.round((from.stemBottom + to.stemTop) / 2);
+			parts.push(`<text x="${V.stemX + 5}" y="${midY + 3}" font-size="7" fill="${C.muted}">enables</text>`);
+		}
+	}
+	return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${V.viewBoxW} ${height}" font-family="${FONT}">\n  ${parts.join("\n  ")}\n</svg>`;
+}
+function renderHorizontal(steps, findingMap) {
+	const parts = [];
+	const width = (steps.length - 1) * H.stepSpacing + H.padX * 2;
+	const x0 = H.padX;
+	const x1 = H.padX + (steps.length - 1) * H.stepSpacing;
+	parts.push(`<line x1="${x0}" y1="${H.spineY}" x2="${x1}" y2="${H.spineY}" stroke="${C.spine}" stroke-width="1"/>`);
+	const findingPositions = {};
+	for (let i = 0; i < steps.length; i++) {
+		const step = steps[i];
+		const x = H.padX + i * H.stepSpacing;
+		const isEnd = step.type === "end";
+		parts.push(renderShape(step.type, x, H.spineY));
+		parts.push(`<text x="${x}" y="${H.labelY}" text-anchor="middle" font-size="11" fill="${isEnd ? C.muted : C.shape}">${esc(step.label)}</text>`);
+		const slugs = step.findings || [];
+		for (let fi = 0; fi < slugs.length; fi++) {
+			const slug = slugs[fi];
+			const finding = findingMap[slug];
+			if (!finding) continue;
+			const style = CONCERN_STYLES[finding.concern] || CONCERN_STYLES.note;
+			const titleY = H.textYStart + fi * 24;
+			const badgeY = titleY + 12;
+			parts.push(`<line x1="${x}" y1="${H.spineY + 7}" x2="${x}" y2="${H.connEndY}" stroke="${style.stroke}" stroke-width="${style.width}"/>`);
+			parts.push(`<text x="${x}" y="${titleY}" text-anchor="middle" font-size="10" font-weight="600" fill="${style.fill}">${esc(finding.title)}</text>`);
+			parts.push(`<text x="${x}" y="${badgeY}" text-anchor="middle" font-size="7.5" fill="${style.badge}" font-weight="500" letter-spacing="0.5">${finding.concern.toUpperCase()}</text>`);
+			findingPositions[slug] = { x };
+		}
+	}
+	for (const step of steps) for (const slug of step.findings || []) {
+		const finding = findingMap[slug];
+		if (!finding?.chain_references) continue;
+		for (const targetSlug of finding.chain_references.enables || []) {
+			const from = findingPositions[slug];
+			const to = findingPositions[targetSlug];
+			if (!from || !to) continue;
+			const [left, right] = from.x < to.x ? [from.x, to.x] : [to.x, from.x];
+			parts.push(`<line x1="${left}" y1="${H.chainRefY}" x2="${right}" y2="${H.chainRefY}" stroke="${C.muted}" stroke-width="1" stroke-dasharray="3,2"/>`);
+			const midX = Math.round((left + right) / 2);
+			parts.push(`<text x="${midX}" y="${H.chainRefY + 10}" text-anchor="middle" font-size="7" fill="${C.muted}">enables</text>`);
+		}
+	}
+	return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${H.viewBoxH}" font-family="${FONT}">\n  ${parts.join("\n  ")}\n</svg>`;
+}
+//#endregion
 //#region node_modules/@shikijs/themes/dist/github-light.mjs
 var github_light_default = Object.freeze(JSON.parse("{\"colors\":{\"activityBar.activeBorder\":\"#f9826c\",\"activityBar.background\":\"#fff\",\"activityBar.border\":\"#e1e4e8\",\"activityBar.foreground\":\"#2f363d\",\"activityBar.inactiveForeground\":\"#959da5\",\"activityBarBadge.background\":\"#2188ff\",\"activityBarBadge.foreground\":\"#fff\",\"badge.background\":\"#dbedff\",\"badge.foreground\":\"#005cc5\",\"breadcrumb.activeSelectionForeground\":\"#586069\",\"breadcrumb.focusForeground\":\"#2f363d\",\"breadcrumb.foreground\":\"#6a737d\",\"breadcrumbPicker.background\":\"#fafbfc\",\"button.background\":\"#159739\",\"button.foreground\":\"#fff\",\"button.hoverBackground\":\"#138934\",\"button.secondaryBackground\":\"#e1e4e8\",\"button.secondaryForeground\":\"#1b1f23\",\"button.secondaryHoverBackground\":\"#d1d5da\",\"checkbox.background\":\"#fafbfc\",\"checkbox.border\":\"#d1d5da\",\"debugToolBar.background\":\"#fff\",\"descriptionForeground\":\"#6a737d\",\"diffEditor.insertedTextBackground\":\"#34d05822\",\"diffEditor.removedTextBackground\":\"#d73a4922\",\"dropdown.background\":\"#fafbfc\",\"dropdown.border\":\"#e1e4e8\",\"dropdown.foreground\":\"#2f363d\",\"dropdown.listBackground\":\"#fff\",\"editor.background\":\"#fff\",\"editor.findMatchBackground\":\"#ffdf5d\",\"editor.findMatchHighlightBackground\":\"#ffdf5d66\",\"editor.focusedStackFrameHighlightBackground\":\"#28a74525\",\"editor.foldBackground\":\"#d1d5da11\",\"editor.foreground\":\"#24292e\",\"editor.inactiveSelectionBackground\":\"#0366d611\",\"editor.lineHighlightBackground\":\"#f6f8fa\",\"editor.linkedEditingBackground\":\"#0366d611\",\"editor.selectionBackground\":\"#0366d625\",\"editor.selectionHighlightBackground\":\"#34d05840\",\"editor.selectionHighlightBorder\":\"#34d05800\",\"editor.stackFrameHighlightBackground\":\"#ffd33d33\",\"editor.wordHighlightBackground\":\"#34d05800\",\"editor.wordHighlightBorder\":\"#24943e99\",\"editor.wordHighlightStrongBackground\":\"#34d05800\",\"editor.wordHighlightStrongBorder\":\"#24943e50\",\"editorBracketHighlight.foreground1\":\"#005cc5\",\"editorBracketHighlight.foreground2\":\"#e36209\",\"editorBracketHighlight.foreground3\":\"#5a32a3\",\"editorBracketHighlight.foreground4\":\"#005cc5\",\"editorBracketHighlight.foreground5\":\"#e36209\",\"editorBracketHighlight.foreground6\":\"#5a32a3\",\"editorBracketMatch.background\":\"#34d05840\",\"editorBracketMatch.border\":\"#34d05800\",\"editorCursor.foreground\":\"#044289\",\"editorError.foreground\":\"#cb2431\",\"editorGroup.border\":\"#e1e4e8\",\"editorGroupHeader.tabsBackground\":\"#f6f8fa\",\"editorGroupHeader.tabsBorder\":\"#e1e4e8\",\"editorGutter.addedBackground\":\"#28a745\",\"editorGutter.deletedBackground\":\"#d73a49\",\"editorGutter.modifiedBackground\":\"#2188ff\",\"editorIndentGuide.activeBackground\":\"#d7dbe0\",\"editorIndentGuide.background\":\"#eff2f6\",\"editorLineNumber.activeForeground\":\"#24292e\",\"editorLineNumber.foreground\":\"#1b1f234d\",\"editorOverviewRuler.border\":\"#fff\",\"editorWarning.foreground\":\"#f9c513\",\"editorWhitespace.foreground\":\"#d1d5da\",\"editorWidget.background\":\"#f6f8fa\",\"errorForeground\":\"#cb2431\",\"focusBorder\":\"#2188ff\",\"foreground\":\"#444d56\",\"gitDecoration.addedResourceForeground\":\"#28a745\",\"gitDecoration.conflictingResourceForeground\":\"#e36209\",\"gitDecoration.deletedResourceForeground\":\"#d73a49\",\"gitDecoration.ignoredResourceForeground\":\"#959da5\",\"gitDecoration.modifiedResourceForeground\":\"#005cc5\",\"gitDecoration.submoduleResourceForeground\":\"#959da5\",\"gitDecoration.untrackedResourceForeground\":\"#28a745\",\"input.background\":\"#fafbfc\",\"input.border\":\"#e1e4e8\",\"input.foreground\":\"#2f363d\",\"input.placeholderForeground\":\"#959da5\",\"list.activeSelectionBackground\":\"#e2e5e9\",\"list.activeSelectionForeground\":\"#2f363d\",\"list.focusBackground\":\"#cce5ff\",\"list.hoverBackground\":\"#ebf0f4\",\"list.hoverForeground\":\"#2f363d\",\"list.inactiveFocusBackground\":\"#dbedff\",\"list.inactiveSelectionBackground\":\"#e8eaed\",\"list.inactiveSelectionForeground\":\"#2f363d\",\"notificationCenterHeader.background\":\"#e1e4e8\",\"notificationCenterHeader.foreground\":\"#6a737d\",\"notifications.background\":\"#fafbfc\",\"notifications.border\":\"#e1e4e8\",\"notifications.foreground\":\"#2f363d\",\"notificationsErrorIcon.foreground\":\"#d73a49\",\"notificationsInfoIcon.foreground\":\"#005cc5\",\"notificationsWarningIcon.foreground\":\"#e36209\",\"panel.background\":\"#f6f8fa\",\"panel.border\":\"#e1e4e8\",\"panelInput.border\":\"#e1e4e8\",\"panelTitle.activeBorder\":\"#f9826c\",\"panelTitle.activeForeground\":\"#2f363d\",\"panelTitle.inactiveForeground\":\"#6a737d\",\"pickerGroup.border\":\"#e1e4e8\",\"pickerGroup.foreground\":\"#2f363d\",\"progressBar.background\":\"#2188ff\",\"quickInput.background\":\"#fafbfc\",\"quickInput.foreground\":\"#2f363d\",\"scrollbar.shadow\":\"#6a737d33\",\"scrollbarSlider.activeBackground\":\"#959da588\",\"scrollbarSlider.background\":\"#959da533\",\"scrollbarSlider.hoverBackground\":\"#959da544\",\"settings.headerForeground\":\"#2f363d\",\"settings.modifiedItemIndicator\":\"#2188ff\",\"sideBar.background\":\"#f6f8fa\",\"sideBar.border\":\"#e1e4e8\",\"sideBar.foreground\":\"#586069\",\"sideBarSectionHeader.background\":\"#f6f8fa\",\"sideBarSectionHeader.border\":\"#e1e4e8\",\"sideBarSectionHeader.foreground\":\"#2f363d\",\"sideBarTitle.foreground\":\"#2f363d\",\"statusBar.background\":\"#fff\",\"statusBar.border\":\"#e1e4e8\",\"statusBar.debuggingBackground\":\"#f9826c\",\"statusBar.debuggingForeground\":\"#fff\",\"statusBar.foreground\":\"#586069\",\"statusBar.noFolderBackground\":\"#fff\",\"statusBarItem.prominentBackground\":\"#e8eaed\",\"statusBarItem.remoteBackground\":\"#fff\",\"statusBarItem.remoteForeground\":\"#586069\",\"tab.activeBackground\":\"#fff\",\"tab.activeBorder\":\"#fff\",\"tab.activeBorderTop\":\"#f9826c\",\"tab.activeForeground\":\"#2f363d\",\"tab.border\":\"#e1e4e8\",\"tab.hoverBackground\":\"#fff\",\"tab.inactiveBackground\":\"#f6f8fa\",\"tab.inactiveForeground\":\"#6a737d\",\"tab.unfocusedActiveBorder\":\"#fff\",\"tab.unfocusedActiveBorderTop\":\"#e1e4e8\",\"tab.unfocusedHoverBackground\":\"#fff\",\"terminal.ansiBlack\":\"#24292e\",\"terminal.ansiBlue\":\"#0366d6\",\"terminal.ansiBrightBlack\":\"#959da5\",\"terminal.ansiBrightBlue\":\"#005cc5\",\"terminal.ansiBrightCyan\":\"#3192aa\",\"terminal.ansiBrightGreen\":\"#22863a\",\"terminal.ansiBrightMagenta\":\"#5a32a3\",\"terminal.ansiBrightRed\":\"#cb2431\",\"terminal.ansiBrightWhite\":\"#d1d5da\",\"terminal.ansiBrightYellow\":\"#b08800\",\"terminal.ansiCyan\":\"#1b7c83\",\"terminal.ansiGreen\":\"#28a745\",\"terminal.ansiMagenta\":\"#5a32a3\",\"terminal.ansiRed\":\"#d73a49\",\"terminal.ansiWhite\":\"#6a737d\",\"terminal.ansiYellow\":\"#dbab09\",\"terminal.foreground\":\"#586069\",\"terminal.tab.activeBorder\":\"#f9826c\",\"terminalCursor.background\":\"#d1d5da\",\"terminalCursor.foreground\":\"#005cc5\",\"textBlockQuote.background\":\"#fafbfc\",\"textBlockQuote.border\":\"#e1e4e8\",\"textCodeBlock.background\":\"#f6f8fa\",\"textLink.activeForeground\":\"#005cc5\",\"textLink.foreground\":\"#0366d6\",\"textPreformat.foreground\":\"#586069\",\"textSeparator.foreground\":\"#d1d5da\",\"titleBar.activeBackground\":\"#fff\",\"titleBar.activeForeground\":\"#2f363d\",\"titleBar.border\":\"#e1e4e8\",\"titleBar.inactiveBackground\":\"#f6f8fa\",\"titleBar.inactiveForeground\":\"#6a737d\",\"tree.indentGuidesStroke\":\"#e1e4e8\",\"welcomePage.buttonBackground\":\"#f6f8fa\",\"welcomePage.buttonHoverBackground\":\"#e1e4e8\"},\"displayName\":\"GitHub Light\",\"name\":\"github-light\",\"semanticHighlighting\":true,\"tokenColors\":[{\"scope\":[\"comment\",\"punctuation.definition.comment\",\"string.comment\"],\"settings\":{\"foreground\":\"#6a737d\"}},{\"scope\":[\"constant\",\"entity.name.constant\",\"variable.other.constant\",\"variable.other.enummember\",\"variable.language\"],\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":[\"entity\",\"entity.name\"],\"settings\":{\"foreground\":\"#6f42c1\"}},{\"scope\":\"variable.parameter.function\",\"settings\":{\"foreground\":\"#24292e\"}},{\"scope\":\"entity.name.tag\",\"settings\":{\"foreground\":\"#22863a\"}},{\"scope\":\"keyword\",\"settings\":{\"foreground\":\"#d73a49\"}},{\"scope\":[\"storage\",\"storage.type\"],\"settings\":{\"foreground\":\"#d73a49\"}},{\"scope\":[\"storage.modifier.package\",\"storage.modifier.import\",\"storage.type.java\"],\"settings\":{\"foreground\":\"#24292e\"}},{\"scope\":[\"string\",\"punctuation.definition.string\",\"string punctuation.section.embedded source\"],\"settings\":{\"foreground\":\"#032f62\"}},{\"scope\":\"support\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":\"meta.property-name\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":\"variable\",\"settings\":{\"foreground\":\"#e36209\"}},{\"scope\":\"variable.other\",\"settings\":{\"foreground\":\"#24292e\"}},{\"scope\":\"invalid.broken\",\"settings\":{\"fontStyle\":\"italic\",\"foreground\":\"#b31d28\"}},{\"scope\":\"invalid.deprecated\",\"settings\":{\"fontStyle\":\"italic\",\"foreground\":\"#b31d28\"}},{\"scope\":\"invalid.illegal\",\"settings\":{\"fontStyle\":\"italic\",\"foreground\":\"#b31d28\"}},{\"scope\":\"invalid.unimplemented\",\"settings\":{\"fontStyle\":\"italic\",\"foreground\":\"#b31d28\"}},{\"scope\":\"carriage-return\",\"settings\":{\"background\":\"#d73a49\",\"content\":\"^M\",\"fontStyle\":\"italic underline\",\"foreground\":\"#fafbfc\"}},{\"scope\":\"message.error\",\"settings\":{\"foreground\":\"#b31d28\"}},{\"scope\":\"string variable\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":[\"source.regexp\",\"string.regexp\"],\"settings\":{\"foreground\":\"#032f62\"}},{\"scope\":[\"string.regexp.character-class\",\"string.regexp constant.character.escape\",\"string.regexp source.ruby.embedded\",\"string.regexp string.regexp.arbitrary-repitition\"],\"settings\":{\"foreground\":\"#032f62\"}},{\"scope\":\"string.regexp constant.character.escape\",\"settings\":{\"fontStyle\":\"bold\",\"foreground\":\"#22863a\"}},{\"scope\":\"support.constant\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":\"support.variable\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":\"meta.module-reference\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":\"punctuation.definition.list.begin.markdown\",\"settings\":{\"foreground\":\"#e36209\"}},{\"scope\":[\"markup.heading\",\"markup.heading entity.name\"],\"settings\":{\"fontStyle\":\"bold\",\"foreground\":\"#005cc5\"}},{\"scope\":\"markup.quote\",\"settings\":{\"foreground\":\"#22863a\"}},{\"scope\":\"markup.italic\",\"settings\":{\"fontStyle\":\"italic\",\"foreground\":\"#24292e\"}},{\"scope\":\"markup.bold\",\"settings\":{\"fontStyle\":\"bold\",\"foreground\":\"#24292e\"}},{\"scope\":[\"markup.underline\"],\"settings\":{\"fontStyle\":\"underline\"}},{\"scope\":[\"markup.strikethrough\"],\"settings\":{\"fontStyle\":\"strikethrough\"}},{\"scope\":\"markup.inline.raw\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":[\"markup.deleted\",\"meta.diff.header.from-file\",\"punctuation.definition.deleted\"],\"settings\":{\"background\":\"#ffeef0\",\"foreground\":\"#b31d28\"}},{\"scope\":[\"markup.inserted\",\"meta.diff.header.to-file\",\"punctuation.definition.inserted\"],\"settings\":{\"background\":\"#f0fff4\",\"foreground\":\"#22863a\"}},{\"scope\":[\"markup.changed\",\"punctuation.definition.changed\"],\"settings\":{\"background\":\"#ffebda\",\"foreground\":\"#e36209\"}},{\"scope\":[\"markup.ignored\",\"markup.untracked\"],\"settings\":{\"background\":\"#005cc5\",\"foreground\":\"#f6f8fa\"}},{\"scope\":\"meta.diff.range\",\"settings\":{\"fontStyle\":\"bold\",\"foreground\":\"#6f42c1\"}},{\"scope\":\"meta.diff.header\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":\"meta.separator\",\"settings\":{\"fontStyle\":\"bold\",\"foreground\":\"#005cc5\"}},{\"scope\":\"meta.output\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":[\"brackethighlighter.tag\",\"brackethighlighter.curly\",\"brackethighlighter.round\",\"brackethighlighter.square\",\"brackethighlighter.angle\",\"brackethighlighter.quote\"],\"settings\":{\"foreground\":\"#586069\"}},{\"scope\":\"brackethighlighter.unmatched\",\"settings\":{\"foreground\":\"#b31d28\"}},{\"scope\":[\"constant.other.reference.link\",\"string.other.link\"],\"settings\":{\"fontStyle\":\"underline\",\"foreground\":\"#032f62\"}}],\"type\":\"light\"}"));
 //#endregion
@@ -32245,10 +32435,12 @@ async function renderNarrative(narrative, slugToTitle, ec) {
 		for (const s of styles) allStyles.add(s);
 		findingHtmls.push(renderFinding(f, slugToTitle, evidenceHtml));
 	}
+	const flowSvg = narrative.flow ? flowToSvg(narrative.flow, narrative.findings || []) : "";
+	const flowHtml = flowSvg ? `\n      <div class="flow-diagram">${flowSvg}</div>` : "";
 	return {
 		html: `    <section class="narrative" data-slug="${escHtml(narrative.slug)}">
       <h2>${escHtml(narrative.title)}</h2>
-      <p class="thesis"><em>${escHtml(narrative.thesis)}</em></p>
+      <p class="thesis"><em>${escHtml(narrative.thesis)}</em></p>${flowHtml}
 ${findingHtmls.join("\n")}
       <p class="verdict"><em>${escHtml(narrative.verdict)}</em></p>
     </section>`,
