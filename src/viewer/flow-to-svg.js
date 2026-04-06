@@ -116,5 +116,23 @@ function renderVertical(steps, findingMap) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${V.viewBoxW} ${height}" font-family="${FONT}">\n  ${parts.join('\n  ')}\n</svg>`;
 }
 
-// Stub — implemented in Tasks 3-5
-function renderHorizontal(steps, findingMap) { return ''; }
+function renderHorizontal(steps, findingMap) {
+  const parts = [];
+  const width = (steps.length - 1) * H.stepSpacing + H.padX * 2;
+  const x0 = H.padX;
+  const x1 = H.padX + (steps.length - 1) * H.stepSpacing;
+
+  // Spine
+  parts.push(`<line x1="${x0}" y1="${H.spineY}" x2="${x1}" y2="${H.spineY}" stroke="${C.spine}" stroke-width="1"/>`);
+
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    const x = H.padX + i * H.stepSpacing;
+    const isEnd = step.type === 'end';
+
+    parts.push(renderShape(step.type, x, H.spineY));
+    parts.push(`<text x="${x}" y="${H.labelY}" text-anchor="middle" font-size="11" fill="${isEnd ? C.muted : C.shape}">${esc(step.label)}</text>`);
+  }
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${H.viewBoxH}" font-family="${FONT}">\n  ${parts.join('\n  ')}\n</svg>`;
+}
