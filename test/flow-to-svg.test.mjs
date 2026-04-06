@@ -13,6 +13,41 @@ describe('flowToSvg', () => {
     const flow = [{ id: 'a', label: 'A', spine: false }];
     assert.equal(flowToSvg(flow), '');
   });
+
+  it('renders vertical SVG for >4 spine steps', () => {
+    const flow = [
+      { id: 's1', label: 'Start here', type: 'start' },
+      { id: 's2', label: 'Process A' },
+      { id: 's3', label: 'Check something?', type: 'decision' },
+      { id: 's4', label: 'Process B' },
+      { id: 's5', label: 'End', type: 'end' },
+    ];
+    const svg = flowToSvg(flow, []);
+    // Vertical layout indicators
+    assert.ok(svg.includes('<svg'));
+    assert.ok(svg.includes('viewBox="0 0 440'));
+    assert.ok(svg.includes('text-anchor="end"'));
+    // Spine line
+    assert.ok(svg.includes(`stroke="${'#d1d5db'}"`));
+    // Start shape (solid circle)
+    assert.ok(svg.includes('fill="#1a1a1a"'));
+    // Labels present
+    assert.ok(svg.includes('Start here'));
+    assert.ok(svg.includes('Check something?'));
+    // End label is muted
+    assert.ok(svg.includes('fill="#6b7280"'));
+  });
+
+  it('computes viewBox height from step count', () => {
+    const flow5 = Array.from({ length: 5 }, (_, i) => ({ id: `s${i}`, label: `Step ${i}` }));
+    const flow8 = Array.from({ length: 8 }, (_, i) => ({ id: `s${i}`, label: `Step ${i}` }));
+    const svg5 = flowToSvg(flow5, []);
+    const svg8 = flowToSvg(flow8, []);
+    // 5 steps: height = 4*60 + 48 = 288
+    assert.ok(svg5.includes('viewBox="0 0 440 288"'));
+    // 8 steps: height = 7*60 + 48 = 468
+    assert.ok(svg8.includes('viewBox="0 0 440 468"'));
+  });
 });
 
 describe('renderShape', () => {

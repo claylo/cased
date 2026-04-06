@@ -95,6 +95,26 @@ export function flowToSvg(flow, findings = []) {
     : renderVertical(spineSteps, findingMap);
 }
 
-// Stubs — implemented in Tasks 2-5
-function renderVertical(steps, findingMap) { return ''; }
+function renderVertical(steps, findingMap) {
+  const parts = [];
+  const height = (steps.length - 1) * V.stepSpacing + V.padY * 2;
+  const y0 = V.padY;
+  const y1 = V.padY + (steps.length - 1) * V.stepSpacing;
+
+  // Spine
+  parts.push(`<line x1="${V.spineX}" y1="${y0}" x2="${V.spineX}" y2="${y1}" stroke="${C.spine}" stroke-width="1"/>`);
+
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    const y = V.padY + i * V.stepSpacing;
+    const isEnd = step.type === 'end';
+
+    parts.push(renderShape(step.type, V.spineX, y));
+    parts.push(`<text x="${V.labelX}" y="${y + 4}" text-anchor="end" font-size="11" fill="${isEnd ? C.muted : C.shape}">${esc(step.label)}</text>`);
+  }
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${V.viewBoxW} ${height}" font-family="${FONT}">\n  ${parts.join('\n  ')}\n</svg>`;
+}
+
+// Stub — implemented in Tasks 3-5
 function renderHorizontal(steps, findingMap) { return ''; }
