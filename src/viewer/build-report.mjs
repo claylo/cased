@@ -9,6 +9,7 @@ import { pluginFrames } from '@expressive-code/plugin-frames'
 import { pluginLineNumbers } from '@expressive-code/plugin-line-numbers'
 import { pluginPrebuiltShiki } from './shiki-plugin.js'
 import { getHighlighter, inferLangFromPath } from './highlighter.js'
+import { flowToSvg } from './flow-to-svg.js'
 import githubLightTheme from '@shikijs/themes/github-light'
 
 // Re-export for tests
@@ -235,9 +236,13 @@ export async function renderNarrative(narrative, slugToTitle, ec) {
     findingHtmls.push(renderFinding(f, slugToTitle, evidenceHtml));
   }
 
+  // Flow diagram (if narrative has flow data)
+  const flowSvg = narrative.flow ? flowToSvg(narrative.flow, narrative.findings || []) : '';
+  const flowHtml = flowSvg ? `\n      <div class="flow-diagram">${flowSvg}</div>` : '';
+
   const html = `    <section class="narrative" data-slug="${escHtml(narrative.slug)}">
       <h2>${escHtml(narrative.title)}</h2>
-      <p class="thesis"><em>${escHtml(narrative.thesis)}</em></p>
+      <p class="thesis"><em>${escHtml(narrative.thesis)}</em></p>${flowHtml}
 ${findingHtmls.join('\n')}
       <p class="verdict"><em>${escHtml(narrative.verdict)}</em></p>
     </section>`;
