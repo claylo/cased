@@ -15,6 +15,27 @@ narratives:
   - slug: location-truthfulness
     title: The Location Truthfulness Surface
     thesis: Recent validation work improves visibility, but two code paths still let the index claim confidence it has not actually earned.
+    flow:
+      - id: index
+        label: Index locations
+        type: start
+      - id: validate
+        label: validate_locations()
+      - id: alias
+        label: Alias available?
+        type: decision
+        findings:
+          - curate-validation-suppresses-unresolved-without-suggestion
+      - id: detect
+        label: Detect main files
+      - id: identity
+        label: Path identity?
+        type: decision
+        findings:
+          - main-file-detection-uses-substring-match
+      - id: build
+        label: Build index
+        type: end
     verdict: The pipeline can silently preserve broken locations and can over-mark non-main files as substantive.
     findings:
       - slug: curate-validation-suppresses-unresolved-without-suggestion

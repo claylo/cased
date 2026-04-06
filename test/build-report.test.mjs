@@ -88,6 +88,21 @@ describe('renderNarrative', () => {
     assert.ok(html.includes('concern-badge'));
     assert.ok(html.includes('expressive-code'));
   });
+
+  it('includes flow diagram SVG when narrative has flow data', async () => {
+    const html = await assembleReport('example/2026-03-21-current-repo-review', {
+      viewerDir: 'src/viewer',
+      fontsDir: 'vendor/fonts',
+      viewerJs: null,
+    });
+    // Flow diagram present for location-truthfulness
+    assert.ok(html.includes('class="flow-diagram"'));
+    assert.ok(html.includes('Index locations'));
+    assert.ok(html.includes('Alias available?'));
+    // Second narrative has no flow, so only one flow-diagram div
+    const flowDiagramCount = html.split('class="flow-diagram"').length - 1;
+    assert.equal(flowDiagramCount, 1);
+  });
 });
 
 describe('renderLedger', () => {
