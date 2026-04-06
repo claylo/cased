@@ -1,47 +1,47 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 310 120" font-family="system-ui, -apple-system, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 130" font-family="system-ui, -apple-system, sans-serif">
 
   <!-- Spine (horizontal) -->
-  <line x1="18" y1="40" x2="272" y2="40" stroke="#e8e8e8" stroke-width="0.75"/>
+  <line x1="50" y1="50" x2="650" y2="50" stroke="#d1d5db" stroke-width="1"/>
 
-  <!-- Step 1: start — filled circle -->
-  <circle cx="18" cy="40" r="2" fill="#444"/>
-  <text x="18" y="33" text-anchor="middle" font-size="7.5" fill="#444">Index</text>
-  <text x="18" y="26" text-anchor="middle" font-size="7.5" fill="#444">locations</text>
+  <!-- Step 1: start — solid circle -->
+  <circle cx="50" cy="50" r="4" fill="#1a1a1a"/>
+  <text x="50" y="38" text-anchor="middle" font-size="11" fill="#1a1a1a">Index locations</text>
 
   <!-- Step 2: process — hollow circle -->
-  <circle cx="80" cy="40" r="2" fill="white" stroke="#444" stroke-width="0.8"/>
-  <text x="80" y="33" text-anchor="middle" font-size="7.5" fill="#444">validate_</text>
-  <text x="80" y="26" text-anchor="middle" font-size="7.5" fill="#444">locations()</text>
+  <circle cx="170" cy="50" r="4" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.5"/>
+  <text x="170" y="38" text-anchor="middle" font-size="11" fill="#1a1a1a">validate_locations()</text>
 
-  <!-- Step 3: decision -->
-  <polygon points="152,36 156,40 152,44 148,40" fill="white" stroke="#666" stroke-width="0.8"/>
-  <text x="152" y="33" text-anchor="middle" font-size="7.5" fill="#444">Alias</text>
-  <text x="152" y="26" text-anchor="middle" font-size="7.5" fill="#444">available?</text>
+  <!-- Step 3: decision — hollow diamond -->
+  <rect x="286" y="46" width="8" height="8" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.5" transform="rotate(45 290 50)"/>
+  <text x="290" y="38" text-anchor="middle" font-size="11" fill="#1a1a1a">Alias available?</text>
 
-  <!-- Finding 1: arrow FROM annotation TO step, pointing up -->
-  <text x="152" y="60" text-anchor="middle" font-size="7" font-weight="600" fill="#dc2626">Suppresses unresolved</text>
-  <text x="152" y="68" text-anchor="middle" font-size="5.5" fill="#dc2626">SIGNIFICANT</text>
-  <line x1="152" y1="53" x2="152" y2="47" stroke="#d0d0d0" stroke-width="0.5"/>
-  <polygon points="152,47 149.5,49.5 154.5,49.5" fill="#d0d0d0"/>
+  <!-- Finding 1: Suppresses unresolved (SIGNIFICANT) -->
+  <line x1="290" y1="57" x2="290" y2="72" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="290" y="84" text-anchor="middle" font-size="10" font-weight="600" fill="#dc2626">Suppresses unresolved</text>
+  <text x="290" y="96" text-anchor="middle" font-size="8.5" fill="#6b7280" font-style="italic">silently ignores unresolved aliases</text>
+  <text x="290" y="108" text-anchor="middle" font-size="7.5" fill="rgba(220,38,38,0.7)" font-weight="500" letter-spacing="0.5">SIGNIFICANT</text>
 
   <!-- Step 4: process — hollow circle -->
-  <circle cx="212" cy="40" r="2" fill="white" stroke="#444" stroke-width="0.8"/>
-  <text x="212" y="33" text-anchor="middle" font-size="7.5" fill="#444">Detect</text>
-  <text x="212" y="26" text-anchor="middle" font-size="7.5" fill="#444">main files</text>
+  <circle cx="410" cy="50" r="4" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.5"/>
+  <text x="410" y="38" text-anchor="middle" font-size="11" fill="#1a1a1a">Detect main files</text>
 
-  <!-- Step 5: decision -->
-  <polygon points="272,36 276,40 272,44 268,40" fill="white" stroke="#666" stroke-width="0.8"/>
-  <text x="272" y="33" text-anchor="middle" font-size="7.5" fill="#444">Path</text>
-  <text x="272" y="26" text-anchor="middle" font-size="7.5" fill="#444">identity?</text>
+  <!-- Step 5: decision — hollow diamond -->
+  <rect x="526" y="46" width="8" height="8" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.5" transform="rotate(45 530 50)"/>
+  <text x="530" y="38" text-anchor="middle" font-size="11" fill="#1a1a1a">Path identity?</text>
 
-  <!-- Finding 2: arrow FROM annotation TO step, pointing up -->
-  <text x="272" y="60" text-anchor="middle" font-size="7" font-weight="600" fill="#444">Substring match</text>
-  <text x="272" y="68" text-anchor="middle" font-size="5.5" fill="#444">MODERATE</text>
-  <line x1="272" y1="53" x2="272" y2="47" stroke="#d0d0d0" stroke-width="0.5"/>
-  <polygon points="272,47 269.5,49.5 274.5,49.5" fill="#d0d0d0"/>
+  <!-- Finding 2: Substring match (MODERATE) -->
+  <line x1="530" y1="57" x2="530" y2="72" stroke="#1a1a1a" stroke-width="1.5"/>
+  <text x="530" y="84" text-anchor="middle" font-size="10" font-weight="500" fill="#1a1a1a">Substring match</text>
+  <text x="530" y="96" text-anchor="middle" font-size="8.5" fill="#6b7280" font-style="italic">path identity uses .contains()</text>
+  <text x="530" y="108" text-anchor="middle" font-size="7.5" fill="#6b7280" font-weight="500" letter-spacing="0.5">MODERATE</text>
 
-  <!-- Chain reference -->
-  <line x1="174" y1="60" x2="250" y2="60" stroke="#ddd" stroke-width="0.4" stroke-dasharray="2,2"/>
-  <text x="212" y="57" text-anchor="middle" font-size="5.5" fill="#ccc">enables</text>
+  <!-- Chain reference: enables (horizontal between finding areas) -->
+  <line x1="290" y1="115" x2="530" y2="115" stroke="#6b7280" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="410" y="125" text-anchor="middle" font-size="7" fill="#6b7280">enables</text>
+
+  <!-- Step 6: end — bull's-eye -->
+  <circle cx="650" cy="50" r="4" fill="#1a1a1a"/>
+  <circle cx="650" cy="50" r="2" fill="#fffff8"/>
+  <text x="650" y="38" text-anchor="middle" font-size="11" fill="#6b7280">Build index</text>
 
 </svg>
