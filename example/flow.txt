@@ -1,0 +1,17 @@
+.---------------.
+| Token         |
+| presented     |
+'-------+-------'
+        |
+        v
+   /--------\
+  / Verify   \
+ / signature? +--------> +======================+
+ \           /   no      | SIGNATURE NEVER      |
+  \---------/    path    | CHECKED               |
+       | yes             | verify_token() parses |
+       v                 | but skips HMAC        |
+.---------------.        +======================+
+| Extract       |                   |
+| claims        +---->  ...         | enables
+'-------+-------'                   v

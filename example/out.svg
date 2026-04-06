@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="408" height="288" viewBox="0 0 408 288" class="diagram" text-anchor="middle" font-family="monospace" font-size="13px" stroke-linecap="round">
+<style>
+  :root {
+    --aasvg-stroke: #000;
+    --aasvg-fill: #000;
+    --aasvg-bg: #fff;
+    --aasvg-text: #000;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --aasvg-stroke: #fff;
+      --aasvg-fill: #fff;
+      --aasvg-bg: #1a1a1a;
+      --aasvg-text: #fff;
+    }
+  }
+</style>
+<path d="M 8,16 L 8,64" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 8,224 L 8,272" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 64,184 L 64,216" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 72,64 L 72,104" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 136,16 L 136,64" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 136,224 L 136,272" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 208,144 L 208,224" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 296,240 L 296,272" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 392,144 L 392,160" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 400,176 L 400,208" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 8,16 L 136,16" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 8,64 L 136,64" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 40,112 L 96,112" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 120,144 L 192,144" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 208,142 L 392,142" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 208,146 L 392,146" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 32,176 L 96,176" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 8,224 L 136,224" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 208,222 L 384,222" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 208,226 L 384,226" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 136,256 L 176,256" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 8,272 L 136,272" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 104,112 L 120,144" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 12,152 L 24,176" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 12,152 L 32,112" fill="none" stroke="var(--aasvg-stroke)"/>
+<path d="M 104,176 L 120,144" fill="none" stroke="var(--aasvg-stroke)"/>
+<polygon points="80,104 68,98.4 68,109.6" fill="var(--aasvg-fill)" transform="rotate(90,72,104)"/>
+<polygon points="200,144 188,138.4 188,149.6" fill="var(--aasvg-fill)" transform="rotate(0,192,144)"/>
+<polygon points="72,216 60,210.4 60,221.6" fill="var(--aasvg-fill)" transform="rotate(90,64,216)"/>
+<polygon points="184,256 172,250.4 172,261.6" fill="var(--aasvg-fill)" transform="rotate(0,176,256)"/>
+<polygon points="304,272 292,266.4 292,277.6" fill="var(--aasvg-fill)" transform="rotate(90,296,272)"/>
+<g fill="var(--aasvg-text)">
+<text x="40" y="36">Token</text>
+<text x="56" y="52">presented</text>
+<text x="60" y="132">Verify</text>
+<text x="68" y="148">signature?</text>
+<text x="148" y="164">no</text>
+<text x="280" y="164">SIGNATURE NEVER</text>
+<text x="156" y="180">path</text>
+<text x="248" y="180">CHECKED</text>
+<text x="88" y="196">yes</text>
+<text x="304" y="196">verify_token() parses</text>
+<text x="276" y="212">but skips HMAC</text>
+<text x="48" y="244">Extract</text>
+<text x="44" y="260">claims</text>
+<text x="208" y="260">...</text>
+<text x="336" y="260">enables</text>
+</g>
+</svg>

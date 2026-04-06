@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><!-- SLOT:title --></title>
+  <style>
+<!-- SLOT:fonts -->
+<!-- SLOT:style -->
+  </style>
+</head>
+<body data-mode="scroll">
+  <nav id="mode-toggle">
+    <button id="toggle-btn" type="button" aria-label="Toggle presentation mode">
+      <span class="mode-label" data-mode="scroll">Scroll</span>
+      <span class="mode-label" data-mode="present">Present</span>
+    </button>
+  </nav>
+
+  <main id="report">
+<!-- SLOT:content -->
+  </main>
+
+  <div id="slides" hidden></div>
+
+  <script id="cased-data" type="application/json">
+<!-- SLOT:data -->
+  </script>
+
+  <script>
+<!-- SLOT:viewer -->
+  </script>
+</body>
+</html>

@@ -22,15 +22,19 @@ findings:
 
 # Audit: {Project Name}
 
-{One paragraph — 3-5 sentences — stating what was audited, the overall
-posture, and the single most important takeaway. This is not an "executive
-summary" full of weasel words. It is a direct assessment. Example:}
+{3-5 sentences. First sentence: what was audited and the overall posture.
+Then one sentence per narrative surface, using the **bold surface name**
+so the reader can scan. Final sentence: the single most important
+takeaway. This is not an "executive summary" full of weasel words.
+It is a direct assessment. Use "surface" consistently when naming
+narrative groups. Example:}
 
 {"`tokio-widget` implements a WebSocket relay with custom authentication.
-The authentication layer assumes token integrity without cryptographic
-verification, making session hijacking trivial for any network-adjacent
-attacker. The dependency tree is current and the error handling is
-disciplined. Fix the auth, and this is solid infrastructure."}
+**The Authentication Surface** assumes token integrity without
+cryptographic verification, making session hijacking trivial for any
+network-adjacent attacker. **The Dependency Surface** is current and
+the error handling is disciplined. Fix the auth, and this is solid
+infrastructure."}
 
 <!-- Terrain Map -->
 

@@ -3,3 +3,5 @@ PRIVATE_MEMORY.md
 node_modules/
 build/
 dist/
+example/*/report.html
+.claude/

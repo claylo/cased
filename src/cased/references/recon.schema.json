@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cased.dev/schemas/recon.schema.json",
+  "title": "Cased Recon",
+  "type": "object",
+  "required": ["audit_date", "scope", "commit", "files"],
+  "properties": {
+    "audit_date": { "type": "string", "format": "date" },
+    "scope": { "type": "string" },
+    "commit": { "type": "string" },
+    "entry_points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "kind"],
+        "properties": {
+          "path": { "type": "string" },
+          "kind": { "type": "string" }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "lines"],
+        "properties": {
+          "path": { "type": "string" },
+          "lines": { "type": "integer" },
+          "last_commit": { "type": "string" },
+          "last_commit_date": { "type": "string" },
+          "monthly_commits": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "minItems": 12,
+            "maxItems": 12
+          }
+        }
+      }
+    },
+    "dependency_graph": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to"],
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "dependency_manifest": { "type": "object" },
+    "git_churn": { "type": "object" },
+    "trust_boundaries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["boundary"],
+        "properties": {
+          "boundary": { "type": "string" },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "validation": { "type": "object" }
+  }
+}

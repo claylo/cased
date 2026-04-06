@@ -77,9 +77,10 @@ Output `findings.yaml` in the audit directory per the schema in
 `references/findings-schema.yaml.md`.
 
 **Narrative grouping:** Organize findings into narratives, not categories.
-A narrative is a coherent story: "The Authentication Surface," "The Data
-Boundary," "Supply Chain Exposure," "Error Handling Under Pressure." Each
-narrative has:
+A narrative is a coherent story about a *surface* — an area of the codebase
+examined as a coherent concern. Use "Surface" consistently in titles:
+"The Authentication Surface," "The Data Boundary Surface," "The Supply
+Chain Surface," "The Error Handling Surface." Each narrative has:
 
 - A thesis (one sentence: what this surface area's posture is)
 - Ordered findings that build on each other
