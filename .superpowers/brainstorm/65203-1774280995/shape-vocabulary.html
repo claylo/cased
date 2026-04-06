@@ -1,0 +1,145 @@
+<h2>Flow Diagram Shape Vocabulary</h2>
+<p class="subtitle">Fixed-size shapes, labels external. Which shapes matter for audit flows?</p>
+
+<div class="mockup">
+  <div class="mockup-header">Candidate shapes — all drawn at fixed 16×16px</div>
+  <div class="mockup-body" style="padding: 2.5rem; background: #fffff8;">
+    <svg width="100%" viewBox="0 0 600 380" style="font-family: -apple-system, system-ui, sans-serif;">
+
+      <!-- Row 1: Core shapes (definitely need) -->
+      <text x="0" y="14" font-size="9" fill="#6b7280" font-weight="600" letter-spacing="0.5">CORE — EVERY FLOW USES THESE</text>
+
+      <!-- Start: solid circle -->
+      <circle cx="30" cy="50" r="7" fill="#1a1a1a"/>
+      <text x="50" y="54" font-size="11" fill="#1a1a1a" font-weight="500">Start</text>
+      <text x="50" y="66" font-size="8.5" fill="#6b7280">Solid circle — entry point</text>
+
+      <!-- End: solid circle (or double ring?) -->
+      <circle cx="220" cy="50" r="7" fill="#1a1a1a"/>
+      <circle cx="220" cy="50" r="4" fill="#fffff8"/>
+      <text x="240" y="54" font-size="11" fill="#1a1a1a" font-weight="500">End</text>
+      <text x="240" y="66" font-size="8.5" fill="#6b7280">Bull's-eye — terminus</text>
+
+      <!-- Alt End: just solid -->
+      <circle cx="410" cy="50" r="7" fill="#1a1a1a"/>
+      <text x="430" y="54" font-size="11" fill="#1a1a1a" font-weight="500">End (alt)</text>
+      <text x="430" y="66" font-size="8.5" fill="#6b7280">Solid — same as start, simpler</text>
+
+      <!-- Process: hollow circle -->
+      <circle cx="30" cy="105" r="7" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.5"/>
+      <text x="50" y="109" font-size="11" fill="#1a1a1a" font-weight="500">Process</text>
+      <text x="50" y="121" font-size="8.5" fill="#6b7280">Hollow circle — code step that executes</text>
+
+      <!-- Decision: hollow diamond -->
+      <rect x="24" y="165" width="12" height="12" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.5" transform="rotate(45 30 171)"/>
+      <text x="50" y="175" font-size="11" fill="#1a1a1a" font-weight="500">Decision</text>
+      <text x="50" y="187" font-size="8.5" fill="#6b7280">Diamond — conditional branch point</text>
+
+      <!-- Row 2: Extended shapes (might need) -->
+      <text x="0" y="230" font-size="9" fill="#6b7280" font-weight="600" letter-spacing="0.5">EXTENDED — USE WHEN THE FLOW WARRANTS IT</text>
+
+      <!-- Input: right-leaning parallelogram -->
+      <polygon points="24,256 40,248 40,264 24,272" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.5"/>
+      <text x="54" y="263" font-size="11" fill="#1a1a1a" font-weight="500">Input</text>
+      <text x="54" y="275" font-size="8.5" fill="#6b7280">Parallelogram — data arriving (request, message)</text>
+
+      <!-- Database: small cylinder -->
+      <ellipse cx="222" cy="250" rx="9" ry="4" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.5"/>
+      <line x1="213" y1="250" x2="213" y2="268" stroke="#1a1a1a" stroke-width="1.5"/>
+      <line x1="231" y1="250" x2="231" y2="268" stroke="#1a1a1a" stroke-width="1.5"/>
+      <ellipse cx="222" cy="268" rx="9" ry="4" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.5"/>
+      <text x="244" y="263" font-size="11" fill="#1a1a1a" font-weight="500">Data store</text>
+      <text x="244" y="275" font-size="8.5" fill="#6b7280">Cylinder — DB read/write, cache, file I/O</text>
+
+      <!-- Connector: small filled circle (for off-page / sub-flow refs) -->
+      <circle cx="412" cy="260" r="5" fill="#6b7280"/>
+      <text x="430" y="263" font-size="11" fill="#1a1a1a" font-weight="500">Connector</text>
+      <text x="430" y="275" font-size="8.5" fill="#6b7280">Filled dot (gray) — reference to another flow</text>
+
+      <!-- Row 3: Example flow using these shapes -->
+      <text x="0" y="316" font-size="9" fill="#6b7280" font-weight="600" letter-spacing="0.5">EXAMPLE — AUTH FLOW WITH MIXED SHAPES</text>
+
+      <!-- Horizontal mini-flow -->
+      <line x1="30" y1="346" x2="560" y2="346" stroke="#d1d5db" stroke-width="1"/>
+
+      <!-- Start -->
+      <circle cx="30" cy="346" r="5" fill="#1a1a1a"/>
+      <text x="30" y="368" font-size="8.5" fill="#1a1a1a" text-anchor="middle">WS connect</text>
+
+      <!-- Input -->
+      <polygon points="108,340 120,334 120,352 108,358" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.2"/>
+      <text x="114" y="368" font-size="8.5" fill="#1a1a1a" text-anchor="middle">Token</text>
+
+      <!-- Decision -->
+      <rect x="193" y="340" width="10" height="10" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.2" transform="rotate(45 198 345)"/>
+      <text x="198" y="368" font-size="8.5" fill="#1a1a1a" text-anchor="middle">Verify sig?</text>
+
+      <!-- Process -->
+      <circle cx="288" cy="346" r="5" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.2"/>
+      <text x="288" y="368" font-size="8.5" fill="#1a1a1a" text-anchor="middle">Extract</text>
+
+      <!-- Decision -->
+      <rect x="373" y="340" width="10" height="10" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.2" transform="rotate(45 378 345)"/>
+      <text x="378" y="368" font-size="8.5" fill="#1a1a1a" text-anchor="middle">Valid?</text>
+
+      <!-- Database -->
+      <ellipse cx="468" cy="341" rx="7" ry="3" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.2"/>
+      <line x1="461" y1="341" x2="461" y2="351" stroke="#1a1a1a" stroke-width="1.2"/>
+      <line x1="475" y1="341" x2="475" y2="351" stroke="#1a1a1a" stroke-width="1.2"/>
+      <ellipse cx="468" cy="351" rx="7" ry="3" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.2"/>
+      <text x="468" y="368" font-size="8.5" fill="#1a1a1a" text-anchor="middle">Store</text>
+
+      <!-- End -->
+      <circle cx="558" cy="346" r="5" fill="#1a1a1a"/>
+      <circle cx="558" cy="346" r="3" fill="#fffff8"/>
+      <text x="558" y="368" font-size="8.5" fill="#6b7280" text-anchor="middle">Done</text>
+
+    </svg>
+  </div>
+</div>
+
+<div style="margin-top: 1.5rem;">
+  <h3>Shape type mapping for the schema</h3>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <tr style="border-bottom: 2px solid #1a1a1a;">
+      <th style="text-align: left; padding: 0.5rem;">type value</th>
+      <th style="text-align: left; padding: 0.5rem;">Shape</th>
+      <th style="text-align: left; padding: 0.5rem;">When to use</th>
+    </tr>
+    <tr style="border-bottom: 1px solid #e5e7eb;">
+      <td style="padding: 0.5rem;"><code>start</code></td>
+      <td style="padding: 0.5rem;">Solid circle</td>
+      <td style="padding: 0.5rem;">Entry point (auto-added as first step)</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #e5e7eb;">
+      <td style="padding: 0.5rem;"><code>end</code></td>
+      <td style="padding: 0.5rem;">Bull's-eye</td>
+      <td style="padding: 0.5rem;">Terminus (auto-added as last step)</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #e5e7eb;">
+      <td style="padding: 0.5rem;"><code>process</code></td>
+      <td style="padding: 0.5rem;">Hollow circle</td>
+      <td style="padding: 0.5rem;">Default. Code step that executes.</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #e5e7eb;">
+      <td style="padding: 0.5rem;"><code>decision</code></td>
+      <td style="padding: 0.5rem;">Hollow diamond</td>
+      <td style="padding: 0.5rem;">Conditional branch, guard clause, match arm</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #e5e7eb;">
+      <td style="padding: 0.5rem;"><code>input</code></td>
+      <td style="padding: 0.5rem;">Parallelogram</td>
+      <td style="padding: 0.5rem;">Data arriving: request, message, file read</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #e5e7eb;">
+      <td style="padding: 0.5rem;"><code>store</code></td>
+      <td style="padding: 0.5rem;">Cylinder</td>
+      <td style="padding: 0.5rem;">DB access, cache, persistent write</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #e5e7eb;">
+      <td style="padding: 0.5rem;"><code>ref</code></td>
+      <td style="padding: 0.5rem;">Gray dot</td>
+      <td style="padding: 0.5rem;">Reference to another flow / off-page connector</td>
+    </tr>
+  </table>
+</div>

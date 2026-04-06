@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 290 175" font-family="system-ui, -apple-system, sans-serif">
+
+  <!-- Spine -->
+  <line x1="88" y1="14" x2="88" y2="156.5" stroke="#e8e8e8" stroke-width="0.75"/>
+
+  <!-- Step 1 -->
+  <circle cx="88" cy="12" r="2" fill="#444"/>
+  <text x="78" y="14" text-anchor="end" font-size="7.5" fill="#444">Index locations</text>
+
+  <!-- Step 2: process — hollow circle -->
+  <circle cx="88" cy="38" r="2" fill="white" stroke="#444" stroke-width="0.8"/>
+  <text x="78" y="40" text-anchor="end" font-size="7.5" fill="#444">validate_locations()</text>
+
+  <!-- Step 3: decision -->
+  <polygon points="88,66 92,70 88,74 84,70" fill="white" stroke="#666" stroke-width="0.8"/>
+  <text x="78" y="72" text-anchor="end" font-size="7.5" fill="#444">Alias available?</text>
+
+  <!-- Finding 1 -->
+  <text x="125" y="68" text-anchor="start" font-size="7" font-weight="600" fill="#dc2626">Suppresses unresolved</text>
+  <text x="125" y="76" text-anchor="start" font-size="5.5" fill="#dc2626">SIGNIFICANT</text>
+  <line x1="123" y1="70" x2="95" y2="70" stroke="#d0d0d0" stroke-width="0.5"/>
+  <polygon points="95,70 97.5,67 97.5,73" fill="#d0d0d0"/>
+
+  <!-- Step 4: process — hollow circle -->
+  <circle cx="88" cy="104" r="2" fill="white" stroke="#444" stroke-width="0.8"/>
+  <text x="78" y="106" text-anchor="end" font-size="7.5" fill="#444">Detect main files</text>
+
+  <!-- Step 5: decision -->
+  <polygon points="88,130 92,134 88,138 84,134" fill="white" stroke="#666" stroke-width="0.8"/>
+  <text x="78" y="136" text-anchor="end" font-size="7.5" fill="#444">Path identity?</text>
+
+  <!-- Finding 2 -->
+  <text x="125" y="132" text-anchor="start" font-size="7" font-weight="600" fill="#444">Substring match</text>
+  <text x="125" y="140" text-anchor="start" font-size="5.5" fill="#444">MODERATE</text>
+  <line x1="123" y1="134" x2="95" y2="134" stroke="#d0d0d0" stroke-width="0.5"/>
+  <polygon points="95,134 97.5,131 97.5,137" fill="#d0d0d0"/>
+
+  <!-- Chain reference -->
+  <line x1="125" y1="80" x2="125" y2="128" stroke="#ddd" stroke-width="0.4" stroke-dasharray="2,2"/>
+  <text x="129" y="105" text-anchor="start" font-size="5.5" fill="#ccc">enables</text>
+
+  <!-- Step 6: end -->
+  <circle cx="88" cy="160" r="2" fill="#444"/>
+  <circle cx="88" cy="160" r="3.5" fill="none" stroke="#444" stroke-width="0.6"/>
+  <text x="78" y="162" text-anchor="end" font-size="7.5" fill="#444">Build index</text>
+
+</svg>

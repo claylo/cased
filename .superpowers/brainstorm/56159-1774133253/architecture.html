@@ -1,0 +1,85 @@
+<h2>Cased HTML Viewer — Build Pipeline</h2>
+<p class="subtitle">YAML is canonical. Everything else is a rendering frontend.</p>
+
+<div style="max-width: 800px; margin: 2rem auto; font-family: monospace; font-size: 13px;">
+
+  <!-- Source layer -->
+  <div style="margin-bottom: 2rem;">
+    <div class="label" style="margin-bottom: 0.5rem;">SOURCE (audit directory)</div>
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+      <div style="background: #1e293b; border: 1px solid #475569; border-radius: 6px; padding: 0.75rem 1rem; color: #93c5fd;">recon.yaml</div>
+      <div style="background: #1e293b; border: 1px solid #475569; border-radius: 6px; padding: 0.75rem 1rem; color: #93c5fd;">findings.yaml</div>
+      <div style="background: #1e293b; border: 1px solid #475569; border-radius: 6px; padding: 0.75rem 1rem; color: #6b7280;">assets/*.svg</div>
+    </div>
+  </div>
+
+  <!-- Arrow -->
+  <div style="text-align: center; color: #475569; font-size: 1.5rem; margin: 1rem 0;">|</div>
+
+  <!-- Build layer -->
+  <div style="margin-bottom: 2rem;">
+    <div class="label" style="margin-bottom: 0.5rem;">BUILD (node scripts/build-viewer.mjs)</div>
+    <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 200px;">
+        <div style="background: #1a1a2e; border: 1px solid #334155; border-radius: 6px; padding: 1rem;">
+          <div style="color: #fbbf24; font-weight: bold; margin-bottom: 0.5rem;">Step 1: Bundle JS</div>
+          <div style="color: #94a3b8; font-size: 12px;">
+            rolldown bundles:<br>
+            &nbsp;&nbsp;rough.js (IIFE)<br>
+            &nbsp;&nbsp;rough-notation (IIFE)<br>
+            &nbsp;&nbsp;viewer.js (app logic)<br>
+            &rarr; single viewer-bundle.js
+          </div>
+        </div>
+      </div>
+      <div style="flex: 1; min-width: 200px;">
+        <div style="background: #1a1a2e; border: 1px solid #334155; border-radius: 6px; padding: 1rem;">
+          <div style="color: #fbbf24; font-weight: bold; margin-bottom: 0.5rem;">Step 2: Render HTML</div>
+          <div style="color: #94a3b8; font-size: 12px;">
+            Parse YAML &rarr; generate:<br>
+            &nbsp;&nbsp;narrative sections<br>
+            &nbsp;&nbsp;finding articles<br>
+            &nbsp;&nbsp;code evidence blocks<br>
+            &nbsp;&nbsp;remediation ledger<br>
+            + embed JSON data blob
+          </div>
+        </div>
+      </div>
+      <div style="flex: 1; min-width: 200px;">
+        <div style="background: #1a1a2e; border: 1px solid #334155; border-radius: 6px; padding: 1rem;">
+          <div style="color: #fbbf24; font-weight: bold; margin-bottom: 0.5rem;">Step 3: Assemble</div>
+          <div style="color: #94a3b8; font-size: 12px;">
+            Inline into template.html:<br>
+            &nbsp;&nbsp;&lt;style&gt; viewer.css<br>
+            &nbsp;&nbsp;@font-face base64 woff2<br>
+            &nbsp;&nbsp;&lt;script&gt; viewer-bundle.js<br>
+            &nbsp;&nbsp;&lt;script type=json&gt; data<br>
+            &nbsp;&nbsp;generated HTML content
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Arrow -->
+  <div style="text-align: center; color: #475569; font-size: 1.5rem; margin: 1rem 0;">|</div>
+
+  <!-- Output layer -->
+  <div style="margin-bottom: 2rem;">
+    <div class="label" style="margin-bottom: 0.5rem;">OUTPUT (audit directory)</div>
+    <div style="display: flex; gap: 1rem; align-items: center;">
+      <div style="background: #064e3b; border: 2px solid #059669; border-radius: 6px; padding: 0.75rem 1.5rem; color: #6ee7b7; font-weight: bold; font-size: 1.1em;">report.html</div>
+      <div style="color: #6b7280; font-size: 12px;">single file, zero external deps, ~300-500KB typical</div>
+    </div>
+  </div>
+
+  <!-- Parallel outputs -->
+  <div style="margin-top: 2rem; border-top: 1px solid #334155; padding-top: 1.5rem;">
+    <div class="label" style="margin-bottom: 0.5rem;">OTHER FRONTENDS (same YAML source)</div>
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+      <div style="background: #1e293b; border: 1px dashed #475569; border-radius: 6px; padding: 0.5rem 1rem; color: #6b7280;">README.md <span style="font-size: 11px;">(GitHub-native)</span></div>
+      <div style="background: #1e293b; border: 1px dashed #475569; border-radius: 6px; padding: 0.5rem 1rem; color: #6b7280;">report.pdf <span style="font-size: 11px;">(Typst, if on $PATH)</span></div>
+    </div>
+  </div>
+
+</div>

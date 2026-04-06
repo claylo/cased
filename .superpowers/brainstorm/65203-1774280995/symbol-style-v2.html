@@ -1,0 +1,126 @@
+<h2>Hybrid Minimal — Refined</h2>
+<p class="subtitle">Labels left of spine, findings right. Hollow stops, solid terminus. No overlap.</p>
+
+<div class="cards">
+  <!-- Option A: Labels left, findings right -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 2rem 1rem; background: #fffff8;">
+      <svg width="100%" viewBox="0 0 440 340" style="font-family: -apple-system, system-ui, sans-serif;">
+        <!-- Spine -->
+        <line x1="150" y1="24" x2="150" y2="310" stroke="#d1d5db" stroke-width="1"/>
+
+        <!-- Step 1: start (solid) -->
+        <circle cx="150" cy="24" r="4" fill="#1a1a1a"/>
+        <text x="140" y="28" font-size="11" fill="#1a1a1a" text-anchor="end">Token presented</text>
+
+        <!-- Step 2: decision (hollow diamond) with CRITICAL finding -->
+        <rect x="146" y="81" width="8" height="8" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.5" transform="rotate(45 150 85)"/>
+        <text x="140" y="89" font-size="11" fill="#1a1a1a" text-anchor="end">Verify signature?</text>
+        <!-- Finding connector: horizontal right -->
+        <line x1="157" y1="85" x2="195" y2="85" stroke="#dc2626" stroke-width="2.5"/>
+        <!-- Finding vertical stem -->
+        <line x1="195" y1="76" x2="195" y2="108" stroke="#dc2626" stroke-width="2.5"/>
+        <!-- Finding text -->
+        <text x="205" y="81" font-size="10" font-weight="600" fill="#dc2626">Signature never checked</text>
+        <text x="205" y="93" font-size="8.5" fill="#6b7280" font-style="italic">no verification path</text>
+        <text x="205" y="105" font-size="7.5" fill="#dc2626" font-weight="500" letter-spacing="0.5">CRITICAL</text>
+
+        <!-- Step 3: process (hollow) with SIGNIFICANT finding -->
+        <circle cx="150" cy="150" r="4" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.5"/>
+        <text x="140" y="154" font-size="11" fill="#1a1a1a" text-anchor="end">Extract claims</text>
+        <!-- Finding connector -->
+        <line x1="157" y1="150" x2="195" y2="150" stroke="#dc2626" stroke-width="1.5"/>
+        <!-- Finding vertical stem -->
+        <line x1="195" y1="141" x2="195" y2="173" stroke="#dc2626" stroke-width="1.5"/>
+        <!-- Finding text -->
+        <text x="205" y="146" font-size="10" font-weight="600" fill="#dc2626">Identity forgeable</text>
+        <text x="205" y="158" font-size="8.5" fill="#6b7280" font-style="italic">session_id from unverified claims</text>
+        <text x="205" y="170" font-size="7.5" fill="rgba(220,38,38,0.7)" font-weight="500" letter-spacing="0.5">SIGNIFICANT</text>
+
+        <!-- Chain ref between findings (dashed, on the stem line) -->
+        <line x1="195" y1="108" x2="195" y2="141" stroke="#6b7280" stroke-width="1" stroke-dasharray="3,2"/>
+        <text x="200" y="128" font-size="7" fill="#6b7280">enables</text>
+
+        <!-- Step 4: decision (hollow diamond) with MODERATE finding -->
+        <rect x="146" y="216" width="8" height="8" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.5" transform="rotate(45 150 220)"/>
+        <text x="140" y="224" font-size="11" fill="#1a1a1a" text-anchor="end">Channel exists?</text>
+        <!-- Finding connector -->
+        <line x1="157" y1="220" x2="195" y2="220" stroke="#1a1a1a" stroke-width="1.5"/>
+        <line x1="195" y1="211" x2="195" y2="238" stroke="#1a1a1a" stroke-width="1.5"/>
+        <text x="205" y="216" font-size="10" font-weight="500" fill="#1a1a1a">Unwrap panic</text>
+        <text x="205" y="228" font-size="8.5" fill="#6b7280" font-style="italic">channel vanishes, task crashes</text>
+        <text x="205" y="240" font-size="7.5" fill="#6b7280" font-weight="500" letter-spacing="0.5">MODERATE</text>
+
+        <!-- Step 5: process (hollow) -->
+        <circle cx="150" cy="270" r="4" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.5"/>
+        <text x="140" y="274" font-size="11" fill="#1a1a1a" text-anchor="end">Deliver message</text>
+
+        <!-- Step 6: terminus (solid) -->
+        <circle cx="150" cy="310" r="4" fill="#1a1a1a"/>
+        <text x="140" y="314" font-size="11" fill="#6b7280" text-anchor="end">Done</text>
+      </svg>
+    </div>
+    <div class="card-body">
+      <h3>A. Labels Left, Findings Right</h3>
+      <p>Clean separation. Step labels right-aligned to the spine, findings branch right with vertical stems. Connector weight encodes concern level. Chain refs run vertically between finding stems.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Labels right (close), findings right (further) -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 2rem 1rem; background: #fffff8;">
+      <svg width="100%" viewBox="0 0 440 340" style="font-family: -apple-system, system-ui, sans-serif;">
+        <!-- Spine -->
+        <line x1="30" y1="24" x2="30" y2="310" stroke="#d1d5db" stroke-width="1"/>
+
+        <!-- Step 1: start (solid) -->
+        <circle cx="30" cy="24" r="4" fill="#1a1a1a"/>
+        <text x="44" y="28" font-size="11" fill="#1a1a1a">Token presented</text>
+
+        <!-- Step 2: decision with CRITICAL -->
+        <rect x="26" y="81" width="8" height="8" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.5" transform="rotate(45 30 85)"/>
+        <text x="44" y="89" font-size="11" fill="#1a1a1a">Verify signature?</text>
+        <!-- connector starts past label -->
+        <line x1="157" y1="85" x2="210" y2="85" stroke="#dc2626" stroke-width="2.5"/>
+        <line x1="210" y1="76" x2="210" y2="108" stroke="#dc2626" stroke-width="2.5"/>
+        <text x="220" y="81" font-size="10" font-weight="600" fill="#dc2626">Signature never checked</text>
+        <text x="220" y="93" font-size="8.5" fill="#6b7280" font-style="italic">no verification path</text>
+        <text x="220" y="105" font-size="7.5" fill="#dc2626" font-weight="500" letter-spacing="0.5">CRITICAL</text>
+
+        <!-- Step 3: process with SIGNIFICANT -->
+        <circle cx="30" cy="150" r="4" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.5"/>
+        <text x="44" y="154" font-size="11" fill="#1a1a1a">Extract claims</text>
+        <line x1="120" y1="150" x2="210" y2="150" stroke="#dc2626" stroke-width="1.5"/>
+        <line x1="210" y1="141" x2="210" y2="173" stroke="#dc2626" stroke-width="1.5"/>
+        <text x="220" y="146" font-size="10" font-weight="600" fill="#dc2626">Identity forgeable</text>
+        <text x="220" y="158" font-size="8.5" fill="#6b7280" font-style="italic">session_id from unverified claims</text>
+        <text x="220" y="170" font-size="7.5" fill="rgba(220,38,38,0.7)" font-weight="500" letter-spacing="0.5">SIGNIFICANT</text>
+
+        <!-- Chain -->
+        <line x1="210" y1="108" x2="210" y2="141" stroke="#6b7280" stroke-width="1" stroke-dasharray="3,2"/>
+        <text x="215" y="128" font-size="7" fill="#6b7280">enables</text>
+
+        <!-- Step 4: decision with MODERATE -->
+        <rect x="26" y="216" width="8" height="8" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.5" transform="rotate(45 30 220)"/>
+        <text x="44" y="224" font-size="11" fill="#1a1a1a">Channel exists?</text>
+        <line x1="130" y1="220" x2="210" y2="220" stroke="#1a1a1a" stroke-width="1.5"/>
+        <line x1="210" y1="211" x2="210" y2="238" stroke="#1a1a1a" stroke-width="1.5"/>
+        <text x="220" y="216" font-size="10" font-weight="500" fill="#1a1a1a">Unwrap panic</text>
+        <text x="220" y="228" font-size="8.5" fill="#6b7280" font-style="italic">channel vanishes, task crashes</text>
+        <text x="220" y="240" font-size="7.5" fill="#6b7280" font-weight="500" letter-spacing="0.5">MODERATE</text>
+
+        <!-- Step 5 -->
+        <circle cx="30" cy="270" r="4" fill="#fffff8" stroke="#1a1a1a" stroke-width="1.5"/>
+        <text x="44" y="274" font-size="11" fill="#1a1a1a">Deliver message</text>
+
+        <!-- Step 6: terminus -->
+        <circle cx="30" cy="310" r="4" fill="#1a1a1a"/>
+        <text x="44" y="314" font-size="11" fill="#6b7280">Done</text>
+      </svg>
+    </div>
+    <div class="card-body">
+      <h3>B. Labels Right, Findings Far Right</h3>
+      <p>Everything reads left-to-right: spine → label → connector → finding. But connector lines float past labels (gap between label end and connector start varies).</p>
+    </div>
+  </div>
+</div>
