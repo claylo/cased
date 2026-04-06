@@ -104,6 +104,8 @@ function renderVertical(steps, findingMap) {
   // Spine
   parts.push(`<line x1="${V.spineX}" y1="${y0}" x2="${V.spineX}" y2="${y1}" stroke="${C.spine}" stroke-width="1"/>`);
 
+  const findingPositions = {};
+
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i];
     const y = V.padY + i * V.stepSpacing;
@@ -133,6 +135,23 @@ function renderVertical(steps, findingMap) {
       parts.push(`<text x="${V.textX}" y="${titleY}" font-size="10" font-weight="600" fill="${style.fill}">${esc(finding.title)}</text>`);
       // Badge
       parts.push(`<text x="${V.textX}" y="${badgeY}" font-size="7.5" fill="${style.badge}" font-weight="500" letter-spacing="0.5">${finding.concern.toUpperCase()}</text>`);
+      findingPositions[slug] = { stemTop, stemBottom };
+    }
+  }
+
+  // Chain references
+  for (const step of steps) {
+    for (const slug of (step.findings || [])) {
+      const finding = findingMap[slug];
+      if (!finding?.chain_references) continue;
+      for (const targetSlug of (finding.chain_references.enables || [])) {
+        const from = findingPositions[slug];
+        const to = findingPositions[targetSlug];
+        if (!from || !to) continue;
+        parts.push(`<line x1="${V.stemX}" y1="${from.stemBottom}" x2="${V.stemX}" y2="${to.stemTop}" stroke="${C.muted}" stroke-width="1" stroke-dasharray="3,2"/>`);
+        const midY = Math.round((from.stemBottom + to.stemTop) / 2);
+        parts.push(`<text x="${V.stemX + 5}" y="${midY + 3}" font-size="7" fill="${C.muted}">enables</text>`);
+      }
     }
   }
 
@@ -147,6 +166,8 @@ function renderHorizontal(steps, findingMap) {
 
   // Spine
   parts.push(`<line x1="${x0}" y1="${H.spineY}" x2="${x1}" y2="${H.spineY}" stroke="${C.spine}" stroke-width="1"/>`);
+
+  const findingPositions = {};
 
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i];
@@ -173,6 +194,24 @@ function renderHorizontal(steps, findingMap) {
       parts.push(`<text x="${x}" y="${titleY}" text-anchor="middle" font-size="10" font-weight="600" fill="${style.fill}">${esc(finding.title)}</text>`);
       // Badge
       parts.push(`<text x="${x}" y="${badgeY}" text-anchor="middle" font-size="7.5" fill="${style.badge}" font-weight="500" letter-spacing="0.5">${finding.concern.toUpperCase()}</text>`);
+      findingPositions[slug] = { x };
+    }
+  }
+
+  // Chain references
+  for (const step of steps) {
+    for (const slug of (step.findings || [])) {
+      const finding = findingMap[slug];
+      if (!finding?.chain_references) continue;
+      for (const targetSlug of (finding.chain_references.enables || [])) {
+        const from = findingPositions[slug];
+        const to = findingPositions[targetSlug];
+        if (!from || !to) continue;
+        const [left, right] = from.x < to.x ? [from.x, to.x] : [to.x, from.x];
+        parts.push(`<line x1="${left}" y1="${H.chainRefY}" x2="${right}" y2="${H.chainRefY}" stroke="${C.muted}" stroke-width="1" stroke-dasharray="3,2"/>`);
+        const midX = Math.round((left + right) / 2);
+        parts.push(`<text x="${midX}" y="${H.chainRefY + 10}" text-anchor="middle" font-size="7" fill="${C.muted}">enables</text>`);
+      }
     }
   }
 
