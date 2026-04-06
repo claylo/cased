@@ -96,6 +96,69 @@ describe('flowToSvg', () => {
   });
 });
 
+describe('finding annotations', () => {
+  const findings = [
+    { slug: 'finding-a', title: 'Problem Found', concern: 'significant', chain_references: {} },
+    { slug: 'finding-b', title: 'Minor Issue', concern: 'moderate', chain_references: {} },
+  ];
+
+  it('renders vertical finding annotation with colored stem', () => {
+    const flow = [
+      { id: 's1', label: 'Start', type: 'start' },
+      { id: 's2', label: 'Step', findings: ['finding-a'] },
+      { id: 's3', label: 'Next' },
+      { id: 's4', label: 'More' },
+      { id: 's5', label: 'End', type: 'end' },
+    ];
+    const svg = flowToSvg(flow, findings);
+    // Finding title present
+    assert.ok(svg.includes('Problem Found'));
+    // Concern badge
+    assert.ok(svg.includes('SIGNIFICANT'));
+    // Red connector (significant)
+    assert.ok(svg.includes('stroke="#dc2626"'));
+    assert.ok(svg.includes('stroke-width="1.5"'));
+  });
+
+  it('renders horizontal finding annotation below spine', () => {
+    const flow = [
+      { id: 's1', label: 'Start', type: 'start' },
+      { id: 's2', label: 'Step', findings: ['finding-b'] },
+      { id: 's3', label: 'End', type: 'end' },
+    ];
+    const svg = flowToSvg(flow, findings);
+    assert.ok(svg.includes('Minor Issue'));
+    assert.ok(svg.includes('MODERATE'));
+    // Moderate uses dark stroke
+    assert.ok(svg.includes('stroke="#1a1a1a"'));
+  });
+
+  it('renders critical with heavier stroke', () => {
+    const critFinding = [{ slug: 'crit', title: 'Critical Bug', concern: 'critical', chain_references: {} }];
+    const flow = [
+      { id: 's1', label: 'A', type: 'start' },
+      { id: 's2', label: 'B', findings: ['crit'] },
+      { id: 's3', label: 'C' },
+      { id: 's4', label: 'D' },
+      { id: 's5', label: 'E', type: 'end' },
+    ];
+    const svg = flowToSvg(flow, critFinding);
+    assert.ok(svg.includes('stroke-width="2.5"'));
+  });
+
+  it('skips annotation for unknown finding slug', () => {
+    const flow = [
+      { id: 's1', label: 'A', type: 'start' },
+      { id: 's2', label: 'B', findings: ['nonexistent'] },
+      { id: 's3', label: 'C' },
+      { id: 's4', label: 'D' },
+      { id: 's5', label: 'E', type: 'end' },
+    ];
+    const svg = flowToSvg(flow, []);
+    assert.ok(!svg.includes('nonexistent'));
+  });
+});
+
 describe('renderShape', () => {
   it('renders start as solid circle', () => {
     const svg = renderShape('start', 100, 50);
