@@ -48,6 +48,52 @@ describe('flowToSvg', () => {
     // 8 steps: height = 7*60 + 48 = 468
     assert.ok(svg8.includes('viewBox="0 0 440 468"'));
   });
+
+  it('renders horizontal SVG for <=4 spine steps', () => {
+    const flow = [
+      { id: 's1', label: 'Begin', type: 'start' },
+      { id: 's2', label: 'Do thing' },
+      { id: 's3', label: 'Done', type: 'end' },
+    ];
+    const svg = flowToSvg(flow, []);
+    // Horizontal layout indicators
+    assert.ok(svg.includes('viewBox="0 0'));
+    assert.ok(svg.includes('text-anchor="middle"'));
+    // Height is fixed at 130
+    assert.ok(svg.includes(' 130"'));
+    // Labels present
+    assert.ok(svg.includes('Begin'));
+    assert.ok(svg.includes('Do thing'));
+  });
+
+  it('computes viewBox width from step count', () => {
+    const flow3 = [
+      { id: 'a', label: 'A', type: 'start' },
+      { id: 'b', label: 'B' },
+      { id: 'c', label: 'C', type: 'end' },
+    ];
+    const flow4 = [
+      { id: 'a', label: 'A', type: 'start' },
+      { id: 'b', label: 'B' },
+      { id: 'c', label: 'C' },
+      { id: 'd', label: 'D', type: 'end' },
+    ];
+    const svg3 = flowToSvg(flow3, []);
+    const svg4 = flowToSvg(flow4, []);
+    // 3 steps: width = 2*120 + 100 = 340
+    assert.ok(svg3.includes('viewBox="0 0 340 130"'));
+    // 4 steps: width = 3*120 + 100 = 460
+    assert.ok(svg4.includes('viewBox="0 0 460 130"'));
+  });
+
+  it('uses 4 as the horizontal threshold', () => {
+    const flow4 = Array.from({ length: 4 }, (_, i) => ({ id: `s${i}`, label: `S${i}` }));
+    const flow5 = Array.from({ length: 5 }, (_, i) => ({ id: `s${i}`, label: `S${i}` }));
+    const svg4 = flowToSvg(flow4, []);
+    const svg5 = flowToSvg(flow5, []);
+    assert.ok(svg4.includes('text-anchor="middle"'), '4 steps should be horizontal');
+    assert.ok(svg5.includes('text-anchor="end"'), '5 steps should be vertical');
+  });
 });
 
 describe('renderShape', () => {
