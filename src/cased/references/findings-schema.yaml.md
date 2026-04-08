@@ -43,9 +43,13 @@ narratives:
             end_line: int
 
         evidence: |
-          # Fenced code block content — the actual code exhibiting
-          # the issue. Minimal: just enough to show the problem.
-          # Include surrounding context only if it affects understanding.
+          # VERBATIM code from the file at the cited location.
+          # Every line must match the source file exactly — the
+          # renderer shows line numbers starting from start_line.
+          # Do NOT add comments, annotations, or // ... elisions.
+          # Use evidence_markers for annotations instead.
+          # If the code is too long, narrow the line range or use
+          # multiple locations.
 
         mechanism: |
           # One paragraph (2-5 sentences) explaining WHY this is a

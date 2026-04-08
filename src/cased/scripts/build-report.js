@@ -32312,15 +32312,12 @@ function parseFindings(yamlStr) {
 	return data;
 }
 /**
-* Parse and validate a recon YAML string.
-* Throws if the files array is absent.
+* Parse a recon YAML string. Embedded as-is into the report data blob.
 * @param {string} yamlStr
 * @returns {object}
 */
 function parseRecon(yamlStr) {
-	const data = import_dist.parse(yamlStr);
-	if (!Array.isArray(data.files)) throw new Error("recon YAML missing required field: files (must be an array)");
-	return data;
+	return import_dist.parse(yamlStr);
 }
 /**
 * HTML-escape a string.
@@ -32672,7 +32669,7 @@ async function assembleReport(auditDir, opts = {}) {
 	const allJs = `${viewerJsContent}\n${ecJsContent}`;
 	return template.replace("<!-- SLOT:title -->", escHtml(title)).replace("<!-- SLOT:fonts -->", fontFaceDecls).replace("<!-- SLOT:style -->", allCss).replace("<!-- SLOT:content -->", contentHtml).replace("<!-- SLOT:data -->", JSON.stringify(dataBlob)).replace("<!-- SLOT:viewer -->", allJs);
 }
-if (process.argv[1] === (0, node_url.fileURLToPath)(require("url").pathToFileURL(__filename).href)) (async () => {
+if ((0, node_fs.realpathSync)(process.argv[1]) === (0, node_fs.realpathSync)((0, node_url.fileURLToPath)(require("url").pathToFileURL(__filename).href))) (async () => {
 	const auditDir = process.argv[2];
 	if (!auditDir) {
 		console.error("Usage: node build-report.mjs <audit-directory>");
@@ -32680,14 +32677,23 @@ if (process.argv[1] === (0, node_url.fileURLToPath)(require("url").pathToFileURL
 	}
 	const scriptDir = (0, node_path.dirname)((0, node_url.fileURLToPath)(require("url").pathToFileURL(__filename).href));
 	const repoRoot = (0, node_path.join)(scriptDir, "..", "..");
+	const viewerDir = [scriptDir, (0, node_path.join)(scriptDir, "..", "templates")].find((d) => (0, node_fs.existsSync)((0, node_path.join)(d, "template.html")));
+	if (!viewerDir) {
+		console.error("Cannot find template.html relative to script");
+		process.exit(1);
+	}
 	const html = await assembleReport(auditDir, {
-		viewerDir: scriptDir,
-		fontsDir: (0, node_fs.existsSync)((0, node_path.join)(scriptDir, "fonts")) ? (0, node_path.join)(scriptDir, "fonts") : (0, node_path.join)(repoRoot, "vendor", "fonts"),
+		viewerDir,
+		fontsDir: [
+			(0, node_path.join)(viewerDir, "fonts"),
+			(0, node_path.join)(scriptDir, "fonts"),
+			(0, node_path.join)(repoRoot, "vendor", "fonts")
+		].find((d) => (0, node_fs.existsSync)(d)),
 		viewerJs: [
 			(0, node_path.join)(repoRoot, "dist", "viewer.js"),
+			(0, node_path.join)(viewerDir, "viewer.js"),
 			(0, node_path.join)(scriptDir, "viewer.js"),
-			(0, node_path.join)(scriptDir, "viewer.iife.js"),
-			(0, node_path.join)(scriptDir, "..", "templates", "viewer.js")
+			(0, node_path.join)(scriptDir, "viewer.iife.js")
 		].find((p) => (0, node_fs.existsSync)(p)) || null
 	});
 	const outPath = (0, node_path.join)(auditDir, "report.html");

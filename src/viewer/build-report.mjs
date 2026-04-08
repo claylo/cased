@@ -1,5 +1,5 @@
 import YAML from 'yaml';
-import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync, mkdirSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
 import { ExpressiveCodeEngine, ExpressiveCodeTheme } from '@expressive-code/core'
@@ -41,17 +41,12 @@ export function parseFindings(yamlStr) {
 }
 
 /**
- * Parse and validate a recon YAML string.
- * Throws if the files array is absent.
+ * Parse a recon YAML string. Embedded as-is into the report data blob.
  * @param {string} yamlStr
  * @returns {object}
  */
 export function parseRecon(yamlStr) {
-  const data = YAML.parse(yamlStr);
-  if (!Array.isArray(data.files)) {
-    throw new Error('recon YAML missing required field: files (must be an array)');
-  }
-  return data;
+  return YAML.parse(yamlStr);
 }
 
 /**
@@ -504,8 +499,8 @@ export async function assembleReport(auditDir, opts = {}) {
   return html;
 }
 
-// CLI entry point
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// CLI entry point (resolve symlinks so skill installs work)
+if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   (async () => {
     const auditDir = process.argv[2];
     if (!auditDir) {
@@ -514,18 +509,32 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     }
     const scriptDir = dirname(fileURLToPath(import.meta.url));
     const repoRoot = join(scriptDir, '..', '..');
-    const fontsDir = existsSync(join(scriptDir, 'fonts'))
-      ? join(scriptDir, 'fonts')
-      : join(repoRoot, 'vendor', 'fonts');
+    // Viewer dir: source layout has template.html alongside this script;
+    // skill layout has it in ../templates/ relative to scripts/
+    const viewerDirCandidates = [
+      scriptDir,
+      join(scriptDir, '..', 'templates'),
+    ];
+    const viewerDir = viewerDirCandidates.find(d => existsSync(join(d, 'template.html')));
+    if (!viewerDir) {
+      console.error('Cannot find template.html relative to script');
+      process.exit(1);
+    }
+    const fontsDirCandidates = [
+      join(viewerDir, 'fonts'),
+      join(scriptDir, 'fonts'),
+      join(repoRoot, 'vendor', 'fonts'),
+    ];
+    const fontsDir = fontsDirCandidates.find(d => existsSync(d));
     const viewerJsCandidates = [
       join(repoRoot, 'dist', 'viewer.js'),
+      join(viewerDir, 'viewer.js'),
       join(scriptDir, 'viewer.js'),
       join(scriptDir, 'viewer.iife.js'),
-      join(scriptDir, '..', 'templates', 'viewer.js'),
     ];
     const viewerJs = viewerJsCandidates.find(p => existsSync(p)) || null;
     const html = await assembleReport(auditDir, {
-      viewerDir: scriptDir,
+      viewerDir,
       fontsDir,
       viewerJs,
     });
