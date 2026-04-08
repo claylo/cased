@@ -124,13 +124,25 @@ Chain Surface," "The Error Handling Surface." Each narrative has:
 - A concern level: `critical | significant | moderate | advisory | note`
   (these are prose words, not colors)
 - Location(s): file path + line range
-- Evidence: the actual code, inline, minimal — just enough to show the issue.
+- Evidence: **verbatim code** copied from the file at the cited location.
+  The evidence field is rendered with line numbers starting from `start_line`,
+  so every line must correspond exactly to the actual source file. The reader
+  will check your evidence against the real code — any mismatch destroys
+  credibility.
+  **Do not** add comments, annotations, or explanatory text inside the
+  evidence. Use `evidence_markers` to highlight or label specific lines —
+  markers render as visual annotations alongside the code, not as edits
+  to it.
+  **Do not** elide code with `// ...` or similar placeholders. Elision
+  breaks line numbering because the renderer counts every line. If the
+  relevant code is too long, narrow the `start_line`/`end_line` range to
+  show only the lines that matter. Two separate evidence blocks (two
+  locations) are better than one block with a gap.
   **Redaction rule:** If evidence contains secrets (API keys, tokens,
   passwords, private keys, connection strings), replace the literal value
   with a placeholder like `REDACTED_API_KEY` or `<token>`. Cite the file
   and line so the reader can verify, but never reproduce the secret in the
-  report. The report itself is a committed artifact — leaking a secret
-  into it turns the finding into an exfiltration vector.
+  report.
 - Mechanism: one paragraph explaining *why* this is a problem, assuming the
   reader is a competent developer
 - Remediation: concrete, actionable, with code sketch if non-obvious
