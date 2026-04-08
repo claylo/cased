@@ -6,27 +6,30 @@ narrative-grouped format. Saved as `findings.yaml` in the audit directory.
 ```yaml
 # findings.yaml (in audit directory)
 ---
-meta:
-  audit_date: date
-  commit: string
-  auditor: string          # Agent identifier or human name
-  scope: string
-
-summary:
-  total_findings: int
-  by_concern:
-    critical: int
-    significant: int
-    moderate: int
-    advisory: int
-    note: int
-  narratives: int          # Number of narrative groups
+audit_date: date
+scope: string
+commit: string
+assessment: string         # One-paragraph opening assessment
 
 narratives:
   - slug: string           # kebab-case, e.g., "authentication-surface"
     title: string          # Human title, e.g., "The Authentication Surface"
     thesis: string         # One sentence: what is this surface's posture?
     verdict: string        # Net assessment (1-3 sentences)
+
+    flow:                    # Optional: process/data flow for this surface
+      - id: string           # Unique within this flow
+        label: string        # Displayed text (keep short)
+        type: string         # "start" | "end" | "process" | "decision" |
+                             # "input" | "store" | "ref" (default: "process")
+        findings:            # Finding slugs that attach to this step
+          - string           # Simple: just the slug
+          # or object form for short labels:
+          # - slug: string
+          #   label: string  # Override finding title with shorter text
+        spine: false         # Optional: off-spine branch step
+        no: string           # Optional: step id for "no" branch (decision only)
+        next: string         # Optional: override sequential flow (loop-back)
 
     findings:
       - slug: string       # kebab-case, e.g., "jwt-no-expiry-check"
@@ -68,6 +71,14 @@ narratives:
 
         effort: string           # "trivial" | "small" | "medium" | "large"
         effort_notes: string     # Brief justification for the estimate
+
+summary:
+  counts:
+    critical: int
+    significant: int
+    moderate: int
+    advisory: int
+    note: int
 ```
 
 ## Narrative Construction Guidelines

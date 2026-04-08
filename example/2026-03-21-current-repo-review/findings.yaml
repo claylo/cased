@@ -24,6 +24,7 @@ narratives:
       - id: alias
         label: Alias available?
         type: decision
+        no: drop-location
         findings:
           - slug: curate-validation-suppresses-unresolved-without-suggestion
             label: Suppresses unresolved
@@ -32,12 +33,22 @@ narratives:
       - id: identity
         label: Path identity?
         type: decision
+        no: normalize
         findings:
           - slug: main-file-detection-uses-substring-match
             label: Substring match
       - id: build
         label: Build index
         type: end
+      # Off-spine branches
+      - id: drop-location
+        label: Drop silently
+        type: end
+        spine: false
+      - id: normalize
+        label: Normalize paths
+        next: detect
+        spine: false
     verdict: The pipeline can silently preserve broken locations and can over-mark non-main files as substantive.
     findings:
       - slug: curate-validation-suppresses-unresolved-without-suggestion
@@ -45,8 +56,8 @@ narratives:
         concern: significant
         locations:
           - path: crates/colophon/src/commands/curate.rs
-            line_start: 58
-            line_end: 66
+            start_line: 58
+            end_line: 66
         evidence: |
           let report =
               colophon_core::validate::validate_locations(terms, &terms.source_dir, source_extensions);
@@ -71,11 +82,11 @@ narratives:
           Print a validation summary whenever `report.unresolved > 0`, and include unresolved file
           paths even when no alias can be suggested. A failing or warning exit mode would be better
           for CI.
-        temporal_context:
-          introduced_in: 60bf2994b756b17fa7dbc3d0b970c1e283c4e404
-          introduced_date: 2026-03-21T00:34:34-04:00
-          last_touched_in: 60bf2994b756b17fa7dbc3d0b970c1e283c4e404
-        chain_references:
+        temporal:
+          introduced: "2026-03-21"
+          last_modified: "2026-03-21"
+          commit_count: 1
+        chains:
           enables:
             - main-file-detection-uses-substring-match
       - slug: main-file-detection-uses-substring-match
@@ -83,8 +94,8 @@ narratives:
         concern: moderate
         locations:
           - path: crates/colophon-core/src/curate/mod.rs
-            line_start: 348
-            line_end: 351
+            start_line: 348
+            end_line: 351
         evidence: |
           let is_main = ct
               .main_files
@@ -104,11 +115,11 @@ narratives:
         remediation: >
           Normalize both sides to repository-relative paths and compare for exact equality. Add a
           regression test with overlapping names such as `auth.md` and `old-auth.md`.
-        temporal_context:
-          introduced_in: c295e397b9a3466e1c8c73fe52c2508c5b149959
-          introduced_date: 2026-03-19T20:33:30-04:00
-          last_touched_in: 8a027bfb55da46d8cc0ee150edc01497b511c63b
-        chain_references:
+        temporal:
+          introduced: "2026-03-19"
+          last_modified: "2026-03-21"
+          commit_count: 3
+        chains:
           enabled_by:
             - curate-validation-suppresses-unresolved-without-suggestion
   - slug: text-boundary-accounting
@@ -121,11 +132,11 @@ narratives:
         concern: moderate
         locations:
           - path: crates/colophon-core/src/render/mod.rs
-            line_start: 106
-            line_end: 109
+            start_line: 106
+            end_line: 109
           - path: crates/colophon-core/src/typst_prose.rs
-            line_start: 101
-            line_end: 118
+            start_line: 101
+            end_line: 118
         evidence: |
           let lower_text = text.to_lowercase();
           let lower_term = term.to_lowercase();
@@ -148,11 +159,11 @@ narratives:
           source. That can produce wrong insertion points, false negatives, or invalid
           prose-boundary checks in exactly the multilingual manuscripts this tool is likely to see.
         remediation: Use Unicode-aware case-insensitive matching that preserves original spans, or scan the original string by grapheme/char boundaries while comparing normalized slices. Add tests with at least one expanding case fold.
-        temporal_context:
-          introduced_in: 8855d1a30c42e7014e187f2579d9ca31a489c4ec
-          introduced_date: 2026-03-20T11:56:13-04:00
-          last_touched_in: 60bf2994b756b17fa7dbc3d0b970c1e283c4e404
-        chain_references: {}
+        temporal:
+          introduced: "2026-03-20"
+          last_modified: "2026-03-21"
+          commit_count: 2
+        chains: {}
 summary:
   counts:
     critical: 0

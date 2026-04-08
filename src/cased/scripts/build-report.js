@@ -32106,14 +32106,16 @@ const C = {
 	muted: "#6b7280"
 };
 const V = {
-	spineX: 150,
+	spineX: 130,
 	stepSpacing: 60,
-	labelX: 140,
-	connStartX: 157,
-	stemX: 195,
-	textX: 205,
-	padY: 24,
-	viewBoxW: 440
+	labelX: 120,
+	padY: 80,
+	padLeft: 60,
+	viewBoxW: 540,
+	offSpineX: 230,
+	offSpineLabelX: 244,
+	marginX: 360,
+	marginTextX: 366
 };
 const H = {
 	spineY: 50,
@@ -32126,6 +32128,9 @@ const H = {
 	viewBoxH: 130
 };
 const FONT = "system-ui, -apple-system, sans-serif";
+function normalizeFindingEntry(entry) {
+	return typeof entry === "string" ? { slug: entry } : entry;
+}
 function esc(s) {
 	if (s == null) return "";
 	return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -32158,13 +32163,24 @@ function flowToSvg(flow, findings = []) {
 	if (spineSteps.length === 0) return "";
 	const findingMap = {};
 	for (const f of findings) findingMap[f.slug] = f;
-	return spineSteps.length <= 4 ? renderHorizontal(spineSteps, findingMap) : renderVertical(spineSteps, findingMap);
+	const offSpineSteps = flow.filter((s) => s.spine === false);
+	return spineSteps.length <= 4 ? renderHorizontal(spineSteps, findingMap, offSpineSteps) : renderVertical(spineSteps, findingMap, offSpineSteps);
 }
-function renderVertical(steps, findingMap) {
+function renderVertical(steps, findingMap, offSpineSteps = []) {
 	const parts = [];
+	const stepY = {};
+	for (let i = 0; i < steps.length; i++) stepY[steps[i].id] = V.padY + i * V.stepSpacing;
 	const height = (steps.length - 1) * V.stepSpacing + V.padY * 2;
 	const y0 = V.padY;
 	const y1 = V.padY + (steps.length - 1) * V.stepSpacing;
+	for (const step of steps) {
+		if (!step.no) continue;
+		const decisionY = stepY[step.id];
+		stepY[step.no] = decisionY;
+		parts.push(`<line x1="${V.spineX + 6}" y1="${decisionY}" x2="${V.offSpineX - 6}" y2="${decisionY}" stroke="${C.spine}" stroke-width="1"/>`);
+		parts.push(`<text x="${V.offSpineX - 20}" y="${decisionY - 6}" text-anchor="middle" font-size="8" fill="${C.muted}">no</text>`);
+		parts.push(`<text x="${V.spineX + 8}" y="${decisionY + 14}" font-size="8" fill="${C.muted}">yes</text>`);
+	}
 	parts.push(`<line x1="${V.spineX}" y1="${y0}" x2="${V.spineX}" y2="${y1}" stroke="${C.spine}" stroke-width="1"/>`);
 	const findingPositions = {};
 	for (let i = 0; i < steps.length; i++) {
@@ -32173,41 +32189,60 @@ function renderVertical(steps, findingMap) {
 		const isEnd = step.type === "end";
 		parts.push(renderShape(step.type, V.spineX, y));
 		parts.push(`<text x="${V.labelX}" y="${y + 4}" text-anchor="end" font-size="11" fill="${isEnd ? C.muted : C.shape}">${esc(step.label)}</text>`);
-		const slugs = step.findings || [];
-		for (let fi = 0; fi < slugs.length; fi++) {
-			const slug = slugs[fi];
+		const entries = (step.findings || []).map(normalizeFindingEntry);
+		let connectorDrawn = false;
+		const findingBaseY = y - 50;
+		for (let fi = 0; fi < entries.length; fi++) {
+			const { slug, label } = entries[fi];
 			const finding = findingMap[slug];
 			if (!finding) continue;
 			const style = CONCERN_STYLES[finding.concern] || CONCERN_STYLES.note;
-			const titleY = y - 2 + fi * 24;
-			const badgeY = titleY + 12;
-			const stemTop = titleY - 5;
-			const stemBottom = badgeY + 2;
-			parts.push(`<line x1="${V.connStartX}" y1="${y}" x2="${V.stemX}" y2="${y}" stroke="${style.stroke}" stroke-width="${style.width}"/>`);
-			parts.push(`<line x1="${V.stemX}" y1="${stemTop}" x2="${V.stemX}" y2="${stemBottom}" stroke="${style.stroke}" stroke-width="${style.width}"/>`);
-			parts.push(`<text x="${V.textX}" y="${titleY}" font-size="10" font-weight="600" fill="${style.fill}">${esc(finding.title)}</text>`);
-			parts.push(`<text x="${V.textX}" y="${badgeY}" font-size="7.5" fill="${style.badge}" font-weight="500" letter-spacing="0.5">${finding.concern.toUpperCase()}</text>`);
-			findingPositions[slug] = {
-				stemTop,
-				stemBottom
-			};
+			const displayTitle = label || finding.title;
+			const titleY = findingBaseY - 2 + fi * 20;
+			const badgeY = titleY + 10;
+			if (!connectorDrawn) {
+				parts.push(`<line x1="${V.marginX}" y1="${findingBaseY}" x2="${V.spineX + 10}" y2="${y}" stroke="${style.stroke}" stroke-width="0.5"/>`);
+				parts.push(`<polygon points="${V.spineX + 6},${y} ${V.spineX + 10},${y - 2} ${V.spineX + 10},${y + 2}" fill="${style.stroke}"/>`);
+				connectorDrawn = true;
+			}
+			parts.push(`<text x="${V.marginTextX}" y="${titleY}" font-size="9" font-weight="600" fill="${style.fill}">${esc(displayTitle)}</text>`);
+			parts.push(`<text x="${V.marginTextX}" y="${badgeY}" font-size="7" fill="${style.badge}" font-weight="500" letter-spacing="0.5">${finding.concern.toUpperCase()}</text>`);
+			findingPositions[slug] = { y: titleY };
 		}
 	}
-	for (const step of steps) for (const slug of step.findings || []) {
-		const finding = findingMap[slug];
-		if (!finding?.chain_references) continue;
-		for (const targetSlug of finding.chain_references.enables || []) {
+	for (const step of steps) for (const { slug } of (step.findings || []).map(normalizeFindingEntry)) {
+		const chainRefs = findingMap[slug].chains;
+		if (!chainRefs) continue;
+		for (const targetSlug of chainRefs.enables || []) {
 			const from = findingPositions[slug];
 			const to = findingPositions[targetSlug];
 			if (!from || !to) continue;
-			parts.push(`<line x1="${V.stemX}" y1="${from.stemBottom}" x2="${V.stemX}" y2="${to.stemTop}" stroke="${C.muted}" stroke-width="1" stroke-dasharray="3,2"/>`);
-			const midY = Math.round((from.stemBottom + to.stemTop) / 2);
-			parts.push(`<text x="${V.stemX + 5}" y="${midY + 3}" font-size="7" fill="${C.muted}">enables</text>`);
+			const dashX = V.marginTextX + 4;
+			const startY = from.y + 18;
+			const endY = to.y - 16;
+			parts.push(`<line x1="${dashX}" y1="${startY}" x2="${dashX}" y2="${endY}" stroke="${C.muted}" stroke-width="0.5" stroke-dasharray="2,2"/>`);
+			const midY = Math.round((startY + endY) / 2);
+			parts.push(`<text x="${dashX + 4}" y="${midY + 3}" font-size="6" fill="${C.muted}">enables</text>`);
 		}
 	}
-	return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${V.viewBoxW} ${height}" font-family="${FONT}">\n  ${parts.join("\n  ")}\n</svg>`;
+	for (const offStep of offSpineSteps) {
+		if (!offStep.next) continue;
+		const fromY = stepY[offStep.id];
+		const toY = stepY[offStep.next];
+		if (fromY === void 0 || toY === void 0) continue;
+		parts.push(`<polyline points="${V.offSpineX},${fromY - 5} ${V.offSpineX},${toY} ${V.spineX + 6},${toY}" fill="none" stroke="${C.muted}" stroke-width="1"/>`);
+		parts.push(`<polygon points="${V.spineX + 6},${toY} ${V.spineX + 12},${toY - 3} ${V.spineX + 12},${toY + 3}" fill="${C.muted}"/>`);
+	}
+	for (const offStep of offSpineSteps) {
+		const offY = stepY[offStep.id];
+		if (offY === void 0) continue;
+		const isEnd = offStep.type === "end";
+		parts.push(renderShape(offStep.type, V.offSpineX, offY));
+		parts.push(`<text x="${V.offSpineLabelX}" y="${offY + 4}" font-size="11" fill="${isEnd ? C.muted : C.shape}">${esc(offStep.label)}</text>`);
+	}
+	return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-${V.padLeft} 0 ${V.viewBoxW + V.padLeft} ${height}" font-family="${FONT}">\n  ${parts.join("\n  ")}\n</svg>`;
 }
-function renderHorizontal(steps, findingMap) {
+function renderHorizontal(steps, findingMap, offSpineSteps = []) {
 	const parts = [];
 	const width = (steps.length - 1) * H.stepSpacing + H.padX * 2;
 	const x0 = H.padX;
@@ -32220,24 +32255,25 @@ function renderHorizontal(steps, findingMap) {
 		const isEnd = step.type === "end";
 		parts.push(renderShape(step.type, x, H.spineY));
 		parts.push(`<text x="${x}" y="${H.labelY}" text-anchor="middle" font-size="11" fill="${isEnd ? C.muted : C.shape}">${esc(step.label)}</text>`);
-		const slugs = step.findings || [];
-		for (let fi = 0; fi < slugs.length; fi++) {
-			const slug = slugs[fi];
+		const entries = (step.findings || []).map(normalizeFindingEntry);
+		for (let fi = 0; fi < entries.length; fi++) {
+			const { slug, label } = entries[fi];
 			const finding = findingMap[slug];
 			if (!finding) continue;
 			const style = CONCERN_STYLES[finding.concern] || CONCERN_STYLES.note;
+			const displayTitle = label || finding.title;
 			const titleY = H.textYStart + fi * 24;
 			const badgeY = titleY + 12;
 			parts.push(`<line x1="${x}" y1="${H.spineY + 7}" x2="${x}" y2="${H.connEndY}" stroke="${style.stroke}" stroke-width="${style.width}"/>`);
-			parts.push(`<text x="${x}" y="${titleY}" text-anchor="middle" font-size="10" font-weight="600" fill="${style.fill}">${esc(finding.title)}</text>`);
+			parts.push(`<text x="${x}" y="${titleY}" text-anchor="middle" font-size="10" font-weight="600" fill="${style.fill}">${esc(displayTitle)}</text>`);
 			parts.push(`<text x="${x}" y="${badgeY}" text-anchor="middle" font-size="7.5" fill="${style.badge}" font-weight="500" letter-spacing="0.5">${finding.concern.toUpperCase()}</text>`);
 			findingPositions[slug] = { x };
 		}
 	}
-	for (const step of steps) for (const slug of step.findings || []) {
-		const finding = findingMap[slug];
-		if (!finding?.chain_references) continue;
-		for (const targetSlug of finding.chain_references.enables || []) {
+	for (const step of steps) for (const { slug } of (step.findings || []).map(normalizeFindingEntry)) {
+		const chainRefs = findingMap[slug].chains;
+		if (!chainRefs) continue;
+		for (const targetSlug of chainRefs.enables || []) {
 			const from = findingPositions[slug];
 			const to = findingPositions[targetSlug];
 			if (!from || !to) continue;
@@ -32323,8 +32359,10 @@ function renderProse(s) {
 */
 function formatLocationTitle(location) {
 	if (!location?.path) return "";
-	if (location.line_end) return `${location.path}:${location.line_start}-${location.line_end}`;
-	if (location.line_start) return `${location.path}:${location.line_start}`;
+	const ls = location.start_line;
+	const le = location.end_line;
+	if (le) return `${location.path}:${ls}-${le}`;
+	if (ls) return `${location.path}:${ls}`;
 	return location.path;
 }
 /**
@@ -32377,7 +32415,7 @@ async function renderEvidence(ec, finding) {
 		props: {
 			title: title || void 0,
 			showLineNumbers: true,
-			startLineNumber: finding.locations?.[0]?.line_start || 1
+			startLineNumber: finding.locations?.[0]?.start_line ?? 1
 		}
 	});
 	return {
@@ -32427,13 +32465,13 @@ ${Object.entries(counts).filter(([, v]) => v > 0).map(([level, count]) => `     
 * @param {object} ec — ExpressiveCodeEngine instance
 * @returns {Promise<{html: string, styles: Set}>}
 */
-async function renderNarrative(narrative, slugToTitle, ec) {
+async function renderNarrative(narrative, slugToTitle, ec, auditDir) {
 	const findingHtmls = [];
 	const allStyles = /* @__PURE__ */ new Set();
 	for (const f of narrative.findings || []) {
 		const { html: evidenceHtml, styles } = await renderEvidence(ec, f);
 		for (const s of styles) allStyles.add(s);
-		findingHtmls.push(renderFinding(f, slugToTitle, evidenceHtml));
+		findingHtmls.push(renderFinding(f, slugToTitle, evidenceHtml, auditDir));
 	}
 	const flowSvg = narrative.flow ? flowToSvg(narrative.flow, narrative.findings || []) : "";
 	const flowHtml = flowSvg ? `\n      <div class="flow-diagram">${flowSvg}</div>` : "";
@@ -32454,10 +32492,11 @@ ${findingHtmls.join("\n")}
 * @param {string} evidenceHtml — pre-rendered EC evidence block
 * @returns {string}
 */
-function renderFinding(finding, slugToTitle, evidenceHtml) {
-	const monthlyCommits = finding.temporal_context?.monthly_commits;
-	const sparkline = Array.isArray(monthlyCommits) && monthlyCommits.length === 12 ? `<span class="sidenote"><canvas class="sparkline" data-commits="${escHtml(monthlyCommits.join(","))}" width="80" height="20"></canvas></span>` : "";
-	const chainRefs = finding.chain_references;
+function renderFinding(finding, slugToTitle, evidenceHtml, auditDir) {
+	finding.temporal;
+	const sparklineSvgPath = auditDir ? (0, node_path.join)(auditDir, "assets", `sparkline-${finding.slug}.svg`) : null;
+	const sparkline = sparklineSvgPath && (0, node_fs.existsSync)(sparklineSvgPath) ? `<span class="sidenote sparkline"><span class="sparkline-label">12-mo commits</span>${(0, node_fs.readFileSync)(sparklineSvgPath, "utf8")}</span>` : "";
+	const chainRefs = finding.chains;
 	const enables = chainRefs && Array.isArray(chainRefs.enables) ? chainRefs.enables : [];
 	const enabledBy = chainRefs && Array.isArray(chainRefs.enabled_by) ? chainRefs.enabled_by : [];
 	const related = chainRefs && Array.isArray(chainRefs.related) ? chainRefs.related : [];
@@ -32490,9 +32529,9 @@ function renderFinding(finding, slugToTitle, evidenceHtml) {
 function renderLedger(findings, slugToTitle) {
 	const rows = [];
 	for (const narrative of findings.narratives || []) for (const finding of narrative.findings || []) {
-		const locationCell = (finding.locations || []).map((loc) => `<code>${escHtml(loc.path)}:${loc.line_start}</code>`).join("<br>");
+		const locationCell = (finding.locations || []).map((loc) => `<code>${escHtml(loc.path)}:${loc.start_line}</code>`).join("<br>");
 		const effort = finding.effort ? escHtml(finding.effort) : "—";
-		const chainRefs = finding.chain_references;
+		const chainRefs = finding.chains;
 		const enables = chainRefs && Array.isArray(chainRefs.enables) ? chainRefs.enables : [];
 		const enabledBy = chainRefs && Array.isArray(chainRefs.enabled_by) ? chainRefs.enabled_by : [];
 		const related = chainRefs && Array.isArray(chainRefs.related) ? chainRefs.related : [];
@@ -32528,6 +32567,46 @@ ${rows.join("\n")}
       </table>
     </section>`;
 }
+const SPARK = {
+	w: 80,
+	h: 16,
+	barW: 5,
+	gap: 2,
+	minH: .5
+};
+function sparklineSvg(commits) {
+	const max = Math.max(...commits, 1);
+	const step = (SPARK.w - SPARK.barW) / (commits.length - 1);
+	const bars = commits.map((v, i) => {
+		const x = Math.round(i * step);
+		const h = v === 0 ? SPARK.minH : Math.max(1, v / max * (SPARK.h - 2));
+		const y = SPARK.h - h;
+		const fill = v === 0 ? "#d1d5db" : v === max ? "#1a1a1a" : "#6b7280";
+		return `  <rect x="${x}" y="${y}" width="${SPARK.barW}" height="${h}" style="fill: ${fill};" />`;
+	});
+	const label = `Commit activity: ${commits.map((v, i) => v > 0 ? `${v} in month ${i + 1}` : null).filter(Boolean).join(", ") || "no commits"}`;
+	return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SPARK.w} ${SPARK.h}" role="img" aria-label="${label}">\n${bars.join("\n")}\n</svg>`;
+}
+/**
+* Generate sparkline SVGs for all findings with monthly_commits data.
+* Writes to assets/ subdirectory of the audit directory.
+* @param {string} auditDir
+* @param {object} findings — parsed findings object
+* @returns {number} — count of sparklines generated
+*/
+function generateSparklines(auditDir, findings) {
+	const assetsDir = (0, node_path.join)(auditDir, "assets");
+	let count = 0;
+	for (const n of findings.narratives || []) for (const f of n.findings || []) {
+		const commits = f.temporal?.monthly_commits;
+		if (!Array.isArray(commits) || commits.length !== 12) continue;
+		(0, node_fs.mkdirSync)(assetsDir, { recursive: true });
+		const svg = sparklineSvg(commits);
+		(0, node_fs.writeFileSync)((0, node_path.join)(assetsDir, `sparkline-${f.slug}.svg`), svg);
+		count++;
+	}
+	return count;
+}
 /**
 * Assemble a single self-contained report.html from audit YAML, template, CSS, and fonts.
 * @param {string} auditDir — path to audit directory (contains recon.yaml, findings.yaml)
@@ -32543,6 +32622,8 @@ async function assembleReport(auditDir, opts = {}) {
 	const reconYaml = (0, node_fs.readFileSync)((0, node_path.join)(auditDir, "recon.yaml"), "utf8");
 	const findings = parseFindings(findingsYaml);
 	const recon = parseRecon(reconYaml);
+	const sparkCount = generateSparklines(auditDir, findings);
+	if (sparkCount > 0) console.log(`generated ${sparkCount} sparkline SVG(s)`);
 	const slugToTitle = {};
 	for (const n of findings.narratives || []) for (const f of n.findings || []) slugToTitle[f.slug] = f.title;
 	const ec = await createEC();
@@ -32550,14 +32631,13 @@ async function assembleReport(auditDir, opts = {}) {
 	const narrativeHtmls = [];
 	const blockStyles = /* @__PURE__ */ new Set();
 	for (const n of findings.narratives || []) {
-		const { html, styles } = await renderNarrative(n, slugToTitle, ec);
+		const { html, styles } = await renderNarrative(n, slugToTitle, ec, auditDir);
 		narrativeHtmls.push(html);
 		for (const s of styles) blockStyles.add(s);
 	}
 	const ledgerHtml = renderLedger(findings, slugToTitle);
 	const contentHtml = [
 		headerHtml,
-		`    <section id="terrain-map"><canvas id="terrain-canvas"></canvas></section>`,
 		...narrativeHtmls,
 		ledgerHtml
 	].join("\n");
@@ -32619,6 +32699,7 @@ exports.assembleReport = assembleReport;
 exports.buildMetaString = buildMetaString;
 exports.escHtml = escHtml;
 exports.formatLocationTitle = formatLocationTitle;
+exports.generateSparklines = generateSparklines;
 exports.inferLangFromPath = inferLangFromPath;
 exports.parseFindings = parseFindings;
 exports.parseRecon = parseRecon;

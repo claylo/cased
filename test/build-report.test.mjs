@@ -68,7 +68,7 @@ describe('buildMetaString', () => {
 
 describe('formatLocationTitle', () => {
   it('formats path with line range', () => {
-    const loc = { path: 'src/main.rs', line_start: 10, line_end: 20 };
+    const loc = { path: 'src/main.rs', start_line: 10, end_line: 20 };
     assert.equal(formatLocationTitle(loc), 'src/main.rs:10-20');
   });
   it('returns empty string for undefined', () => {

@@ -10,7 +10,6 @@
     "@shikijs/themes": "^4.0.2",
     "rolldown": "^1.0.0-rc.13",
     "rough-notation": "^0.5.1",
-    "roughjs": "^4.6.6",
     "yaml": "^2.8.3"
   }
 }
