@@ -149,6 +149,18 @@ p.verdict {
 }
 
 /* --------------------------------------------------------------------------
+   Flow diagrams
+   -------------------------------------------------------------------------- */
+.flow-diagram {
+  max-width: 66rem;
+  margin: 2rem 0;
+}
+.flow-diagram svg {
+  width: 100%;
+  height: auto;
+}
+
+/* --------------------------------------------------------------------------
    Finding articles
    -------------------------------------------------------------------------- */
 article.finding {
@@ -328,22 +340,15 @@ section.ledger h2 {
 }
 
 /* --------------------------------------------------------------------------
-   Terrain map
-   -------------------------------------------------------------------------- */
-#terrain-map {
-  text-align: center;
-  margin: 2rem 0;
-}
-
-#terrain-canvas {
-  max-width: 100%;
-  height: auto;
-}
-
-/* --------------------------------------------------------------------------
    Sparklines
    -------------------------------------------------------------------------- */
-canvas.sparkline {
+.sparkline-label {
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  margin-right: 0.25rem;
+}
+.sparkline svg {
   display: inline-block;
   width: 80px;
   height: 16px;

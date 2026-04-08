@@ -19,6 +19,31 @@
           "title": { "type": "string" },
           "thesis": { "type": "string" },
           "verdict": { "type": "string" },
+          "flow": {
+            "type": "array",
+            "description": "Optional process/data flow diagram for this surface",
+            "items": {
+              "type": "object",
+              "required": ["id", "label"],
+              "properties": {
+                "id": { "type": "string" },
+                "label": { "type": "string" },
+                "type": { "type": "string", "enum": ["start", "end", "process", "decision", "input", "store", "ref"] },
+                "findings": {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      { "type": "string" },
+                      { "type": "object", "properties": { "slug": { "type": "string" }, "label": { "type": "string" } }, "required": ["slug"] }
+                    ]
+                  }
+                },
+                "spine": { "type": "boolean" },
+                "no": { "type": "string", "description": "Step id for 'no' branch (decision only)" },
+                "next": { "type": "string", "description": "Override sequential flow (loop-back)" }
+              }
+            }
+          },
           "findings": {
             "type": "array",
             "items": {
@@ -32,11 +57,11 @@
                   "type": "array",
                   "items": {
                     "type": "object",
-                    "required": ["path", "line_start", "line_end"],
+                    "required": ["path", "start_line", "end_line"],
                     "properties": {
                       "path": { "type": "string" },
-                      "line_start": { "type": "integer" },
-                      "line_end": { "type": "integer" }
+                      "start_line": { "type": "integer" },
+                      "end_line": { "type": "integer" }
                     }
                   }
                 },
@@ -61,12 +86,12 @@
                 "remediation": { "type": "string" },
                 "effort": { "type": "string", "enum": ["trivial", "small", "medium", "large"] },
                 "effort_notes": { "type": "string" },
-                "temporal_context": {
+                "temporal": {
                   "type": "object",
                   "properties": {
-                    "introduced_in": { "type": "string" },
-                    "introduced_date": { "type": "string" },
-                    "last_touched_in": { "type": "string" },
+                    "introduced": { "type": "string", "format": "date" },
+                    "last_modified": { "type": "string", "format": "date" },
+                    "commit_count": { "type": "integer" },
                     "monthly_commits": {
                       "type": "array",
                       "items": { "type": "integer" },
@@ -75,7 +100,7 @@
                     }
                   }
                 },
-                "chain_references": {
+                "chains": {
                   "type": "object",
                   "properties": {
                     "enables": { "type": "array", "items": { "type": "string" } },

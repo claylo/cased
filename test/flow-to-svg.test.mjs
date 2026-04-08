@@ -25,7 +25,7 @@ describe('flowToSvg', () => {
     const svg = flowToSvg(flow, []);
     // Vertical layout indicators
     assert.ok(svg.includes('<svg'));
-    assert.ok(svg.includes('viewBox="0 0 440'));
+    assert.ok(svg.includes('viewBox="-60 0 600'));
     assert.ok(svg.includes('text-anchor="end"'));
     // Spine line
     assert.ok(svg.includes(`stroke="${'#d1d5db'}"`));
@@ -43,10 +43,10 @@ describe('flowToSvg', () => {
     const flow8 = Array.from({ length: 8 }, (_, i) => ({ id: `s${i}`, label: `Step ${i}` }));
     const svg5 = flowToSvg(flow5, []);
     const svg8 = flowToSvg(flow8, []);
-    // 5 steps: height = 4*60 + 48 = 288
-    assert.ok(svg5.includes('viewBox="0 0 440 288"'));
-    // 8 steps: height = 7*60 + 48 = 468
-    assert.ok(svg8.includes('viewBox="0 0 440 468"'));
+    // 5 steps: height = 4*60 + 160 = 400
+    assert.ok(svg5.includes('viewBox="-60 0 600 400"'));
+    // 8 steps: height = 7*60 + 160 = 580
+    assert.ok(svg8.includes('viewBox="-60 0 600 580"'));
   });
 
   it('renders horizontal SVG for <=4 spine steps', () => {
@@ -98,11 +98,11 @@ describe('flowToSvg', () => {
 
 describe('finding annotations', () => {
   const findings = [
-    { slug: 'finding-a', title: 'Problem Found', concern: 'significant', chain_references: {} },
-    { slug: 'finding-b', title: 'Minor Issue', concern: 'moderate', chain_references: {} },
+    { slug: 'finding-a', title: 'Problem Found', concern: 'significant', chains: {} },
+    { slug: 'finding-b', title: 'Minor Issue', concern: 'moderate', chains: {} },
   ];
 
-  it('renders vertical finding annotation with colored stem', () => {
+  it('renders vertical finding as margin sidenote with hairline connector', () => {
     const flow = [
       { id: 's1', label: 'Start', type: 'start' },
       { id: 's2', label: 'Step', findings: ['finding-a'] },
@@ -111,13 +111,15 @@ describe('finding annotations', () => {
       { id: 's5', label: 'End', type: 'end' },
     ];
     const svg = flowToSvg(flow, findings);
-    // Finding title present
+    // Finding title in margin
     assert.ok(svg.includes('Problem Found'));
     // Concern badge
     assert.ok(svg.includes('SIGNIFICANT'));
-    // Red connector (significant)
+    // Hairline connector with concern color
     assert.ok(svg.includes('stroke="#dc2626"'));
-    assert.ok(svg.includes('stroke-width="1.5"'));
+    assert.ok(svg.includes('stroke-width="0.5"'));
+    // Arrowhead at step (reversed — finding points to step)
+    assert.ok(svg.includes('<polygon points="136,'));
   });
 
   it('renders horizontal finding annotation below spine', () => {
@@ -133,8 +135,8 @@ describe('finding annotations', () => {
     assert.ok(svg.includes('stroke="#1a1a1a"'));
   });
 
-  it('renders critical with heavier stroke', () => {
-    const critFinding = [{ slug: 'crit', title: 'Critical Bug', concern: 'critical', chain_references: {} }];
+  it('renders critical finding with hairline connector and arrowhead', () => {
+    const critFinding = [{ slug: 'crit', title: 'Critical Bug', concern: 'critical', chains: {} }];
     const flow = [
       { id: 's1', label: 'A', type: 'start' },
       { id: 's2', label: 'B', findings: ['crit'] },
@@ -143,7 +145,11 @@ describe('finding annotations', () => {
       { id: 's5', label: 'E', type: 'end' },
     ];
     const svg = flowToSvg(flow, critFinding);
-    assert.ok(svg.includes('stroke-width="2.5"'));
+    // All connectors are hairline regardless of concern level
+    assert.ok(svg.includes('stroke-width="0.5"'));
+    assert.ok(svg.includes('CRITICAL'));
+    // Arrowhead filled with concern color
+    assert.ok(svg.includes('fill="#dc2626"'));
   });
 
   it('uses label override when finding entry is an object', () => {
@@ -178,17 +184,17 @@ describe('chain references', () => {
       slug: 'first',
       title: 'First Issue',
       concern: 'significant',
-      chain_references: { enables: ['second'] },
+      chains: { enables: ['second'] },
     },
     {
       slug: 'second',
       title: 'Second Issue',
       concern: 'moderate',
-      chain_references: { enabled_by: ['first'] },
+      chains: { enabled_by: ['first'] },
     },
   ];
 
-  it('renders vertical chain ref as dashed line between stems', () => {
+  it('renders vertical chain ref as subtle dashed line in margin', () => {
     const flow = [
       { id: 's1', label: 'A', type: 'start' },
       { id: 's2', label: 'B', findings: ['first'] },
@@ -197,7 +203,7 @@ describe('chain references', () => {
       { id: 's5', label: 'E', type: 'end' },
     ];
     const svg = flowToSvg(flow, findings);
-    assert.ok(svg.includes('stroke-dasharray="3,2"'));
+    assert.ok(svg.includes('stroke-dasharray="2,2"'));
     assert.ok(svg.includes('enables'));
   });
 
@@ -214,7 +220,7 @@ describe('chain references', () => {
 
   it('skips chain ref when target finding has no flow step', () => {
     const partialFindings = [
-      { slug: 'orphan', title: 'Orphan', concern: 'note', chain_references: { enables: ['missing'] } },
+      { slug: 'orphan', title: 'Orphan', concern: 'note', chains: { enables: ['missing'] } },
     ];
     const flow = [
       { id: 's1', label: 'A', type: 'start' },
@@ -225,6 +231,104 @@ describe('chain references', () => {
     ];
     const svg = flowToSvg(flow, partialFindings);
     assert.ok(!svg.includes('stroke-dasharray'));
+  });
+});
+
+describe('off-spine branches', () => {
+  // Auth-flow-style test data: 5 spine steps, 2 off-spine branches
+  const authFlow = [
+    { id: 'connect', label: 'WS connect', type: 'start' },
+    { id: 'token', label: 'Token presented', type: 'input' },
+    { id: 'verify', label: 'Verify signature?', type: 'decision', no: 'reject', findings: ['jwt-no-sig'] },
+    { id: 'extract', label: 'Extract claims' },
+    { id: 'done', label: 'Done', type: 'end' },
+    // off-spine
+    { id: 'reject', label: 'Close connection', type: 'end', spine: false },
+  ];
+  const findings = [
+    { slug: 'jwt-no-sig', title: 'JWT Not Verified', concern: 'significant', chains: {} },
+  ];
+
+  it('renders off-spine step shape at decision y', () => {
+    const svg = flowToSvg(authFlow, findings);
+    // Off-spine shape should be present (at offSpineX=230)
+    assert.ok(svg.includes('cx="230"'), 'off-spine shape at x=230');
+    // Off-spine label
+    assert.ok(svg.includes('Close connection'));
+  });
+
+  it('renders branch connector with no label', () => {
+    const svg = flowToSvg(authFlow, findings);
+    assert.ok(svg.includes('>no</text>'), 'no label on branch');
+  });
+
+  it('renders yes label on spine continuation', () => {
+    const svg = flowToSvg(authFlow, findings);
+    assert.ok(svg.includes('>yes</text>'), 'yes label on spine');
+  });
+
+  it('uses fixed viewBox width for vertical layout', () => {
+    const svg = flowToSvg(authFlow, findings);
+    assert.ok(svg.includes('viewBox="-60 0 600'), 'fixed 600 viewBox for vertical (incl. padLeft)');
+    // Same width without off-spine steps
+    const spineOnly = authFlow.filter(s => s.spine !== false);
+    const svgSpine = flowToSvg(spineOnly, findings);
+    assert.ok(svgSpine.includes('viewBox="-60 0 600'), 'same width without branches');
+  });
+
+  it('skips off-spine step with no parent decision', () => {
+    const orphanFlow = [
+      { id: 's1', label: 'A', type: 'start' },
+      { id: 's2', label: 'B' },
+      { id: 's3', label: 'C' },
+      { id: 's4', label: 'D' },
+      { id: 's5', label: 'E', type: 'end' },
+      { id: 'orphan', label: 'Orphan', spine: false },
+    ];
+    const svg = flowToSvg(orphanFlow, []);
+    assert.ok(!svg.includes('Orphan'), 'orphan off-spine not rendered');
+  });
+});
+
+describe('loop-back arrows', () => {
+  const loopFlow = [
+    { id: 'start', label: 'Start', type: 'start' },
+    { id: 'token', label: 'Token presented', type: 'input' },
+    { id: 'valid', label: 'Valid JSON?', type: 'decision', no: 'retry' },
+    { id: 'deliver', label: 'Deliver message' },
+    { id: 'done', label: 'Done', type: 'end' },
+    { id: 'retry', label: 'Log & wait', next: 'token', spine: false },
+  ];
+
+  it('renders loop-back polyline', () => {
+    const svg = flowToSvg(loopFlow, []);
+    assert.ok(svg.includes('<polyline'), 'polyline for loop-back');
+  });
+
+  it('renders loop-back arrowhead', () => {
+    const svg = flowToSvg(loopFlow, []);
+    // Arrowhead polygon pointing left at spine (spineX + 6 = 136)
+    assert.ok(svg.includes('<polygon points="136,'), 'arrowhead at spine');
+  });
+
+  it('skips loop-back when next target not in flow', () => {
+    const badNextFlow = [
+      { id: 's1', label: 'A', type: 'start' },
+      { id: 's2', label: 'B', type: 'decision', no: 'branch' },
+      { id: 's3', label: 'C' },
+      { id: 's4', label: 'D' },
+      { id: 's5', label: 'E', type: 'end' },
+      { id: 'branch', label: 'Branch', next: 'nonexistent', spine: false },
+    ];
+    const svg = flowToSvg(badNextFlow, []);
+    assert.ok(!svg.includes('<polyline'), 'no polyline for missing target');
+  });
+
+  it('renders off-spine step label for non-end type', () => {
+    const svg = flowToSvg(loopFlow, []);
+    assert.ok(svg.includes('Log &amp; wait'));
+    // Non-end off-spine uses dark fill, not muted
+    assert.ok(svg.includes('>Log &amp; wait</text>'));
   });
 });
 

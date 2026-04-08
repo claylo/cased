@@ -28,9 +28,9 @@ If multiple skills are active, print this line first, then mention the others on
 Before starting reconnaissance, confirm the audit scope with the user.
 Ask: **"What should I focus on?"** and offer these options:
 
-- **Full repo** — all source, dependencies, and configuration
-- **Recent changes** — highest-risk and recently modified surfaces only
-- **Specific area** — a module, directory, PR, or commit range the user names
+1. **Full repo** — all source, dependencies, and configuration
+2. **Recent changes** — highest-risk and recently modified surfaces only
+3. **Specific area** — a module, directory, PR, or commit range the user names
 
 If the user's initial request already specifies scope (e.g., "audit the auth
 module," "review PR #42"), skip the question and use what they gave you.
@@ -60,7 +60,7 @@ audit directory (see File Inventory for the full path convention) containing:
 - Git churn data: files by commit frequency, recent authors, hotspots
 - Auth/trust boundaries identified
 
-Read `references/recon-schema.yaml.md` for the full schema.
+Read `${CLAUDE_SKILL_DIR}/references/recon-schema.yaml.md` for the full schema.
 
 **How to gather this data:**
 - Parse the file tree, count lines, read modification dates
@@ -74,7 +74,39 @@ Read `references/recon-schema.yaml.md` for the full schema.
 
 Walk each attack surface / concern area and produce structured findings.
 Output `findings.yaml` in the audit directory per the schema in
-`references/findings-schema.yaml.md`.
+`${CLAUDE_SKILL_DIR}/references/findings-schema.yaml.md`.
+
+**Domain-specific review skills:** Before starting analysis, check if a
+specialized review skill is available for the primary language. These skills
+provide structured evaluation rubrics with binary criteria that go beyond
+what linters and static tools catch. If available, use the skill's surfaces
+as the narrative framework and dispatch its agents for parallel review.
+
+| Language | Skill | Detection | What it adds |
+|----------|-------|-----------|-------------|
+| Rust | `crustoleum` | `Cargo.toml` present | 13 surfaces, 84 criteria, 6 parallel agents. Covers unsafe soundness, ownership model, error architecture, concurrency, supply chain, and performance. |
+
+When a domain skill is present:
+1. Load the skill (`skill: crustoleum`) to get the full rubric.
+2. Run the skill's tool prerequisites (e.g., `${CLAUDE_SKILL_DIR}/scripts/run-tools --full`).
+3. Classify the codebase using the skill's surface selection guide to
+   determine which agents to dispatch.
+4. Dispatch the skill's agents in parallel. Each agent returns findings
+   in cased's `findings.yaml` schema.
+5. **Wait for ALL agents to complete.** Do not proceed to findings
+   assembly until every dispatched agent has returned. The agents ARE
+   the analysis — you do not have "sufficient data from direct code
+   reading" to substitute for their structured rubric evaluation.
+   If an agent is slow, wait. If an agent fails, report the failure.
+   Never skip agent results to save time.
+6. Collect agent output, deduplicate, and organize into narratives.
+   Each surface becomes a narrative. The skill's `surface` field maps
+   to the narrative title (e.g., surface "Unsafe Code" → narrative
+   "The Unsafe Code Surface").
+7. Write the thesis and verdict for each narrative based on the
+   collected findings — these are your assessment, not the agents'.
+
+When no domain skill is present, proceed with general analysis below.
 
 **Narrative grouping:** Organize findings into narratives, not categories.
 A narrative is a coherent story about a *surface* — an area of the codebase
@@ -114,41 +146,46 @@ CVSS, OWASP risk ratings, or generic high/medium/low. They describe the
 - `advisory` — not a vulnerability, but a design choice that limits future safety
 - `note` — observation worth recording, no action required
 
-### Phase 3: Visualization
+**Flow diagrams** are authored as data in `findings.yaml` and rendered
+automatically by the build script. Add a `flow` array to any narrative
+where findings attach to steps in a process — authentication flows,
+request pipelines, data validation chains, build/deploy sequences.
 
-Generate SVG components for the rendered report. These are produced as
-standalone files in the audit's `assets/` subdirectory and will be
-referenced from `index.md`.
+How to build a flow:
+1. Identify the spine — the happy-path steps in order.
+2. Mark the first step `type: start` and the last `type: end`.
+3. Use `type: decision` for branching points (yes/no).
+4. Attach findings to steps with `findings: [slug]`. Use the object
+   form `findings: [{slug, label}]` when the finding title is too long
+   for the diagram (keep labels under ~20 characters).
+5. For decision branches, add `no: step-id` to point at the rejection
+   path. The off-spine target step needs `spine: false`.
+6. For loops, add `next: step-id` on the off-spine step to create a
+   loop-back arrow to an earlier spine step.
 
-Read `templates/terrain-map.svg.md` for the Terrain Map template.
-Read `templates/sparkline.svg.md` for the inline sparkline template.
+See `${CLAUDE_SKILL_DIR}/references/findings-schema.yaml.md` for the
+full flow schema.
 
-**The Terrain Map** (one per report): A module/component graph showing the
-system's structure with finding density overlaid. Nodes are sized by code
-volume. Edges show coupling. Finding density appears as a visual weight
-(stroke width, not color — this must work in grayscale print).
+**Sparklines** are generated automatically by the build script from the
+`temporal.monthly_commits` field. Populate this 12-integer array during
+analysis — no SVG generation is needed.
 
-**Sparklines** (one per finding, optional): Tiny inline SVGs (roughly 80×16px)
-showing temporal context — commit frequency near the finding location over
-the last 12 months. These appear in the finding's metadata line.
+### Phase 3: Assembly
 
-All SVGs must:
-- Use only inline `style` attributes (no `<style>` blocks)
-- Use no `<foreignObject>`
-- Use only web-safe system fonts or no text at all
-- Work in GitHub's SVG sanitizer (test with `<img src="...">` embedding)
-- Be monochrome or use a maximum 3-color palette from:
-  `#1a1a1a` (near-black), `#6b7280` (mid-gray), `#d1d5db` (light-gray),
-  `#dc2626` (accent-red, sparingly), `#059669` (accent-green, sparingly)
+After writing `findings.yaml`, generate the HTML report:
 
-### Phase 4: Assembly
+```bash
+node "${CLAUDE_SKILL_DIR}/scripts/build-report.js" <audit-directory>
+```
 
-Render the final report as `index.md` in the audit directory. Read
-`references/report-template.md` for the exact structure.
+This produces `report.html` in the audit directory — an interactive,
+presentation-ready report with flow diagrams, syntax-highlighted evidence,
+and slide mode. The HTML report is the primary deliverable. The markdown
+`index.md` is a secondary output for GitHub rendering.
 
-The rendered markdown file is the deliverable. The intermediate YAML files
-(`recon.yaml`, `findings.yaml`) persist alongside it — they are the
-machine-readable representation for downstream tools (e.g., CI checks, remediation tracking).
+The intermediate YAML files (`recon.yaml`, `findings.yaml`) persist
+alongside it — they are the machine-readable representation for downstream
+tools (e.g., CI checks, remediation tracking).
 
 **Directory naming convention:**
 `record/audits/YYYY-MM-DD-{scope-slug}/` where `{scope-slug}` is a
@@ -159,8 +196,6 @@ within the repository.
 **Front matter** (YAML): metadata block with audit date, scope, commit SHA,
 agent identity, and a findings summary (counts by concern level, not a
 stoplight).
-
-**The Terrain Map**: inlined as an SVG image at the top.
 
 **Narratives**: each narrative is an H2 section. Findings within are H3s.
 Code evidence in fenced blocks with file path as info string. Sparklines
@@ -207,8 +242,8 @@ is. An audit that invents concerns to fill space is performing theater.
 
 ## Phase 5: Verification
 
-After assembling the report, spawn the reviewer agent defined in
-`agents/reviewer.md` to validate findings against the codebase. The
+After assembling the report, spawn the `cased:audit-reviewer` agent defined in
+`${CLAUDE_SKILL_DIR}/agents/reviewer.md` to validate findings against the codebase. The
 reviewer checks that evidence exists at cited locations, mechanisms are
 accurate, and remediations are sound. It produces a verdict table
 (confirmed / adjusted / disputed) for each finding.
@@ -228,7 +263,11 @@ them in `actions-taken.md` within the same audit directory. This file is
 append-only — each entry records a discrete action with its date, the
 findings it addresses, and what was done.
 
-Read `references/actions-taken-schema.md` for the full format.
+DO NOT create an empty/blank `actions-taken.md` file until a user says something
+like "let's resolve issues from the latest audit" or "let's work on findings from
+the last cased audit."
+
+Read `${CLAUDE_SKILL_DIR}/references/actions-taken-schema.md` for the full format.
 
 **When to create/update this file:**
 - When the user says they've fixed a finding
@@ -255,8 +294,7 @@ record/audits/YYYY-MM-DD-scope-slug/
 ├── recon.yaml            # Structural model (intermediate)
 ├── findings.yaml         # Structured findings (intermediate)
 ├── actions-taken.md      # Remediation log (grows over time)
-└── assets/               # Generated SVGs
-    ├── terrain-map.svg
+└── assets/               # Generated by build script
     └── sparkline-{slug}.svg
 ```
 
@@ -264,11 +302,9 @@ record/audits/YYYY-MM-DD-scope-slug/
 
 Read these before generating output:
 
-- `references/recon-schema.yaml.md` — Full schema for the recon artifact
-- `references/findings-schema.yaml.md` — Full schema for the findings artifact
-- `references/report-template.md` — Exact markdown structure for the report
-- `references/actions-taken-schema.md` — Format for the remediation log
-- `templates/terrain-map.svg.md` — SVG generation instructions for the map
-- `templates/sparkline.svg.md` — SVG generation instructions for sparklines
-- `examples/sample-audit.md` — A complete rendered example report
-- `examples/sample-actions-taken.md` — Example remediation log
+- `${CLAUDE_SKILL_DIR}/references/recon-schema.yaml.md` — Full schema for the recon artifact
+- `${CLAUDE_SKILL_DIR}/references/findings-schema.yaml.md` — Full schema for the findings artifact
+- `${CLAUDE_SKILL_DIR}/references/report-template.md` — Exact markdown structure for the report
+- `${CLAUDE_SKILL_DIR}/references/actions-taken-schema.md` — Format for the remediation log
+- `${CLAUDE_SKILL_DIR}/examples/sample-audit.md` — A complete rendered example report
+- `${CLAUDE_SKILL_DIR}/examples/sample-actions-taken.md` — Example remediation log

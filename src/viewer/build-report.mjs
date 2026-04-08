@@ -1,5 +1,5 @@
 import YAML from 'yaml';
-import { readFileSync, existsSync, writeFileSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
 import { ExpressiveCodeEngine, ExpressiveCodeTheme } from '@expressive-code/core'
@@ -106,8 +106,10 @@ export function renderProse(s) {
  */
 export function formatLocationTitle(location) {
   if (!location?.path) return ''
-  if (location.line_end) return `${location.path}:${location.line_start}-${location.line_end}`
-  if (location.line_start) return `${location.path}:${location.line_start}`
+  const ls = location.start_line;
+  const le = location.end_line;
+  if (le) return `${location.path}:${ls}-${le}`
+  if (ls) return `${location.path}:${ls}`
   return location.path
 }
 
@@ -170,7 +172,7 @@ async function renderEvidence(ec, finding) {
     props: {
       title: title || undefined,
       showLineNumbers: true,
-      startLineNumber: finding.locations?.[0]?.line_start || 1,
+      startLineNumber: finding.locations?.[0]?.start_line ?? 1,
     },
   })
 
@@ -227,13 +229,13 @@ ${Object.entries(counts).filter(([, v]) => v > 0).map(([level, count]) =>
  * @param {object} ec — ExpressiveCodeEngine instance
  * @returns {Promise<{html: string, styles: Set}>}
  */
-export async function renderNarrative(narrative, slugToTitle, ec) {
+export async function renderNarrative(narrative, slugToTitle, ec, auditDir) {
   const findingHtmls = [];
   const allStyles = new Set();
   for (const f of (narrative.findings || [])) {
     const { html: evidenceHtml, styles } = await renderEvidence(ec, f);
     for (const s of styles) allStyles.add(s);
-    findingHtmls.push(renderFinding(f, slugToTitle, evidenceHtml));
+    findingHtmls.push(renderFinding(f, slugToTitle, evidenceHtml, auditDir));
   }
 
   // Flow diagram (if narrative has flow data)
@@ -256,13 +258,16 @@ ${findingHtmls.join('\n')}
  * @param {string} evidenceHtml — pre-rendered EC evidence block
  * @returns {string}
  */
-function renderFinding(finding, slugToTitle, evidenceHtml) {
-  const monthlyCommits = finding.temporal_context?.monthly_commits;
-  const sparkline = Array.isArray(monthlyCommits) && monthlyCommits.length === 12
-    ? `<span class="sidenote"><canvas class="sparkline" data-commits="${escHtml(monthlyCommits.join(','))}" width="80" height="20"></canvas></span>`
+function renderFinding(finding, slugToTitle, evidenceHtml, auditDir) {
+  const temporal = finding.temporal;
+  const sparklineSvgPath = auditDir
+    ? join(auditDir, 'assets', `sparkline-${finding.slug}.svg`)
+    : null;
+  const sparkline = sparklineSvgPath && existsSync(sparklineSvgPath)
+    ? `<span class="sidenote sparkline"><span class="sparkline-label">12-mo commits</span>${readFileSync(sparklineSvgPath, 'utf8')}</span>`
     : '';
 
-  const chainRefs = finding.chain_references;
+  const chainRefs = finding.chains;
   const enables = (chainRefs && Array.isArray(chainRefs.enables)) ? chainRefs.enables : [];
   const enabledBy = (chainRefs && Array.isArray(chainRefs.enabled_by)) ? chainRefs.enabled_by : [];
   const related = (chainRefs && Array.isArray(chainRefs.related)) ? chainRefs.related : [];
@@ -319,12 +324,12 @@ export function renderLedger(findings, slugToTitle) {
     for (const finding of (narrative.findings || [])) {
       const locations = finding.locations || [];
       const locationCell = locations.map(loc =>
-        `<code>${escHtml(loc.path)}:${loc.line_start}</code>`
+        `<code>${escHtml(loc.path)}:${loc.start_line}</code>`
       ).join('<br>');
 
       const effort = finding.effort ? escHtml(finding.effort) : '\u2014';
 
-      const chainRefs = finding.chain_references;
+      const chainRefs = finding.chains;
       const enables = (chainRefs && Array.isArray(chainRefs.enables)) ? chainRefs.enables : [];
       const enabledBy = (chainRefs && Array.isArray(chainRefs.enabled_by)) ? chainRefs.enabled_by : [];
       const related = (chainRefs && Array.isArray(chainRefs.related)) ? chainRefs.related : [];
@@ -362,6 +367,48 @@ ${rows.join('\n')}
     </section>`;
 }
 
+// --- Sparkline SVG generation ---
+
+const SPARK = { w: 80, h: 16, barW: 5, gap: 2, minH: 0.5 };
+
+function sparklineSvg(commits) {
+  const max = Math.max(...commits, 1);
+  const step = (SPARK.w - SPARK.barW) / (commits.length - 1);
+  const bars = commits.map((v, i) => {
+    const x = Math.round(i * step);
+    const h = v === 0 ? SPARK.minH : Math.max(1, (v / max) * (SPARK.h - 2));
+    const y = SPARK.h - h;
+    const fill = v === 0 ? '#d1d5db' : v === max ? '#1a1a1a' : '#6b7280';
+    return `  <rect x="${x}" y="${y}" width="${SPARK.barW}" height="${h}" style="fill: ${fill};" />`;
+  });
+  const nonZero = commits.map((v, i) => v > 0 ? `${v} in month ${i + 1}` : null).filter(Boolean);
+  const label = `Commit activity: ${nonZero.join(', ') || 'no commits'}`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SPARK.w} ${SPARK.h}" role="img" aria-label="${label}">\n${bars.join('\n')}\n</svg>`;
+}
+
+/**
+ * Generate sparkline SVGs for all findings with monthly_commits data.
+ * Writes to assets/ subdirectory of the audit directory.
+ * @param {string} auditDir
+ * @param {object} findings — parsed findings object
+ * @returns {number} — count of sparklines generated
+ */
+export function generateSparklines(auditDir, findings) {
+  const assetsDir = join(auditDir, 'assets');
+  let count = 0;
+  for (const n of (findings.narratives || [])) {
+    for (const f of (n.findings || [])) {
+      const commits = f.temporal?.monthly_commits;
+      if (!Array.isArray(commits) || commits.length !== 12) continue;
+      mkdirSync(assetsDir, { recursive: true });
+      const svg = sparklineSvg(commits);
+      writeFileSync(join(assetsDir, `sparkline-${f.slug}.svg`), svg);
+      count++;
+    }
+  }
+  return count;
+}
+
 /**
  * Assemble a single self-contained report.html from audit YAML, template, CSS, and fonts.
  * @param {string} auditDir — path to audit directory (contains recon.yaml, findings.yaml)
@@ -380,6 +427,10 @@ export async function assembleReport(auditDir, opts = {}) {
   const findings = parseFindings(findingsYaml);
   const recon = parseRecon(reconYaml);
 
+  // Generate sparkline SVGs before rendering (so inlining can find them)
+  const sparkCount = generateSparklines(auditDir, findings);
+  if (sparkCount > 0) console.log(`generated ${sparkCount} sparkline SVG(s)`);
+
   const slugToTitle = {};
   for (const n of (findings.narratives || [])) {
     for (const f of (n.findings || [])) {
@@ -395,14 +446,13 @@ export async function assembleReport(auditDir, opts = {}) {
   const narrativeHtmls = [];
   const blockStyles = new Set();
   for (const n of (findings.narratives || [])) {
-    const { html, styles } = await renderNarrative(n, slugToTitle, ec);
+    const { html, styles } = await renderNarrative(n, slugToTitle, ec, auditDir);
     narrativeHtmls.push(html);
     for (const s of styles) blockStyles.add(s);
   }
   const ledgerHtml = renderLedger(findings, slugToTitle);
 
-  const terrainHtml = `    <section id="terrain-map"><canvas id="terrain-canvas"></canvas></section>`;
-  const contentHtml = [headerHtml, terrainHtml, ...narrativeHtmls, ledgerHtml].join('\n');
+  const contentHtml = [headerHtml, ...narrativeHtmls, ledgerHtml].join('\n');
 
   // Read template and CSS
   const template = readFileSync(join(viewerDir, 'template.html'), 'utf8');

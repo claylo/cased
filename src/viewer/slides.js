@@ -94,12 +94,6 @@ function buildSlides() {
     addSlide(container, titleContent, header);
   }
 
-  // Terrain map slide
-  const terrainSection = document.getElementById('terrain-map');
-  if (terrainSection) {
-    addSlide(container, terrainSection.cloneNode(true), terrainSection);
-  }
-
   // Narrative slides
   for (const narrative of document.querySelectorAll('section.narrative')) {
     // Intro slide: title + thesis
@@ -110,23 +104,22 @@ function buildSlides() {
     if (thesis) introDiv.appendChild(thesis.cloneNode(true));
     addSlide(container, introDiv, narrative);
 
-    // Finding slides
-    for (const article of narrative.querySelectorAll('article.finding')) {
-      addSlide(container, article.cloneNode(true), article);
+    // Flow diagram slide
+    const flowDiagram = narrative.querySelector('.flow-diagram');
+    if (flowDiagram) {
+      addSlide(container, flowDiagram.cloneNode(true), flowDiagram);
     }
 
-    // Verdict slide
+    // Finding slides
+    const articles = narrative.querySelectorAll('article.finding');
     const verdict = narrative.querySelector('p.verdict');
-    if (verdict) {
-      const verdictDiv = document.createElement('div');
-      if (h2) {
-        const h2Clone = h2.cloneNode(true);
-        h2Clone.style.fontSize = '1.2rem';
-        h2Clone.style.color = '#6b7280';
-        verdictDiv.appendChild(h2Clone);
+    for (let ai = 0; ai < articles.length; ai++) {
+      const clone = articles[ai].cloneNode(true);
+      // Append verdict to last finding slide
+      if (ai === articles.length - 1 && verdict) {
+        clone.appendChild(verdict.cloneNode(true));
       }
-      verdictDiv.appendChild(verdict.cloneNode(true));
-      addSlide(container, verdictDiv, verdict);
+      addSlide(container, clone, articles[ai]);
     }
   }
 
