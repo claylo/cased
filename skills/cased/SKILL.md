@@ -74,6 +74,14 @@ Do not narrate what you are reading, what you found in each file, or
 what each agent is doing as it works. The report is the deliverable,
 not the commentary.
 
+**Division of labor:** During Phase 2 (Analysis), you are a dispatcher,
+not an analyst. Do NOT read project source files yourself — that is
+what the agents do. Your job is to classify the codebase from recon
+data and manifest files (Cargo.toml, package.json, etc.), dispatch
+agents, wait for results, and assemble findings. If you find yourself
+reading `.rs`, `.ts`, `.py`, or other source files during Phase 2,
+you are doing the agents' work and wasting tokens.
+
 ## Workflow
 
 The audit proceeds in five phases. Each phase produces a concrete artifact.
