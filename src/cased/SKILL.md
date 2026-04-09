@@ -106,7 +106,27 @@ When a domain skill is present:
 7. Write the thesis and verdict for each narrative based on the
    collected findings — these are your assessment, not the agents'.
 
-When no domain skill is present, proceed with general analysis below.
+When no domain skill is present, dispatch the built-in analysis agents:
+
+1. Classify the codebase to determine which agents to dispatch:
+   - `security`, `error-handling`, and `code-quality` always apply.
+   - Has external dependencies (package.json, Cargo.toml, go.mod, etc.)? → `dependencies`
+   - Exposes a public API (library, HTTP endpoints, CLI)? → `api-design`
+   - Performance-sensitive or has hot paths? → `performance`
+2. Dispatch applicable agents in parallel. Each agent returns findings
+   in cased's `findings.yaml` schema.
+3. **Wait for ALL agents to complete.** Same rules as domain skill
+   dispatch — agents ARE the analysis. Do not proceed until all return.
+4. Collect agent output, deduplicate, and organize into narratives.
+
+| Agent | Surface | When to Dispatch | Definition |
+|-------|---------|-----------------|------------|
+| **Security** | Injection, auth, secrets, input validation | Always | `${CLAUDE_SKILL_DIR}/agents/security.md` |
+| **Error Handling** | Error paths, silent failures, crash risks | Always | `${CLAUDE_SKILL_DIR}/agents/error-handling.md` |
+| **Code Quality** | Complexity, duplication, dead code, test gaps | Always | `${CLAUDE_SKILL_DIR}/agents/code-quality.md` |
+| **Performance** | Algorithmic complexity, resource leaks, hot paths | Performance-sensitive code or large codebases | `${CLAUDE_SKILL_DIR}/agents/performance.md` |
+| **API Design** | Public API surface, naming, contracts | Libraries, HTTP APIs, CLIs | `${CLAUDE_SKILL_DIR}/agents/api-design.md` |
+| **Dependencies** | Outdated versions, advisories, license risks | External deps present | `${CLAUDE_SKILL_DIR}/agents/dependencies.md` |
 
 **Narrative grouping:** Organize findings into narratives, not categories.
 A narrative is a coherent story about a *surface* — an area of the codebase
