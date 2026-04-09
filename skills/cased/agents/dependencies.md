@@ -102,6 +102,10 @@ findings:
       no elisions. Line numbers are rendered from start_line.
       Use multiple locations for non-contiguous code.>
     evidence_lang: "toml"
+    evidence_markers:
+      - lines: "<line or range, e.g. '3' or '3-7'>"
+        type: del | mark | ins
+        label: "<optional: what this marker highlights>"
     mechanism: "<what is wrong and why>"
     remediation: "<how to fix>"
     temporal:
@@ -116,6 +120,12 @@ findings:
     effort: trivial | small | medium | large
     effort_notes: "<brief justification>"
 ```
+
+## Flow Diagrams
+
+Do NOT include a `flow` array in dependency findings. Dependency audits
+are item-by-item evaluations (advisory, version, license), not process
+flows. There is no sequential or branching structure to diagram.
 
 ## Validation
 

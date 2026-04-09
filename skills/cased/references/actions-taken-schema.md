@@ -28,14 +28,14 @@ status:
 # Actions Taken: {Audit Title}
 
 Summary of remediation status for the
-[{date} {scope} audit](index.md).
+[{date} {scope} audit](README.md).
 
 ---
 
 ## YYYY-MM-DD — {brief description of action}
 
 **Disposition:** {fixed | mitigated | accepted | disputed | deferred}
-**Addresses:** [{finding-slug}](index.md#{anchor}), [{finding-slug}](index.md#{anchor})
+**Addresses:** [{finding-slug}](README.md#{anchor}), [{finding-slug}](README.md#{anchor})
 **Commit:** {SHA or PR link}
 **Author:** {who did the work}
 
@@ -90,7 +90,7 @@ accepted + disputed + deferred)`. When `open` reaches 0, all findings
 have been dispositioned (though not necessarily fixed).
 
 **Linking:** Each finding slug in the `Addresses` field links back to
-the finding's anchor in `index.md`. This creates bidirectional
+the finding's anchor in `README.md`. This creates bidirectional
 navigation: the audit report links forward to the remediation ledger
 (via the Remediation Ledger table), and actions-taken links back to
 the specific findings.
