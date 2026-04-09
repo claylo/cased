@@ -129,6 +129,14 @@ Do not narrate what you are reading, what you found in each file, or
 what each agent is doing as it works. The report is the deliverable,
 not the commentary.
 
+**Division of labor:** During agent dispatch, you are a dispatcher,
+not an analyst. Do NOT read project source files yourself — that is
+what the agents do. Your job is to run tools, classify the codebase
+from tool output and Cargo.toml, dispatch agents, wait for results,
+and assemble findings. If you find yourself reading `.rs` source
+files during dispatch, you are doing the agents' work and wasting
+tokens.
+
 ## Running a Full Review (Subagent Dispatch)
 
 For a comprehensive review, dispatch six specialized agents in parallel.
