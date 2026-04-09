@@ -8,7 +8,7 @@ build-report audit_dir:
 
 # Build everything: bundle JS, then build report from example data
 build-example: build-viewer
-    node dist/build-report.js example/2026-03-21-current-repo-review
+    node build/build-report.js example/2026-03-21-current-repo-review
 
 # Run tests
 test:
