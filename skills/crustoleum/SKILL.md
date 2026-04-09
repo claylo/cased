@@ -17,7 +17,7 @@ the rubric evaluation, not replacements for it.
 Tools that fail = immediate findings. Tools that pass = green light to apply
 judgment rubrics.
 
-## The 13 Surfaces
+## The 14 Surfaces
 
 Each surface is a coherent concern area with a thesis, binary criteria, and
 priority tags. Criteria are in the reference files — load the relevant surface
@@ -38,8 +38,9 @@ for the code under review.
 | 11 | **Panic & Program Flow** | 5 | SEC/BUG | `${CLAUDE_SKILL_DIR}/references/error-handling-and-panics.md` |
 | 12 | **Performance** | 12 | PERF | `${CLAUDE_SKILL_DIR}/references/performance.md` |
 | 13 | **Dependency Fitness** | 9 | PERF/SEC | `${CLAUDE_SKILL_DIR}/references/dependency-fitness.md` |
+| 14 | **Feature Completeness** | 5 | BUG/SEC | `${CLAUDE_SKILL_DIR}/agents/completeness.md` |
 
-**Total: 84 criteria across 13 surfaces.**
+**Total: 89 criteria across 14 surfaces.**
 
 ## Priority Tags
 
@@ -117,6 +118,7 @@ Output lands in `.crustoleum/` — one `.txt` per tool plus `summary.md`.
 Agents receive their relevant tool output files as input context.
 
 **Step 2: Classify the codebase** to determine which agents to dispatch:
+- `completeness` always runs.
 - Has `unsafe` blocks? → `safety-auditor`
 - Has `extern "C"` / FFI? → `supply-chain-deps` (includes FFI surface)
 - Has async/await or threads? → `concurrency-reviewer`
@@ -135,6 +137,7 @@ persona, and instructions for consuming tool output from `.crustoleum/`.
 | **Concurrency** | 6 | `${CLAUDE_SKILL_DIR}/agents/concurrency.md` |
 | **Supply Chain & Deps** | 7, 8, 13 | `${CLAUDE_SKILL_DIR}/agents/supply-chain-deps.md` |
 | **Performance** | 12 + [PERF] cross-refs | `${CLAUDE_SKILL_DIR}/agents/performance.md` |
+| **Completeness** | 14 | `${CLAUDE_SKILL_DIR}/agents/completeness.md` |
 
 **Step 4: Synthesize findings.** Collect all agent results. Deduplicate
 (multiple agents may flag the same code from different angles). Present
