@@ -1,0 +1,7 @@
+PRIVATE_MEMORY.md
+.private-journal/
+node_modules/
+build/
+dist/
+example/*/report.html
+.claude/

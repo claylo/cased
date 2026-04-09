@@ -1,0 +1,395 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+# Runs Rust code review tooling and captures output for rubric evaluation.
+# Output goes to .crustoleum/ in the project root (next to Cargo.toml).
+#
+# Usage:
+#   scripts/run-tools [--full] [tool ...]
+#
+# No args + TTY + fzf:  interactive picker
+# No args + no TTY:     default set (clippy audit deny machete geiger udeps)
+# --full:               all tools including miri and sanitizers
+# tool ...:             run only named tools
+
+# --- tool catalog ---
+ALL_TOOLS=(clippy audit deny machete geiger udeps miri asan tsan)
+DEFAULT_TOOLS=(clippy audit deny machete geiger udeps)
+
+declare -A TOOL_DESC
+TOOL_DESC[clippy]="800+ lints: correctness, perf, style"
+TOOL_DESC[audit]="Known CVEs in dependencies (RustSec)"
+TOOL_DESC[deny]="Advisories + licenses + banned crates"
+TOOL_DESC[machete]="Unused dependencies (heuristic)"
+TOOL_DESC[geiger]="Unsafe code census across dep tree"
+TOOL_DESC[udeps]="Unused declared dependencies (nightly)"
+TOOL_DESC[miri]="UB detection in pure code (nightly, slow)"
+TOOL_DESC[asan]="Buffer overflow, use-after-free (nightly, slow)"
+TOOL_DESC[tsan]="Data races (nightly, slow)"
+
+has_cmd() { command -v "$1" >/dev/null 2>&1; }
+
+# --- arg parsing ---
+SELECTED=()
+FULL=false
+
+for arg in "$@"; do
+  case "$arg" in
+    --full) FULL=true ;;
+    --help|-h)
+      echo "Usage: run-tools [--full] [tool ...]" >&2
+      echo "" >&2
+      echo "Tools: ${ALL_TOOLS[*]}" >&2
+      echo "Default: ${DEFAULT_TOOLS[*]}" >&2
+      exit 0
+      ;;
+    *)
+      # Validate tool name
+      valid=false
+      for t in "${ALL_TOOLS[@]}"; do
+        [[ "$arg" == "$t" ]] && valid=true && break
+      done
+      if [[ "$valid" == true ]]; then
+        SELECTED+=("$arg")
+      else
+        echo "Unknown tool: $arg" >&2
+        echo "Available: ${ALL_TOOLS[*]}" >&2
+        exit 1
+      fi
+      ;;
+  esac
+done
+
+if [[ "$FULL" == true ]]; then
+  SELECTED=("${ALL_TOOLS[@]}")
+elif [[ ${#SELECTED[@]} -eq 0 ]]; then
+  # No tools specified — interactive picker or defaults
+  if [[ -t 0 ]] && has_cmd fzf; then
+    fzf_input=""
+    for tool in "${ALL_TOOLS[@]}"; do
+      marker=" "
+      for d in "${DEFAULT_TOOLS[@]}"; do
+        [[ "$tool" == "$d" ]] && marker="*"
+      done
+      printf -v line "%-2s %-10s %s" "$marker" "$tool" "${TOOL_DESC[$tool]}"
+      fzf_input+="${line}"$'\n'
+    done
+
+    picked=$(echo "$fzf_input" | fzf --multi \
+      --header "Tab=toggle  Enter=confirm  Esc=use defaults  (*=default set)" \
+      --reverse --no-sort \
+      | awk '{print $2}')
+
+    if [[ -n "$picked" ]]; then
+      while IFS= read -r tool; do
+        SELECTED+=("$tool")
+      done <<< "$picked"
+    else
+      # Esc or empty selection — use defaults
+      SELECTED=("${DEFAULT_TOOLS[@]}")
+    fi
+  else
+    SELECTED=("${DEFAULT_TOOLS[@]}")
+  fi
+fi
+
+# Build enabled set for fast lookup
+declare -A ENABLED
+for tool in "${SELECTED[@]}"; do
+  ENABLED["$tool"]=1
+done
+tool_enabled() { [[ "${ENABLED[$1]:-}" == "1" ]]; }
+
+# --- locate project root ---
+META_JSON=$(cargo metadata --format-version=1 --no-deps 2>/dev/null)
+ROOT=$(echo "$META_JSON" | jq -r '.workspace_root // empty' 2>/dev/null)
+if [[ -z "$ROOT" ]]; then
+  ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+fi
+
+# --- workspace detection ---
+# A virtual workspace has multiple packages but no root package matching
+# the workspace_root manifest. We detect this by checking package count.
+PKG_COUNT=$(echo "$META_JSON" | jq '[.packages[] | select(.source == null)] | length' 2>/dev/null || echo "1")
+IS_WORKSPACE=false
+if [[ "$PKG_COUNT" -gt 1 ]]; then
+  IS_WORKSPACE=true
+fi
+
+# Local package names and manifest paths (for tools that need per-package iteration)
+WORKSPACE_PKGS=()
+WORKSPACE_MANIFESTS=()
+if [[ "$IS_WORKSPACE" == true ]]; then
+  while IFS=$'\t' read -r pkg manifest; do
+    WORKSPACE_PKGS+=("$pkg")
+    WORKSPACE_MANIFESTS+=("$manifest")
+  done < <(echo "$META_JSON" | jq -r '.packages[] | select(.source == null) | "\(.name)\t\(.manifest_path)"' 2>/dev/null)
+fi
+
+# --- config discovery ---
+# Look for tool configs in .config/ first, then project root.
+find_config() {
+  local name="$1"
+  if [[ -f "${ROOT}/.config/${name}" ]]; then
+    echo "${ROOT}/.config/${name}"
+  elif [[ -f "${ROOT}/${name}" ]]; then
+    echo "${ROOT}/${name}"
+  fi
+}
+
+DENY_CONFIG=$(find_config "deny.toml")
+
+OUTDIR="${ROOT}/.crustoleum"
+mkdir -p "$OUTDIR"
+# Clear prior run results so stale files don't linger
+rm -f "${OUTDIR}"/*.txt "${OUTDIR}"/summary.md
+
+has_nightly() { rustup toolchain list 2>/dev/null | grep -q '^nightly'; }
+has_component() {
+  rustup component list --toolchain "$1" 2>/dev/null | grep -q "^${2}.*installed"
+}
+
+# Track results for summary
+declare -A RESULTS
+
+run_tool() {
+  local name="$1" outfile="$2"
+  shift 2
+  echo "  Running ${name}..." >&2
+  if "$@" > "${OUTDIR}/${outfile}" 2>&1; then
+    RESULTS["$name"]="pass"
+  else
+    RESULTS["$name"]="findings"
+  fi
+}
+
+echo "crustoleum: running tools (${SELECTED[*]})..." >&2
+echo "  Output: ${OUTDIR}/" >&2
+echo "" >&2
+
+# ============================================================
+# GROUP 1 — No compilation, launch in parallel
+# ============================================================
+g1_tools=()
+for t in audit deny machete; do tool_enabled "$t" && g1_tools+=("$t"); done
+
+if [[ ${#g1_tools[@]} -gt 0 ]]; then
+  echo "--- Group 1: dependency audit (parallel) ---" >&2
+
+  pids=()
+
+  if tool_enabled audit; then
+    if has_cmd cargo-audit; then
+      cargo audit > "${OUTDIR}/audit.txt" 2>&1 &
+      pids+=($!)
+    else
+      echo "cargo-audit not installed, skipping" > "${OUTDIR}/audit.txt"
+    fi
+  fi
+
+  if tool_enabled deny; then
+    if has_cmd cargo-deny; then
+      deny_args=(deny check)
+      if [[ -n "$DENY_CONFIG" ]]; then
+        deny_args=(deny check -c "$DENY_CONFIG")
+      fi
+      cargo "${deny_args[@]}" > "${OUTDIR}/deny.txt" 2>&1 &
+      pids+=($!)
+    else
+      echo "cargo-deny not installed, skipping" > "${OUTDIR}/deny.txt"
+    fi
+  fi
+
+  if tool_enabled machete; then
+    if has_cmd cargo-machete; then
+      cargo machete > "${OUTDIR}/machete.txt" 2>&1 &
+      pids+=($!)
+    else
+      echo "cargo-machete not installed, skipping" > "${OUTDIR}/machete.txt"
+    fi
+  fi
+
+  # Wait for Group 1
+  for pid in "${pids[@]}"; do
+    wait "$pid" 2>/dev/null
+  done
+
+  # Record Group 1 results
+  for tool in "${g1_tools[@]}"; do
+    file="${OUTDIR}/${tool}.txt"
+    if grep -qi "not installed\|skipping" "$file" 2>/dev/null; then
+      RESULTS["$tool"]="skipped"
+    elif grep -qi "error\|vulnerability\|warning\|unused" "$file" 2>/dev/null; then
+      RESULTS["$tool"]="findings"
+    else
+      RESULTS["$tool"]="pass"
+    fi
+  done
+
+  echo "  Group 1 done." >&2
+  echo "" >&2
+fi
+
+# ============================================================
+# GROUP 2 — Compilation required, sequential (target dir lock)
+# ============================================================
+g2_tools=()
+for t in clippy geiger udeps; do tool_enabled "$t" && g2_tools+=("$t"); done
+
+if [[ ${#g2_tools[@]} -gt 0 ]]; then
+  echo "--- Group 2: compilation-based analysis (sequential) ---" >&2
+
+  # clippy first — fast feedback, most findings
+  if tool_enabled clippy; then
+    clippy_args=(clippy --all-targets --message-format=short)
+    if [[ "$IS_WORKSPACE" == true ]]; then
+      clippy_args=(clippy --workspace --all-targets --message-format=short)
+    fi
+    run_tool "clippy" "clippy.txt" \
+      cargo "${clippy_args[@]}" -- -D warnings
+  fi
+
+  # geiger — unsafe census (no --workspace flag; iterate packages for workspaces)
+  if tool_enabled geiger; then
+    if has_cmd cargo-geiger; then
+      if [[ "$IS_WORKSPACE" == true ]]; then
+        echo "  Running geiger (${#WORKSPACE_PKGS[@]} packages)..." >&2
+        geiger_exit=0
+        : > "${OUTDIR}/geiger.txt"
+        for i in "${!WORKSPACE_PKGS[@]}"; do
+          echo "=== ${WORKSPACE_PKGS[$i]} ===" >> "${OUTDIR}/geiger.txt"
+          if ! cargo geiger --manifest-path "${WORKSPACE_MANIFESTS[$i]}" --output-format=Ascii >> "${OUTDIR}/geiger.txt" 2>&1; then
+            geiger_exit=1
+          fi
+          echo "" >> "${OUTDIR}/geiger.txt"
+        done
+        if [[ $geiger_exit -eq 0 ]]; then
+          RESULTS["geiger"]="pass"
+        else
+          RESULTS["geiger"]="findings"
+        fi
+      else
+        run_tool "geiger" "geiger.txt" cargo geiger --output-format=Ascii
+      fi
+    else
+      echo "cargo-geiger not installed, skipping" > "${OUTDIR}/geiger.txt"
+      RESULTS["geiger"]="skipped"
+    fi
+  fi
+
+  # udeps — unused dependencies (nightly)
+  if tool_enabled udeps; then
+    if has_cmd cargo-udeps && has_nightly; then
+      udeps_args=(+nightly udeps --all-targets)
+      if [[ "$IS_WORKSPACE" == true ]]; then
+        udeps_args=(+nightly udeps --workspace --all-targets)
+      fi
+      run_tool "udeps" "udeps.txt" cargo "${udeps_args[@]}"
+    elif has_cmd cargo-machete; then
+      : # already ran machete above
+    else
+      echo "neither cargo-udeps nor cargo-machete available" > "${OUTDIR}/udeps.txt"
+      RESULTS["udeps"]="skipped"
+    fi
+  fi
+
+  echo "  Group 2 done." >&2
+  echo "" >&2
+fi
+
+# ============================================================
+# GROUP 3 — Your-code safety tools (nightly, slow)
+# ============================================================
+g3_tools=()
+for t in miri asan tsan; do tool_enabled "$t" && g3_tools+=("$t"); done
+
+if [[ ${#g3_tools[@]} -gt 0 ]]; then
+  echo "--- Group 3: your-code safety (sequential, slow) ---" >&2
+
+  # miri — UB detection in pure code
+  if tool_enabled miri; then
+    if has_nightly && has_component nightly miri; then
+      miri_args=(+nightly miri test)
+      if [[ "$IS_WORKSPACE" == true ]]; then
+        miri_args=(+nightly miri test --workspace)
+      fi
+      run_tool "miri" "miri.txt" cargo "${miri_args[@]}"
+    else
+      echo "miri not available (need: rustup component add miri --toolchain nightly)" > "${OUTDIR}/miri.txt"
+      RESULTS["miri"]="skipped"
+    fi
+  fi
+
+  # Shared sanitizer setup (only if asan or tsan enabled)
+  if tool_enabled asan || tool_enabled tsan; then
+    SANITIZER_TARGET=$(rustc -vV | awk '/host/{print $2}')
+    # Newer nightly rejects ABI mismatch between sanitized code and pre-built std.
+    # -Cunsafe-allow-abi-mismatch=sanitizer suppresses this until -Zbuild-std is practical.
+    SANITIZER_FLAGS_BASE="-Cunsafe-allow-abi-mismatch=sanitizer"
+    san_test_args=(+nightly test --target "$SANITIZER_TARGET")
+    if [[ "$IS_WORKSPACE" == true ]]; then
+      san_test_args=(+nightly test --workspace --target "$SANITIZER_TARGET")
+    fi
+
+    # AddressSanitizer — buffer overflow, use-after-free, leaks
+    if tool_enabled asan; then
+      if has_nightly; then
+        echo "  Running AddressSanitizer..." >&2
+        if RUSTFLAGS="-Zsanitizer=address ${SANITIZER_FLAGS_BASE}" \
+             cargo "${san_test_args[@]}" \
+             > "${OUTDIR}/asan.txt" 2>&1; then
+          RESULTS["asan"]="pass"
+        else
+          RESULTS["asan"]="findings"
+        fi
+      else
+        echo "nightly required for sanitizers" > "${OUTDIR}/asan.txt"
+        RESULTS["asan"]="skipped"
+      fi
+    fi
+
+    # ThreadSanitizer — data races
+    if tool_enabled tsan; then
+      if has_nightly; then
+        echo "  Running ThreadSanitizer..." >&2
+        if RUSTFLAGS="-Zsanitizer=thread ${SANITIZER_FLAGS_BASE}" \
+             cargo "${san_test_args[@]}" \
+             > "${OUTDIR}/tsan.txt" 2>&1; then
+          RESULTS["tsan"]="pass"
+        else
+          RESULTS["tsan"]="findings"
+        fi
+      else
+        echo "nightly required for sanitizers" > "${OUTDIR}/tsan.txt"
+        RESULTS["tsan"]="skipped"
+      fi
+    fi
+  fi
+
+  echo "  Group 3 done." >&2
+  echo "" >&2
+fi
+
+# ============================================================
+# SUMMARY
+# ============================================================
+{
+  echo "# crustoleum tool run"
+  echo ""
+  echo "Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "Project: ${ROOT}"
+  echo "Tools: ${SELECTED[*]}"
+  echo ""
+  echo "| Tool | Result |"
+  echo "|------|--------|"
+  for tool in "${SELECTED[@]}"; do
+    status="${RESULTS[$tool]:-not run}"
+    echo "| ${tool} | ${status} |"
+  done
+  echo ""
+  echo "Details in individual .txt files in this directory."
+} > "${OUTDIR}/summary.md"
+
+echo "--- Summary ---" >&2
+echo "" >&2
+cat "${OUTDIR}/summary.md" >&2
