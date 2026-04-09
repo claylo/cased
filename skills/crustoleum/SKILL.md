@@ -100,6 +100,35 @@ for the code under review.
 | Is application code | 5 (Errors), 11 (Panics), 10 (Idioms) |
 | Has heavyweight deps or slow builds | 13 (Dependency Fitness) |
 
+## Output Discipline
+
+During a review, perform mechanical operations silently. Use bracketed
+notation for actions that don't need user attention:
+
+```
+[Run tools: cargo clippy, cargo audit, cargo deny]
+[Classify codebase — unsafe blocks, FFI, async]
+[Dispatch 6 agents in parallel]
+[Waiting for all agents to return]
+```
+
+**What to say out loud:**
+- Tool selection and run confirmation
+- Agent dispatch summary: "Dispatching 6 agents in parallel."
+- Blocked or failed agents
+- Phase completion with finding counts
+
+**What to do silently (bracket notation):**
+- Reading files, running commands, gathering tool output
+- Classifying the codebase for agent dispatch
+- Individual agent dispatch mechanics
+- Waiting for agents
+- Collecting and deduplicating agent output
+
+Do not narrate what you are reading, what you found in each file, or
+what each agent is doing as it works. The report is the deliverable,
+not the commentary.
+
 ## Running a Full Review (Subagent Dispatch)
 
 For a comprehensive review, dispatch six specialized agents in parallel.
