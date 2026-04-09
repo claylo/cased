@@ -46,7 +46,7 @@ smallest effective difference, annotations over appendices.
 
 ## Workflow
 
-The audit proceeds in four phases. Each phase produces a concrete artifact.
+The audit proceeds in five phases. Each phase produces a concrete artifact.
 
 ### Phase 1: Reconnaissance
 
@@ -202,15 +202,32 @@ full flow schema.
 `temporal.monthly_commits` field. Populate this 12-integer array during
 analysis — no SVG generation is needed.
 
-### Phase 3: Assembly
+### Phase 3: Verification
 
-After writing `findings.yaml`, generate the HTML report:
+After writing `findings.yaml`, spawn the `cased:audit-reviewer` agent
+defined in `${CLAUDE_SKILL_DIR}/agents/reviewer.md` to validate findings
+against the codebase. The reviewer checks that evidence exists at cited
+locations, mechanisms are accurate, and remediations are sound. It produces
+a verdict table (confirmed / adjusted / disputed) for each finding.
+
+If any finding is **disputed**, revise or remove it. If any finding is
+**adjusted**, apply the correction. Findings that are **confirmed** need
+no changes.
+
+This phase is automatic — do not skip it or ask the user whether to run
+it. The reviewer catches evidence rot, line number drift, and misreadings
+before the report is built. Verification runs before assembly so that
+disputed findings are resolved once, not rendered twice.
+
+### Phase 4: Assembly
+
+After verification, generate the HTML report:
 
 ```bash
 node "${CLAUDE_SKILL_DIR}/scripts/build-report.js" <audit-directory>
 ```
 
-This produces `report.html` in the audit directory — an interactive,
+This produces `report.html` in the audit directory �� an interactive,
 presentation-ready report with flow diagrams, syntax-highlighted evidence,
 and slide mode. The HTML report is the primary deliverable. The markdown
 `index.md` is a secondary output for GitHub rendering.
@@ -272,23 +289,7 @@ auth layer is tight, say it's tight and move on. The reader's trust in
 your findings depends on your willingness to say "this is solid" when it
 is. An audit that invents concerns to fill space is performing theater.
 
-## Phase 5: Verification
-
-After assembling the report, spawn the `cased:audit-reviewer` agent defined in
-`${CLAUDE_SKILL_DIR}/agents/reviewer.md` to validate findings against the codebase. The
-reviewer checks that evidence exists at cited locations, mechanisms are
-accurate, and remediations are sound. It produces a verdict table
-(confirmed / adjusted / disputed) for each finding.
-
-If any finding is **disputed**, revise or remove it before delivering
-the report. If any finding is **adjusted**, apply the correction.
-Findings that are **confirmed** need no changes.
-
-This phase is automatic — do not skip it or ask the user whether to run
-it. The reviewer catches evidence rot, line number drift, and misreadings
-before the report reaches the reader.
-
-## Phase 6: Remediation Tracking
+## Phase 5: Remediation Tracking
 
 When remediation actions are taken against findings from an audit, record
 them in `actions-taken.md` within the same audit directory. This file is
