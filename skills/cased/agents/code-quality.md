@@ -101,6 +101,10 @@ findings:
       Line numbers are rendered from start_line, so every line must match
       the source exactly. Use multiple locations for non-contiguous code.>
     evidence_lang: "<language>"
+    evidence_markers:
+      - lines: "<line or range, e.g. '3' or '3-7'>"
+        type: del | mark | ins
+        label: "<optional: what this marker highlights>"
     mechanism: "<what is wrong and why>"
     remediation: "<how to fix>"
     temporal:

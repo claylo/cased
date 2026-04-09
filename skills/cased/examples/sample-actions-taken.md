@@ -12,14 +12,14 @@ status:
 
 # Actions Taken: tokio-relay Full Crate Audit
 
-Summary of remediation status for the [2026-03-15 full crate audit](2026-03-15-full-crate/index.md).
+Summary of remediation status for the [2026-03-15 full crate audit](2026-03-15-full-crate/README.md).
 
 ---
 
 ## 2026-03-18 — Token signature verification implemented
 
 **Disposition:** fixed
-**Addresses:** [token-no-sig-check](2026-03-15-full-crate/index.md#token-verification-skips-signature-check), [session-id-in-claims](2026-03-15-full-crate/index.md#session-id-extracted-from-unverified-claims)
+**Addresses:** [token-no-sig-check](2026-03-15-full-crate/README.md#token-verification-skips-signature-check), [session-id-in-claims](2026-03-15-full-crate/README.md#session-id-extracted-from-unverified-claims)
 **Commit:** e4f5a6b (PR #42)
 **Author:** @maintainer
 
@@ -50,7 +50,7 @@ pub fn verify_token(token: &str, secret: &[u8]) -> Result<Claims, AuthError> {
 ## 2026-03-22 — Production secret guard added
 
 **Disposition:** accepted
-**Addresses:** [secret-env-fallback](2026-03-15-full-crate/index.md#token-secret-loaded-from-environment-without-fallback-validation)
+**Addresses:** [secret-env-fallback](2026-03-15-full-crate/README.md#token-secret-loaded-from-environment-without-fallback-validation)
 **Commit:** n/a
 **Author:** @maintainer
 
@@ -63,7 +63,7 @@ The hardcoded fallback only activates in debug builds, which is the intended beh
 ## 2026-03-28 — Malformed message handling deferred to v0.4
 
 **Disposition:** deferred
-**Addresses:** [malformed-continue](2026-03-15-full-crate/index.md#malformed-message-triggers-continue-not-disconnect)
+**Addresses:** [malformed-continue](2026-03-15-full-crate/README.md#malformed-message-triggers-continue-not-disconnect)
 **Commit:** n/a — tracked as issue #47
 **Author:** @maintainer
 

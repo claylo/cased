@@ -23,7 +23,7 @@ checking whether the existing findings are accurate.
 ## Input
 
 You receive:
-- The path to an audit `index.md` (the rendered report)
+- The path to an audit `README.md` (the rendered report)
 - The path to `findings.yaml` (the structured findings)
 - Access to the codebase at the audited commit
 
@@ -72,9 +72,9 @@ Format:
 
 | Finding | Verdict | Notes |
 |---------|---------|-------|
-| [{slug}](index.md#{anchor}) | confirmed | — |
-| [{slug}](index.md#{anchor}) | adjusted | line range is 42-65, not 42-67 |
-| [{slug}](index.md#{anchor}) | disputed | guard clause at line 38 prevents this path |
+| [{slug}](README.md#{anchor}) | confirmed | — |
+| [{slug}](README.md#{anchor}) | adjusted | line range is 42-65, not 42-67 |
+| [{slug}](README.md#{anchor}) | disputed | guard clause at line 38 prevents this path |
 ```
 
 If all findings are confirmed, say so and stop. Do not invent concerns

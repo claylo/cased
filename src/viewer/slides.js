@@ -211,14 +211,6 @@ function animateSlideAnnotations(slideEl) {
     }
   }
 
-  // Brackets on evidence in critical/significant
-  for (const article of slideEl.querySelectorAll('article.finding[data-concern="critical"], article.finding[data-concern="significant"]')) {
-    const pre = article.querySelector('pre.evidence');
-    if (pre) {
-      const a = annotate(pre, { type: 'bracket', color: '#dc2626', brackets: ['left'], animate: true, animationDuration: 600 });
-      a.show();
-    }
-  }
 }
 
 function nextSlide() { showSlide(currentSlide + 1); }

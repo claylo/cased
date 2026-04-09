@@ -1,7 +1,7 @@
 # Report Template
 
 This defines the exact structure of the rendered audit report
-(`index.md` within the audit directory). The agent should follow this
+(`README.md` within the audit directory). The agent should follow this
 structure precisely. Sections marked `[generated]` are populated from
 the intermediate YAML artifacts.
 

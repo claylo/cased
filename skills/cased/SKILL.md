@@ -150,9 +150,18 @@ Chain Surface," "The Error Handling Surface." Each narrative has:
   will check your evidence against the real code — any mismatch destroys
   credibility.
   **Do not** add comments, annotations, or explanatory text inside the
-  evidence. Use `evidence_markers` to highlight or label specific lines —
-  markers render as visual annotations alongside the code, not as edits
-  to it.
+  evidence. Instead, **always add `evidence_markers`** to point out the
+  problematic lines. Markers render as colored line highlights in the
+  code block — they draw the reader's eye to the problem without
+  touching the source text.
+  Use marker types deliberately:
+  - `del` — "this is the problem" (red highlight)
+  - `mark` — "look at this" (neutral highlight)
+  - `ins` — "this is the fix" (green highlight)
+  Add an optional `label` to explain what the marker highlights.
+  Every finding should have at least one marker pointing at the specific
+  lines that cause the issue. Evidence without markers forces the reader
+  to re-derive what you already know.
   **Do not** elide code with `// ...` or similar placeholders. Elision
   breaks line numbering because the renderer counts every line. If the
   relevant code is too long, narrow the `start_line`/`end_line` range to
@@ -234,7 +243,7 @@ node "${CLAUDE_SKILL_DIR}/scripts/build-report.js" <audit-directory>
 This produces `report.html` in the audit directory �� an interactive,
 presentation-ready report with flow diagrams, syntax-highlighted evidence,
 and slide mode. The HTML report is the primary deliverable. The markdown
-`index.md` is a secondary output for GitHub rendering.
+`README.md` is a secondary output for GitHub rendering.
 
 The intermediate YAML files (`recon.yaml`, `findings.yaml`) persist
 alongside it — they are the machine-readable representation for downstream

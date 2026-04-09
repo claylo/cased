@@ -700,16 +700,6 @@
 			animate: true,
 			animationDuration: 400
 		}).show();
-		for (const article of slideEl.querySelectorAll("article.finding[data-concern=\"critical\"], article.finding[data-concern=\"significant\"]")) {
-			const pre = article.querySelector("pre.evidence");
-			if (pre) _(pre, {
-				type: "bracket",
-				color: "#dc2626",
-				brackets: ["left"],
-				animate: true,
-				animationDuration: 600
-			}).show();
-		}
 	}
 	function nextSlide() {
 		showSlide(currentSlide + 1);
