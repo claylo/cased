@@ -44,6 +44,36 @@ smallest effective difference, annotations over appendices.
 - **Density encodes severity.** More severe findings get more context. No stoplight charts.
 - **Evidence inline.** Code appears with the finding, never in a separate appendix.
 
+## Output Discipline
+
+During the audit, perform mechanical operations silently. Use bracketed
+notation for actions that don't need user attention:
+
+```
+[Read Cargo.toml, package.json — classify codebase]
+[Dispatch 5 agents: security, error-handling, code-quality, completeness, dependencies]
+[Waiting for all agents to return]
+[Collect findings, deduplicate, organize into narratives]
+```
+
+**What to say out loud:**
+- Phase transitions: "Phase 1: Reconnaissance", "Phase 2: Analysis"
+- Agent dispatch summary: "Dispatching 5 agents in parallel."
+- Blocked or failed agents: "The security agent failed — retrying."
+- Phase completion: "Verification complete. 2 findings adjusted."
+
+**What to do silently (bracket notation):**
+- Reading files, running commands, gathering recon data
+- Classifying the codebase for agent dispatch
+- Individual agent dispatch mechanics
+- Waiting for agents
+- Collecting and deduplicating agent output
+- Writing intermediate YAML artifacts
+
+Do not narrate what you are reading, what you found in each file, or
+what each agent is doing as it works. The report is the deliverable,
+not the commentary.
+
 ## Workflow
 
 The audit proceeds in five phases. Each phase produces a concrete artifact.
