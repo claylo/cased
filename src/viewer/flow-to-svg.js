@@ -26,12 +26,7 @@ const V = {
   marginX: 360, marginTextX: 366,
 };
 
-// Horizontal layout
-const H = {
-  spineY: 50, stepSpacing: 120, labelY: 38,
-  connEndY: 72, textYStart: 84, chainRefY: 115,
-  padX: 50, viewBoxH: 130,
-};
+// Horizontal layout removed — vertical only. See commit history for prior art.
 
 const FONT = 'system-ui, -apple-system, sans-serif';
 
@@ -100,9 +95,14 @@ export function flowToSvg(flow, findings = []) {
 
   const offSpineSteps = flow.filter(s => s.spine === false);
 
-  return spineSteps.length <= 4
-    ? renderHorizontal(spineSteps, findingMap, offSpineSteps)
-    : renderVertical(spineSteps, findingMap, offSpineSteps);
+  // Normalize decision labels: must end with '?'
+  for (const step of flow) {
+    if (step.type === 'decision' && step.label && !step.label.endsWith('?')) {
+      step.label = step.label + '?';
+    }
+  }
+
+  return renderVertical(spineSteps, findingMap, offSpineSteps);
 }
 
 function renderVertical(steps, findingMap, offSpineSteps = []) {
@@ -126,7 +126,7 @@ function renderVertical(steps, findingMap, offSpineSteps = []) {
 
     parts.push(`<line x1="${V.spineX + 6}" y1="${decisionY}" x2="${V.offSpineX - 6}" y2="${decisionY}" stroke="${C.spine}" stroke-width="1"/>`);
     parts.push(`<text x="${V.offSpineX - 20}" y="${decisionY - 6}" text-anchor="middle" font-size="8" fill="${C.muted}">no</text>`);
-    parts.push(`<text x="${V.spineX + 8}" y="${decisionY + 14}" font-size="8" fill="${C.muted}">yes</text>`);
+    parts.push(`<text x="${V.spineX - 8}" y="${decisionY + 20}" text-anchor="end" font-size="8" fill="${C.muted}">yes</text>`);
   }
 
   // Spine
@@ -213,64 +213,3 @@ function renderVertical(steps, findingMap, offSpineSteps = []) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-${V.padLeft} 0 ${V.viewBoxW + V.padLeft} ${height}" font-family="${FONT}">\n  ${parts.join('\n  ')}\n</svg>`;
 }
 
-function renderHorizontal(steps, findingMap, offSpineSteps = []) {
-  const parts = [];
-  const width = (steps.length - 1) * H.stepSpacing + H.padX * 2;
-  const x0 = H.padX;
-  const x1 = H.padX + (steps.length - 1) * H.stepSpacing;
-
-  // Spine
-  parts.push(`<line x1="${x0}" y1="${H.spineY}" x2="${x1}" y2="${H.spineY}" stroke="${C.spine}" stroke-width="1"/>`);
-
-  const findingPositions = {};
-
-  for (let i = 0; i < steps.length; i++) {
-    const step = steps[i];
-    const x = H.padX + i * H.stepSpacing;
-    const isEnd = step.type === 'end';
-
-    parts.push(renderShape(step.type, x, H.spineY));
-    parts.push(`<text x="${x}" y="${H.labelY}" text-anchor="middle" font-size="11" fill="${isEnd ? C.muted : C.shape}">${esc(step.label)}</text>`);
-
-    // Finding annotations
-    const entries = (step.findings || []).map(normalizeFindingEntry);
-    for (let fi = 0; fi < entries.length; fi++) {
-      const { slug, label } = entries[fi];
-      const finding = findingMap[slug];
-      if (!finding) continue;
-
-      const style = CONCERN_STYLES[finding.concern] || CONCERN_STYLES.note;
-      const displayTitle = label || finding.title;
-      const titleY = H.textYStart + fi * 24;
-      const badgeY = titleY + 12;
-
-      // Vertical connector from shape down
-      parts.push(`<line x1="${x}" y1="${H.spineY + 7}" x2="${x}" y2="${H.connEndY}" stroke="${style.stroke}" stroke-width="${style.width}"/>`);
-      // Title
-      parts.push(`<text x="${x}" y="${titleY}" text-anchor="middle" font-size="10" font-weight="600" fill="${style.fill}">${esc(displayTitle)}</text>`);
-      // Badge
-      parts.push(`<text x="${x}" y="${badgeY}" text-anchor="middle" font-size="7.5" fill="${style.badge}" font-weight="500" letter-spacing="0.5">${finding.concern.toUpperCase()}</text>`);
-      findingPositions[slug] = { x };
-    }
-  }
-
-  // Chain references
-  for (const step of steps) {
-    for (const { slug } of (step.findings || []).map(normalizeFindingEntry)) {
-      const finding = findingMap[slug];
-      const chainRefs = finding.chains;
-      if (!chainRefs) continue;
-      for (const targetSlug of (chainRefs.enables || [])) {
-        const from = findingPositions[slug];
-        const to = findingPositions[targetSlug];
-        if (!from || !to) continue;
-        const [left, right] = from.x < to.x ? [from.x, to.x] : [to.x, from.x];
-        parts.push(`<line x1="${left}" y1="${H.chainRefY}" x2="${right}" y2="${H.chainRefY}" stroke="${C.muted}" stroke-width="1" stroke-dasharray="3,2"/>`);
-        const midX = Math.round((left + right) / 2);
-        parts.push(`<text x="${midX}" y="${H.chainRefY + 10}" text-anchor="middle" font-size="7" fill="${C.muted}">enables</text>`);
-      }
-    }
-  }
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${H.viewBoxH}" font-family="${FONT}">\n  ${parts.join('\n  ')}\n</svg>`;
-}
