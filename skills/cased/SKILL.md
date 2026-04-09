@@ -109,7 +109,7 @@ When a domain skill is present:
 When no domain skill is present, dispatch the built-in analysis agents:
 
 1. Classify the codebase to determine which agents to dispatch:
-   - `security`, `error-handling`, and `code-quality` always apply.
+   - `security`, `error-handling`, `code-quality`, and `completeness` always apply.
    - Has external dependencies (package.json, Cargo.toml, go.mod, etc.)? → `dependencies`
    - Exposes a public API (library, HTTP endpoints, CLI)? → `api-design`
    - Performance-sensitive or has hot paths? → `performance`
@@ -127,6 +127,7 @@ When no domain skill is present, dispatch the built-in analysis agents:
 | **Performance** | Algorithmic complexity, resource leaks, hot paths | Performance-sensitive code or large codebases | `${CLAUDE_SKILL_DIR}/agents/performance.md` |
 | **API Design** | Public API surface, naming, contracts | Libraries, HTTP APIs, CLIs | `${CLAUDE_SKILL_DIR}/agents/api-design.md` |
 | **Dependencies** | Outdated versions, advisories, license risks | External deps present | `${CLAUDE_SKILL_DIR}/agents/dependencies.md` |
+| **Completeness** | Documented features, API promises, era expectations | Always | `${CLAUDE_SKILL_DIR}/agents/completeness.md` |
 
 **Narrative grouping:** Organize findings into narratives, not categories.
 A narrative is a coherent story about a *surface* — an area of the codebase
