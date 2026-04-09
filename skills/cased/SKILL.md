@@ -179,9 +179,13 @@ CVSS, OWASP risk ratings, or generic high/medium/low. They describe the
 - `note` — observation worth recording, no action required
 
 **Flow diagrams** are authored as data in `findings.yaml` and rendered
-automatically by the build script. Add a `flow` array to any narrative
-where findings attach to steps in a process — authentication flows,
-request pipelines, data validation chains, build/deploy sequences.
+automatically by the build script. **Default to adding a `flow` array
+to every narrative** that describes a process, state transition, or data
+path — authentication flows, request pipelines, data validation chains,
+build/deploy sequences. Only omit `flow` when the narrative truly has no
+sequential or branching structure to visualize. Most narratives have one.
+If you're unsure, draw the flow — a diagram that turns out to be trivial
+is better than a missing diagram the reader needed.
 
 How to build a flow:
 1. Identify the spine — the happy-path steps in order.
