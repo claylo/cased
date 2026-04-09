@@ -79,6 +79,10 @@ findings:
       <VERBATIM dependency declaration or cargo-tree excerpt — no added
       comments, no elisions. Use multiple locations for non-contiguous code.>
     evidence_lang: toml
+    evidence_markers:
+      - lines: "<line or range, e.g. '3' or '3-7'>"
+        type: del | mark | ins
+        label: "<optional: what this marker highlights>"
     mechanism: "<what is wrong and why>"
     remediation: "<how to fix without prescribing exact code>"
     temporal:
@@ -93,6 +97,13 @@ findings:
     effort: trivial | small | medium | large
     effort_notes: "<brief justification>"
 ```
+
+## Flow Diagrams
+
+Do NOT include a `flow` array in dependency or supply-chain findings.
+These audits are item-by-item evaluations (advisory, version, license,
+fitness), not process flows. There is no sequential or branching
+structure to diagram.
 
 ## Validation
 

@@ -66,7 +66,7 @@ Crustoleum dispatches six specialist agents in parallel. Each one loads its assi
 | Supply Chain & Deps | 7, 8, 13 | Always |
 | Performance | 12 + cross-refs | Performance-sensitive code |
 
-The Safety Auditor and Concurrency agents run at `effort: ultrathink` (maximum reasoning depth) — they prove the absence of UB and deadlocks, not scan for lint. The rest use standard depth.
+The Safety Auditor and Concurrency agents run at `effort: ultrathink` (maximum reasoning depth) — they prove the absence of UB and deadlocks, not scan for lint. The rest use standard effort.
 
 ## Installation
 
@@ -104,7 +104,7 @@ Miri and the sanitizers are slow. They're worth it. They find the bugs that show
 
 ### With cased (recommended)
 
-Crustoleum works best as a domain skill within [cased](https://github.com/claylo/cased). Cased is a code audit framework that renders findings into HTML reports with flow diagrams, sparklines, and syntax-highlighted evidence.
+Crustoleum works best as a domain skill within [cased](https://github.com/claylo/cased). Cased is a code audit framework that renders findings into standalone, single-file HTML reports with flow diagrams, sparklines, and syntax-highlighted evidence.
 
 Ask cased for an audit on a Rust project. It detects `Cargo.toml`, loads crustoleum, and dispatches the agents. You get the full pipeline: tool runs, rubric checks, narrative grouping, and a report you can hand to humans.
 
