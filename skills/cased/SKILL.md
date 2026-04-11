@@ -256,20 +256,35 @@ analysis — no SVG generation is needed.
 
 ### Phase 3: Verification
 
-After writing `findings.yaml`, spawn the `cased:audit-reviewer` agent
-defined in `${CLAUDE_SKILL_DIR}/agents/reviewer.md` to validate findings
-against the codebase. The reviewer checks that evidence exists at cited
-locations, mechanisms are accurate, and remediations are sound. It produces
-a verdict table (confirmed / adjusted / disputed) for each finding.
+After writing `findings.yaml`, verification happens in two steps:
+
+**3a. Schema validation.** Before invoking the reviewer, validate both
+YAML artifacts against their JSON Schemas:
+
+```bash
+node "${CLAUDE_SKILL_DIR}/scripts/build-report.js" validate <audit-directory>
+```
+
+The validator checks `recon.yaml` and `findings.yaml` against
+`recon.schema.json` and `findings.schema.json` (JSON Schema Draft 2020-12).
+It reports each violation with a field path and a specific error, so you
+can fix the YAML in place before continuing. A passing validate is a
+prerequisite for assembly; do not proceed to 3b if validation fails.
+
+**3b. Evidence review.** Spawn the `cased:audit-reviewer` agent defined
+in `${CLAUDE_SKILL_DIR}/agents/reviewer.md` to validate findings against
+the codebase. The reviewer checks that evidence exists at cited locations,
+mechanisms are accurate, and remediations are sound. It produces a verdict
+table (confirmed / adjusted / disputed) for each finding.
 
 If any finding is **disputed**, revise or remove it. If any finding is
 **adjusted**, apply the correction. Findings that are **confirmed** need
 no changes.
 
 This phase is automatic — do not skip it or ask the user whether to run
-it. The reviewer catches evidence rot, line number drift, and misreadings
-before the report is built. Verification runs before assembly so that
-disputed findings are resolved once, not rendered twice.
+it. Schema validation catches type and structure drift; the reviewer
+catches evidence rot, line number drift, and misreadings. Both run before
+assembly so that disputed findings are resolved once, not rendered twice.
 
 ### Phase 4: Assembly
 
@@ -395,8 +410,12 @@ context from `findings.yaml`.
 
 Read these before generating output:
 
-- `${CLAUDE_SKILL_DIR}/references/recon-schema.yaml.md` — Full schema for the recon artifact
-- `${CLAUDE_SKILL_DIR}/references/findings-schema.yaml.md` — Full schema for the findings artifact
+- `${CLAUDE_SKILL_DIR}/references/recon-schema.yaml.md` — Human-readable schema for the recon artifact (generated from the canonical example, validated against the JSON Schema at build time)
+- `${CLAUDE_SKILL_DIR}/references/findings-schema.yaml.md` — Human-readable schema for the findings artifact (same build guarantees)
+- `${CLAUDE_SKILL_DIR}/references/recon.schema.json` — JSON Schema (Draft 2020-12) for programmatic validation
+- `${CLAUDE_SKILL_DIR}/references/findings.schema.json` — JSON Schema (Draft 2020-12) for programmatic validation
+- `${CLAUDE_SKILL_DIR}/references/recon.example.yaml` — Canonical validated example for `recon.yaml`
+- `${CLAUDE_SKILL_DIR}/references/findings.example.yaml` — Canonical validated example for `findings.yaml`
 - `${CLAUDE_SKILL_DIR}/references/report-template.md` — Exact markdown structure for the report
 - `${CLAUDE_SKILL_DIR}/references/actions-taken-schema.md` — Format for the remediation log
 - `${CLAUDE_SKILL_DIR}/examples/sample-audit.md` — A complete rendered example report

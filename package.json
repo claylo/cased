@@ -8,6 +8,8 @@
     "@shikijs/engine-javascript": "^4.0.2",
     "@shikijs/langs": "^4.0.2",
     "@shikijs/themes": "^4.0.2",
+    "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1",
     "rolldown": "^1.0.0-rc.14",
     "rough-notation": "^0.5.1",
     "yaml": "^2.8.3"
