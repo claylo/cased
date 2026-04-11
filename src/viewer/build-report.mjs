@@ -405,6 +405,84 @@ export function generateSparklines(auditDir, findings) {
 }
 
 /**
+ * Title-case a kebab-case slug for display ("full-crate" → "Full Crate").
+ * @param {string} slug
+ * @returns {string}
+ */
+export function titleFromScope(slug) {
+  if (!slug) return '';
+  return String(slug)
+    .split('-')
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+/**
+ * Format a single location as a backticked `path:line` or `path:start-end` string.
+ * Returns empty string if location is missing or malformed.
+ * @param {object} loc
+ * @returns {string}
+ */
+function formatAgentsLocation(loc) {
+  if (!loc || !loc.path) return '';
+  const start = loc.start_line;
+  const end = loc.end_line;
+  if (start && end && end !== start) return `\`${loc.path}:${start}-${end}\``;
+  if (start) return `\`${loc.path}:${start}\``;
+  return `\`${loc.path}\``;
+}
+
+/**
+ * Render the finding index markdown: narratives as H3 headers, findings as
+ * bullet list with slug, concern, and primary location.
+ * @param {object} findings — parsed findings YAML
+ * @returns {string}
+ */
+export function renderAgentsFindingList(findings) {
+  const lines = [];
+  for (const n of findings.narratives || []) {
+    if (n.title) {
+      lines.push(`### ${n.title}`);
+      lines.push('');
+    }
+    for (const f of (n.findings || [])) {
+      const loc = formatAgentsLocation(f.locations?.[0]);
+      const concern = f.concern ? ` (${f.concern})` : '';
+      const locSuffix = loc ? ` — ${loc}` : '';
+      lines.push(`- \`${f.slug}\`${concern}${locSuffix}`);
+    }
+    lines.push('');
+  }
+  return lines.join('\n').trimEnd();
+}
+
+/**
+ * Render the AGENTS.md content by interpolating a template string with
+ * audit metadata and the pre-rendered finding list.
+ * @param {object} findings — parsed findings YAML
+ * @param {string} templateStr — raw template markdown
+ * @returns {string}
+ */
+export function renderAgentsMd(findings, templateStr) {
+  const auditSlug = `${findings.audit_date}-${findings.scope}`;
+  const auditTitle = titleFromScope(findings.scope);
+  let findingCount = 0;
+  for (const n of findings.narratives || []) {
+    findingCount += (n.findings || []).length;
+  }
+  const findingList = renderAgentsFindingList(findings);
+
+  return templateStr
+    .replaceAll('{{audit_title}}', auditTitle)
+    .replaceAll('{{audit_slug}}', auditSlug)
+    .replaceAll('{{audit_scope}}', findings.scope || '')
+    .replaceAll('{{audit_date}}', findings.audit_date || '')
+    .replaceAll('{{finding_count}}', String(findingCount))
+    .replaceAll('{{finding_list}}', findingList);
+}
+
+/**
  * Assemble a single self-contained report.html from audit YAML, template, CSS, and fonts.
  * @param {string} auditDir — path to audit directory (contains recon.yaml, findings.yaml)
  * @param {object} opts
@@ -541,5 +619,20 @@ if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url
     const outPath = join(auditDir, 'report.html');
     writeFileSync(outPath, html);
     console.log(`wrote ${outPath} (${(html.length / 1024).toFixed(0)}KB)`);
+
+    // Write AGENTS.md from template. Template lives next to template.html in
+    // both source and skill layouts, so the same viewerDir candidate resolution
+    // that found template.html will find this too.
+    const agentsTemplatePath = join(viewerDir, 'agents-md-template.md');
+    if (existsSync(agentsTemplatePath)) {
+      const findings = parseFindings(readFileSync(join(auditDir, 'findings.yaml'), 'utf8'));
+      const template = readFileSync(agentsTemplatePath, 'utf8');
+      const agentsMd = renderAgentsMd(findings, template);
+      const agentsPath = join(auditDir, 'AGENTS.md');
+      writeFileSync(agentsPath, agentsMd);
+      console.log(`wrote ${agentsPath} (${(agentsMd.length / 1024).toFixed(1)}KB)`);
+    } else {
+      console.warn(`agents-md-template.md not found at ${agentsTemplatePath}; skipping AGENTS.md`);
+    }
   })();
 }

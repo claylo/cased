@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseFindings, parseRecon, renderHeader, renderLedger, assembleReport } from '../src/viewer/build-report.mjs';
 import { inferLangFromPath, buildMetaString, formatLocationTitle } from '../src/viewer/build-report.mjs';
+import { titleFromScope, renderAgentsFindingList, renderAgentsMd } from '../src/viewer/build-report.mjs';
 import { readFileSync } from 'node:fs';
 import YAML from 'yaml';
 
@@ -128,5 +129,57 @@ describe('assembleReport', () => {
     assert.ok(html.includes('cased-data'));
     assert.ok(html.includes('expressive-code'));
     assert.ok(html.includes('Remediation Ledger'));
+  });
+});
+
+describe('titleFromScope', () => {
+  it('title-cases a kebab slug', () => {
+    assert.equal(titleFromScope('current-repo-review'), 'Current Repo Review');
+  });
+  it('handles single word', () => {
+    assert.equal(titleFromScope('auth'), 'Auth');
+  });
+  it('returns empty string for empty input', () => {
+    assert.equal(titleFromScope(''), '');
+    assert.equal(titleFromScope(undefined), '');
+  });
+});
+
+describe('renderAgentsFindingList', () => {
+  it('groups findings under narrative titles with concern and location', () => {
+    const findings = parseFindings(findingsYaml);
+    const list = renderAgentsFindingList(findings);
+    // Both narrative titles present as H3s
+    assert.ok(list.includes('### The Location Truthfulness Surface'));
+    assert.ok(list.includes('### The Text Boundary Surface'));
+    // All three example finding slugs present with their concerns
+    assert.ok(list.includes('`curate-validation-suppresses-unresolved-without-suggestion` (significant)'));
+    assert.ok(list.includes('`main-file-detection-uses-substring-match` (moderate)'));
+    assert.ok(list.includes('`unicode-casefold-offsets-drift-from-source` (moderate)'));
+    // Location annotation uses backticked path:line format
+    assert.ok(list.includes('`crates/colophon/src/commands/curate.rs:58-66`'));
+  });
+});
+
+describe('renderAgentsMd', () => {
+  it('interpolates template placeholders from findings', () => {
+    const findings = parseFindings(findingsYaml);
+    const template = readFileSync('src/viewer/agents-md-template.md', 'utf8');
+    const md = renderAgentsMd(findings, template);
+    // All placeholders replaced
+    assert.ok(!md.includes('{{'));
+    // Audit metadata correctly interpolated
+    assert.ok(md.includes('Current Repo Review'));           // audit_title
+    assert.ok(md.includes('`2026-03-21-current-repo-review`')); // audit_slug
+    assert.ok(md.includes('2026-03-21'));                    // audit_date
+    assert.ok(md.includes('3 total'));                       // finding_count (3 findings in example)
+    assert.ok(md.includes('open: 3'));                       // finding_count in front-matter example
+    // Finding list interpolated in place
+    assert.ok(md.includes('`curate-validation-suppresses-unresolved-without-suggestion`'));
+    // Core guidance sections present
+    assert.ok(md.includes('## The loop'));
+    assert.ok(md.includes('## Dispositions'));
+    assert.ok(md.includes('## What you must not do'));
+    assert.ok(md.includes('## Finding index'));
   });
 });
