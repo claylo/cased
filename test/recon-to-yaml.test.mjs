@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { parseGitLog, parseTokei, parseMetadata, buildReconObject } from '../src/recon/recon-to-yaml.mjs';
+import { parseGitLog, parseTokei, parseMetadata, buildReconObject, validateRecon } from '../src/recon/recon-to-yaml.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, 'fixtures', 'recon');
@@ -190,5 +190,36 @@ describe('buildReconObject', () => {
 
   it('does not include boundaries (agent-owned)', () => {
     assert.equal(recon.boundaries, undefined);
+  });
+});
+
+describe('validateRecon', () => {
+  const manifest = loadManifest();
+  const metadataJson = JSON.parse(readFileSync(join(fixtures, 'metadata.json'), 'utf8'));
+  const tokeiJson = JSON.parse(readFileSync(join(fixtures, 'tokei.json'), 'utf8'));
+  const gitLogRaw = readFileSync(join(fixtures, 'git-log.raw'), 'utf8');
+
+  const recon = buildReconObject({
+    manifest, metadata: metadataJson, tokei: tokeiJson, gitLog: gitLogRaw,
+  });
+
+  // Resolve the real schema file. Tests run from the repo root so
+  // this path is stable.
+  const schemaPath = join(here, '..', 'src', 'schemas', 'recon.schema.json');
+
+  it('validates the built object against recon.schema.json', () => {
+    const errors = validateRecon(recon, schemaPath);
+    assert.deepEqual(errors, []);
+  });
+
+  it('returns descriptive errors for a malformed object', () => {
+    const broken = JSON.parse(JSON.stringify(recon));
+    delete broken.meta.project;
+    const errors = validateRecon(broken, schemaPath);
+    assert.ok(errors.length > 0);
+    assert.ok(
+      errors.some(e => e.instancePath === '/meta' || e.schemaPath?.includes('project')),
+      'expected an error mentioning the missing project field'
+    );
   });
 });

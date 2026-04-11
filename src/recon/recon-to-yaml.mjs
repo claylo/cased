@@ -8,7 +8,10 @@
 // The CLI entry point at the bottom is guarded so tests can import
 // the parser functions without triggering the build pipeline.
 
+import { readFileSync } from 'node:fs';
 import { dirname, basename } from 'node:path';
+import Ajv2020 from 'ajv/dist/2020.js';
+import addFormats from 'ajv-formats';
 
 /**
  * Parse `git log --since=... -M --format='---%n%H %ai %an' --name-only`
@@ -340,4 +343,20 @@ function countPerModule(files, modulePath) {
     }
   }
   return { files: fileCount, lines: lineCount };
+}
+
+/**
+ * Validate a built recon object against recon.schema.json.
+ *
+ * @param {object} recon - the object returned by buildReconObject
+ * @param {string} schemaPath - absolute path to recon.schema.json
+ * @returns {Array} ajv error objects; empty array on success
+ */
+export function validateRecon(recon, schemaPath) {
+  const schema = JSON.parse(readFileSync(schemaPath, 'utf8'));
+  const ajv = new Ajv2020.default({ allErrors: true, strict: false });
+  addFormats.default(ajv);
+  const validate = ajv.compile(schema);
+  const valid = validate(recon);
+  return valid ? [] : validate.errors;
 }
