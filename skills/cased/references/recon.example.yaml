@@ -406,42 +406,42 @@ churn:
     - path: crates/scrat-core/src/ship.rs
       commits: 15
       authors: 1
-      last_touched: "2026-04-09"
+      last_touched: 2026-04-09
       monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 7]
     - path: crates/scrat-core/src/config.rs
       commits: 13
       authors: 1
-      last_touched: "2026-04-09"
+      last_touched: 2026-04-09
       monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 6]
     - path: crates/scrat-core/src/lib.rs
       commits: 12
       authors: 1
-      last_touched: "2026-04-09"
+      last_touched: 2026-04-09
       monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 6]
     - path: crates/scrat/src/main.rs
       commits: 10
       authors: 1
-      last_touched: "2026-04-03"
+      last_touched: 2026-04-03
       monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 4]
     - path: crates/scrat/src/commands/ship.rs
       commits: 10
       authors: 1
-      last_touched: "2026-04-04"
+      last_touched: 2026-04-04
       monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 5]
     - path: crates/scrat-core/src/preflight.rs
       commits: 9
       authors: 1
-      last_touched: "2026-04-04"
+      last_touched: 2026-04-04
       monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 4]
     - path: crates/scrat-core/src/notes.rs
       commits: 9
       authors: 1
-      last_touched: "2026-04-05"
+      last_touched: 2026-04-05
       monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 4]
     - path: crates/scrat-core/src/bump.rs
       commits: 7
       authors: 1
-      last_touched: "2026-04-09"
+      last_touched: 2026-04-09
       monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 3]
 
   recent_activity:
