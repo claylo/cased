@@ -8,7 +8,7 @@
 // The CLI entry point at the bottom is guarded so tests can import
 // the parser functions without triggering the build pipeline.
 
-import { dirname } from 'node:path';
+import { dirname, basename } from 'node:path';
 
 /**
  * Parse `git log --since=... -M --format='---%n%H %ai %an' --name-only`
@@ -264,4 +264,80 @@ function mapDepKind(dep) {
       // Defensive: cargo currently emits only the cases above.
       return 'direct';
   }
+}
+
+/**
+ * Combine parsed inputs into a complete recon object matching
+ * src/schemas/recon.schema.json. Does not validate — that happens
+ * in the separate validateRecon step.
+ */
+export function buildReconObject({ manifest, metadata, tokei, gitLog }) {
+  const meta = buildMeta(manifest, metadata);
+  const parsedTokei = parseTokei(tokei);
+  const parsedMetadata = parseMetadata(metadata);
+  const parsedGitLog = parseGitLog(gitLog, {
+    windowStart: new Date(manifest.window_start),
+    recentCutoff: new Date(manifest.recent_cutoff),
+  });
+
+  const structure = {
+    root: manifest.target_path,
+    total_files: parsedTokei.total_files,
+    total_lines: parsedTokei.total_lines,
+    languages: parsedTokei.languages,
+    modules: parsedMetadata.modules.map(mod => ({
+      name: mod.name,
+      path: mod.path,
+      ...countPerModule(parsedTokei.files, mod.path),
+    })),
+  };
+
+  const dependencies = {
+    manifest: `${parsedMetadata.workspace_root}/Cargo.toml`,
+    items: parsedMetadata.dependencies,
+  };
+
+  const churn = {
+    period: 'last 12 months',
+    hotspots: parsedGitLog.hotspots,
+    recent_activity: parsedGitLog.recent_activity,
+  };
+
+  return { meta, structure, dependencies, churn };
+}
+
+function buildMeta(manifest, metadata) {
+  // Project name: prefer the package whose manifest_path is the
+  // workspace root's Cargo.toml. If no such package exists (pure
+  // virtual workspace), fall back to the workspace root directory
+  // name.
+  const rootManifest = `${metadata.workspace_root}/Cargo.toml`;
+  const rootPkg = (metadata.packages || []).find(
+    p => p.manifest_path === rootManifest
+  );
+  const project = rootPkg ? rootPkg.name : basename(metadata.workspace_root);
+
+  return {
+    project,
+    commit: manifest.commit,
+    timestamp: manifest.timestamp,
+    scope: manifest.scope,
+  };
+}
+
+function countPerModule(files, modulePath) {
+  const prefix = modulePath.endsWith('/') ? modulePath : modulePath + '/';
+  let fileCount = 0;
+  let lineCount = 0;
+  for (const f of files) {
+    // Two branches: exact match catches single-file-crate layouts where
+    // the module path IS the file; prefix match is the common directory
+    // case. parseMetadata always emits directory paths, but countPerModule
+    // is general enough to accept either.
+    if (f.path === modulePath || f.path.startsWith(prefix)) {
+      fileCount += 1;
+      lineCount += f.lines;
+    }
+  }
+  return { files: fileCount, lines: lineCount };
 }

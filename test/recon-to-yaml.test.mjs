@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { parseGitLog, parseTokei, parseMetadata } from '../src/recon/recon-to-yaml.mjs';
+import { parseGitLog, parseTokei, parseMetadata, buildReconObject } from '../src/recon/recon-to-yaml.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, 'fixtures', 'recon');
@@ -134,5 +134,61 @@ describe('parseMetadata', () => {
       result.dependencies.find(d => d.name === 'sample-macros'),
       undefined
     );
+  });
+});
+
+describe('buildReconObject', () => {
+  const manifest = loadManifest();
+  const metadataJson = JSON.parse(readFileSync(join(fixtures, 'metadata.json'), 'utf8'));
+  const tokeiJson = JSON.parse(readFileSync(join(fixtures, 'tokei.json'), 'utf8'));
+  const gitLogRaw = readFileSync(join(fixtures, 'git-log.raw'), 'utf8');
+
+  const recon = buildReconObject({
+    manifest,
+    metadata: metadataJson,
+    tokei: tokeiJson,
+    gitLog: gitLogRaw,
+  });
+
+  it('populates meta from manifest', () => {
+    assert.equal(recon.meta.commit, manifest.commit);
+    assert.equal(recon.meta.timestamp, manifest.timestamp);
+    assert.equal(recon.meta.scope, manifest.scope);
+  });
+
+  it('sets meta.project from cargo workspace root package name or root dir', () => {
+    // The fixture's workspace_root has no root package, so fall back
+    // to the directory basename.
+    assert.equal(recon.meta.project, 'sample-rust-workspace');
+  });
+
+  it('populates structure with tokei totals and cargo modules', () => {
+    assert.equal(recon.structure.root, manifest.target_path);
+    assert.equal(recon.structure.total_files, 10);
+    assert.equal(recon.structure.total_lines, 805);
+    assert.equal(recon.structure.modules.length, 3);
+  });
+
+  it('computes per-module file and line counts by path-prefix filter', () => {
+    const core = recon.structure.modules.find(m => m.name === 'sample-core');
+    assert.equal(core.files, 3);
+    assert.equal(core.lines, 442); // 245 + 180 + 17
+  });
+
+  it('populates dependencies', () => {
+    assert.equal(recon.dependencies.manifest,
+      '/tmp/sample-rust-workspace/Cargo.toml');
+    assert.equal(recon.dependencies.items.length, 5);
+  });
+
+  it('populates churn with hotspots and recent_activity', () => {
+    assert.equal(recon.churn.period, 'last 12 months');
+    assert.equal(recon.churn.hotspots.length, 4);
+    assert.equal(recon.churn.hotspots[0].path, 'src/auth.rs');
+    assert.equal(recon.churn.recent_activity.total_commits, 3);
+  });
+
+  it('does not include boundaries (agent-owned)', () => {
+    assert.equal(recon.boundaries, undefined);
   });
 });
