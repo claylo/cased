@@ -73,10 +73,19 @@ COMMIT="$(git rev-parse HEAD)"
 SHORT_SHA="$(git rev-parse --short=7 HEAD)"
 TIMESTAMP="$(date +"%Y-%m-%dT%H:%M:%S%z" | sed 's/\(..\)$/:\1/')"
 
-# Window computation (BSD/macOS `date` compatible)
-WINDOW_START="$(date -v-12m +"%Y-%m-01T00:00:00%z" | sed 's/\(..\)$/:\1/')"
+# Window computation. BSD date (macOS) uses `-v-Nu` for relative
+# offsets; GNU date (Linux) uses `-d 'N units ago'`. Probe BSD via
+# `date -v-1d`, which exits non-zero under GNU, then branch.
+if date -v-1d >/dev/null 2>&1; then
+  # BSD (macOS, FreeBSD)
+  WINDOW_START="$(date -v-12m +"%Y-%m-01T00:00:00%z" | sed 's/\(..\)$/:\1/')"
+  RECENT_CUTOFF="$(date -v-30d +"%Y-%m-%dT%H:%M:%S%z" | sed 's/\(..\)$/:\1/')"
+else
+  # GNU (Linux, WSL)
+  WINDOW_START="$(date -d '12 months ago' +"%Y-%m-01T00:00:00%z" | sed 's/\(..\)$/:\1/')"
+  RECENT_CUTOFF="$(date -d '30 days ago' +"%Y-%m-%dT%H:%M:%S%z" | sed 's/\(..\)$/:\1/')"
+fi
 WINDOW_END="$TIMESTAMP"
-RECENT_CUTOFF="$(date -v-30d +"%Y-%m-%dT%H:%M:%S%z" | sed 's/\(..\)$/:\1/')"
 
 echo "recon: gathering cargo metadata"
 if ! cargo metadata --no-deps --format-version 1 > "$TMP/metadata.json" 2> "$TMP/cargo.err"; then
