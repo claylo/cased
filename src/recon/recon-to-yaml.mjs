@@ -164,6 +164,14 @@ function monthBucket(commitDate, windowStart) {
  * total file and line counts, a languages[] array with percentages,
  * and a flat file index for downstream per-module filtering.
  *
+ * File counts come from `reports.length`: real tokei (v14+) does not
+ * emit a top-level `files` key at the language level — only `blanks`,
+ * `code`, `comments`, `reports`, `children`, `inaccurate`. Report
+ * paths are normalized by stripping a leading `./`, which tokei emits
+ * when invoked from the project's working directory (our recon
+ * orchestrator does `cd "$TARGET" && tokei`). Downstream code compares
+ * these against workspace-root-relative module paths.
+ *
  * @param {object} tokei - parsed tokei JSON (output of `tokei --output json`)
  * @returns {{
  *   total_files: number,
@@ -180,14 +188,16 @@ export function parseTokei(tokei) {
 
   for (const [language, data] of Object.entries(tokei)) {
     if (language === 'Total') continue;
+    const reports = data.reports || [];
+    const fileCount = reports.length;
     const lines = (data.blanks || 0) + (data.code || 0) + (data.comments || 0);
-    totalFiles += data.files || 0;
+    totalFiles += fileCount;
     totalLines += lines;
-    languages.push({ language, files: data.files || 0, lines });
-    for (const report of data.reports || []) {
+    languages.push({ language, files: fileCount, lines });
+    for (const report of reports) {
       const s = report.stats || {};
       const fileLines = (s.blanks || 0) + (s.code || 0) + (s.comments || 0);
-      files.push({ path: report.name, lines: fileLines });
+      files.push({ path: stripDotSlash(report.name), lines: fileLines });
     }
   }
 
@@ -203,6 +213,15 @@ export function parseTokei(tokei) {
     languages,
     files,
   };
+}
+
+/**
+ * Strip a leading `./` from a tokei report path. Tokei emits this when
+ * run from the project directory without an explicit path argument. We
+ * normalize for downstream prefix matching against relative module paths.
+ */
+function stripDotSlash(p) {
+  return p.startsWith('./') ? p.slice(2) : p;
 }
 
 /**
@@ -285,6 +304,26 @@ export function buildReconObject({ manifest, metadata, tokei, gitLog }) {
     recentCutoff: new Date(manifest.recent_cutoff),
   });
 
+  // Tokei paths (from parseTokei) are workspace-root-relative after
+  // ./ stripping. Module paths from cargo metadata are absolute. Compute
+  // a relative module path for the per-module tokei match.
+  //
+  // Known gap: a workspace that is ALSO a root package (hybrid layout
+  // with [workspace] + [package] at the root and src/ alongside) will
+  // produce rel === '' for the root member. countPerModule's prefix
+  // becomes '/', which matches no relative path — the root member
+  // under-counts (returns 0 files, 0 lines). Virtual workspaces (bito,
+  // scrat, most Cargo workspaces in practice) don't hit this case.
+  // Tracked as a future enhancement; flagged in the commit message.
+  const workspaceRoot = parsedMetadata.workspace_root;
+  const relativize = absPath => {
+    if (absPath === workspaceRoot) return '';
+    if (absPath.startsWith(workspaceRoot + '/')) {
+      return absPath.slice(workspaceRoot.length + 1);
+    }
+    return absPath;
+  };
+
   const structure = {
     root: manifest.target_path,
     total_files: parsedTokei.total_files,
@@ -293,7 +332,7 @@ export function buildReconObject({ manifest, metadata, tokei, gitLog }) {
     modules: parsedMetadata.modules.map(mod => ({
       name: mod.name,
       path: mod.path,
-      ...countPerModule(parsedTokei.files, mod.path),
+      ...countPerModule(parsedTokei.files, relativize(mod.path)),
     })),
   };
 

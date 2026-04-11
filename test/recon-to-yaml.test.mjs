@@ -83,13 +83,13 @@ describe('parseTokei', () => {
 
   it('exposes a file index for module path-prefix filtering', () => {
     // parseTokei returns { total_files, total_lines, languages, files }
-    // where files is Array<{ path, lines }>. Downstream code filters
-    // this by path prefix to compute per-module counts.
+    // where files is Array<{ path, lines }>. Paths are workspace-root
+    // relative with any leading `./` stripped, matching what tokei
+    // emits from `cd "$TARGET" && tokei --output json`. Downstream code
+    // prefix-matches these against workspace-root-relative module paths.
     assert.ok(Array.isArray(result.files));
     assert.equal(result.files.length, 10);
-    const libRs = result.files.find(
-      f => f.path === '/tmp/sample-rust-workspace/core/src/lib.rs'
-    );
+    const libRs = result.files.find(f => f.path === 'core/src/lib.rs');
     assert.equal(libRs.lines, 245); // 15 + 200 + 30
   });
 });

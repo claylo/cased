@@ -3,33 +3,30 @@
     "blanks": 50,
     "code": 600,
     "comments": 100,
-    "files": 6,
     "reports": [
-      { "name": "/tmp/sample-rust-workspace/core/src/lib.rs",      "stats": { "blanks": 15, "code": 200, "comments": 30 } },
-      { "name": "/tmp/sample-rust-workspace/core/src/auth.rs",     "stats": { "blanks": 10, "code": 150, "comments": 20 } },
-      { "name": "/tmp/sample-rust-workspace/cli/src/main.rs",      "stats": { "blanks": 10, "code": 120, "comments": 25 } },
-      { "name": "/tmp/sample-rust-workspace/cli/src/args.rs",      "stats": { "blanks": 5,  "code": 60,  "comments": 10 } },
-      { "name": "/tmp/sample-rust-workspace/macros/src/lib.rs",    "stats": { "blanks": 8,  "code": 50,  "comments": 10 } },
-      { "name": "/tmp/sample-rust-workspace/macros/src/derive.rs", "stats": { "blanks": 2,  "code": 20,  "comments": 5  } }
+      { "name": "./core/src/lib.rs",      "stats": { "blanks": 15, "code": 200, "comments": 30 } },
+      { "name": "./core/src/auth.rs",     "stats": { "blanks": 10, "code": 150, "comments": 20 } },
+      { "name": "./cli/src/main.rs",      "stats": { "blanks": 10, "code": 120, "comments": 25 } },
+      { "name": "./cli/src/args.rs",      "stats": { "blanks": 5,  "code": 60,  "comments": 10 } },
+      { "name": "./macros/src/lib.rs",    "stats": { "blanks": 8,  "code": 50,  "comments": 10 } },
+      { "name": "./macros/src/derive.rs", "stats": { "blanks": 2,  "code": 20,  "comments": 5  } }
     ]
   },
   "Toml": {
     "blanks": 10,
     "code": 40,
     "comments": 5,
-    "files": 4,
     "reports": [
-      { "name": "/tmp/sample-rust-workspace/Cargo.toml",           "stats": { "blanks": 2, "code": 8, "comments": 1 } },
-      { "name": "/tmp/sample-rust-workspace/core/Cargo.toml",      "stats": { "blanks": 3, "code": 12, "comments": 2 } },
-      { "name": "/tmp/sample-rust-workspace/cli/Cargo.toml",       "stats": { "blanks": 3, "code": 12, "comments": 1 } },
-      { "name": "/tmp/sample-rust-workspace/macros/Cargo.toml",    "stats": { "blanks": 2, "code": 8, "comments": 1 } }
+      { "name": "./Cargo.toml",           "stats": { "blanks": 2, "code": 8, "comments": 1 } },
+      { "name": "./core/Cargo.toml",      "stats": { "blanks": 3, "code": 12, "comments": 2 } },
+      { "name": "./cli/Cargo.toml",       "stats": { "blanks": 3, "code": 12, "comments": 1 } },
+      { "name": "./macros/Cargo.toml",    "stats": { "blanks": 2, "code": 8, "comments": 1 } }
     ]
   },
   "Total": {
     "blanks": 60,
     "code": 640,
     "comments": 105,
-    "files": 10,
     "reports": []
   }
 }
