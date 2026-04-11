@@ -1,0 +1,41 @@
+{
+  "workspace_root": "/tmp/sample-rust-workspace",
+  "workspace_members": [
+    "path+file:///tmp/sample-rust-workspace/core#sample-core@0.1.0",
+    "path+file:///tmp/sample-rust-workspace/cli#sample-cli@0.1.0",
+    "path+file:///tmp/sample-rust-workspace/macros#sample-macros@0.1.0"
+  ],
+  "packages": [
+    {
+      "name": "sample-core",
+      "version": "0.1.0",
+      "id": "path+file:///tmp/sample-rust-workspace/core#sample-core@0.1.0",
+      "manifest_path": "/tmp/sample-rust-workspace/core/Cargo.toml",
+      "dependencies": [
+        { "name": "serde", "req": "^1.0", "kind": null, "optional": false },
+        { "name": "sample-macros", "req": "0.1.0", "kind": "dev", "optional": false }
+      ]
+    },
+    {
+      "name": "sample-cli",
+      "version": "0.1.0",
+      "id": "path+file:///tmp/sample-rust-workspace/cli#sample-cli@0.1.0",
+      "manifest_path": "/tmp/sample-rust-workspace/cli/Cargo.toml",
+      "dependencies": [
+        { "name": "sample-core", "req": "0.1.0", "kind": null, "optional": false },
+        { "name": "clap", "req": "^4.0", "kind": null, "optional": false },
+        { "name": "anyhow", "req": "^1.0", "kind": null, "optional": true }
+      ]
+    },
+    {
+      "name": "sample-macros",
+      "version": "0.1.0",
+      "id": "path+file:///tmp/sample-rust-workspace/macros#sample-macros@0.1.0",
+      "manifest_path": "/tmp/sample-rust-workspace/macros/Cargo.toml",
+      "dependencies": [
+        { "name": "syn", "req": "^2.0", "kind": null, "optional": false },
+        { "name": "quote", "req": "^1.0", "kind": "build", "optional": false }
+      ]
+    }
+  ]
+}

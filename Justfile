@@ -6,6 +6,25 @@ build-schemas:
 build-viewer:
     scripts/build-viewer.sh
 
+# Rebuild shipped skill files and fail if anything drifted from source
+check-bundle:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    scripts/build-viewer.sh
+    if ! git diff --quiet skills/cased/; then
+        echo "" >&2
+        echo "error: shipped skill files drifted from source" >&2
+        git diff --stat skills/cased/ >&2
+        echo "" >&2
+        echo "Commit the rebuilt files, or investigate why source is ahead." >&2
+        exit 1
+    fi
+    echo "bundle ok"
+
+# Run the recon pre-runner against a target Rust project
+recon target audit_dir:
+    bash src/recon/recon {{target}} {{audit_dir}}
+
 # Build a report from an audit directory (dev mode, uses source files)
 build-report audit_dir:
     node src/viewer/build-report.mjs {{audit_dir}}

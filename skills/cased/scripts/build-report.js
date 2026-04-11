@@ -39643,10 +39643,9 @@ if ((0, node_fs.realpathSync)(process.argv[1]) === (0, node_fs.realpathSync)((0,
 		(0, node_path.join)(repoRoot, "vendor", "fonts")
 	].find((d) => (0, node_fs.existsSync)(d));
 	const viewerJs = [
-		(0, node_path.join)(repoRoot, "dist", "viewer.js"),
+		(0, node_path.join)(repoRoot, "build", "viewer.js"),
 		(0, node_path.join)(viewerDir, "viewer.js"),
-		(0, node_path.join)(scriptDir, "viewer.js"),
-		(0, node_path.join)(scriptDir, "viewer.iife.js")
+		(0, node_path.join)(scriptDir, "viewer.js")
 	].find((p) => (0, node_fs.existsSync)(p)) || null;
 	const html = await assembleReport(auditDir, {
 		viewerDir,

@@ -1,0 +1,11 @@
+{
+  "commit": "abc0001def2345678901234567890123456789ab",
+  "short_sha": "abc0001",
+  "timestamp": "2026-04-10T14:30:00-04:00",
+  "target_path": "/tmp/sample-rust-workspace",
+  "audit_dir": "/tmp/sample-audit",
+  "window_start": "2025-05-01T00:00:00-04:00",
+  "window_end": "2026-04-10T14:30:00-04:00",
+  "recent_cutoff": "2026-03-11T14:30:00-04:00",
+  "scope": "full working tree at abc0001"
+}

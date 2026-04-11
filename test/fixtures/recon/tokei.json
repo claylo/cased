@@ -1,0 +1,32 @@
+{
+  "Rust": {
+    "blanks": 50,
+    "code": 600,
+    "comments": 100,
+    "reports": [
+      { "name": "./core/src/lib.rs",      "stats": { "blanks": 15, "code": 200, "comments": 30 } },
+      { "name": "./core/src/auth.rs",     "stats": { "blanks": 10, "code": 150, "comments": 20 } },
+      { "name": "./cli/src/main.rs",      "stats": { "blanks": 10, "code": 120, "comments": 25 } },
+      { "name": "./cli/src/args.rs",      "stats": { "blanks": 5,  "code": 60,  "comments": 10 } },
+      { "name": "./macros/src/lib.rs",    "stats": { "blanks": 8,  "code": 50,  "comments": 10 } },
+      { "name": "./macros/src/derive.rs", "stats": { "blanks": 2,  "code": 20,  "comments": 5  } }
+    ]
+  },
+  "Toml": {
+    "blanks": 10,
+    "code": 40,
+    "comments": 5,
+    "reports": [
+      { "name": "./Cargo.toml",           "stats": { "blanks": 2, "code": 8, "comments": 1 } },
+      { "name": "./core/Cargo.toml",      "stats": { "blanks": 3, "code": 12, "comments": 2 } },
+      { "name": "./cli/Cargo.toml",       "stats": { "blanks": 3, "code": 12, "comments": 1 } },
+      { "name": "./macros/Cargo.toml",    "stats": { "blanks": 2, "code": 8, "comments": 1 } }
+    ]
+  },
+  "Total": {
+    "blanks": 60,
+    "code": 640,
+    "comments": 105,
+    "reports": []
+  }
+}

@@ -24,6 +24,9 @@ echo "=== copying assets to skill directory ==="
 mkdir -p skills/cased/scripts skills/cased/templates/fonts
 
 cp build/build-report.js skills/cased/scripts/build-report.js
+cp src/recon/recon skills/cased/scripts/recon
+cp src/recon/recon-to-yaml.mjs skills/cased/scripts/recon-to-yaml.mjs
+chmod +x skills/cased/scripts/recon
 cp build/viewer.js       skills/cased/templates/viewer.js
 cp src/viewer/template.html         skills/cased/templates/template.html
 cp src/viewer/agents-md-template.md skills/cased/templates/agents-md-template.md
