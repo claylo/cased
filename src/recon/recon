@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+#
+# Cased recon pre-runner. Gathers the mechanical structural data for
+# a Rust project (cargo metadata, tokei, git log) and hands off to
+# recon-to-yaml.mjs, which assembles and validates recon.yaml.
+#
+# Usage:
+#   bash src/recon/recon <target-project-dir> <audit-dir>
+#
+# Exit codes:
+#   0  success — <audit-dir>/recon.yaml written and validated
+#   1  usage error
+#   2  not a Rust project (no Cargo.toml in target)
+#   3  required tool missing or tool failed
+#   4  validation failure (propagated from recon-to-yaml.mjs)
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+if [[ $# -ne 2 ]]; then
+  echo "Usage: bash $0 <target-project-dir> <audit-dir>" >&2
+  exit 1
+fi
+
+TARGET="$(cd "$1" 2>/dev/null && pwd || true)"
+if [[ -z "$TARGET" ]]; then
+  echo "error: target directory does not exist: $1" >&2
+  exit 1
+fi
+
+AUDIT_DIR_ARG="$2"
+mkdir -p "$AUDIT_DIR_ARG"
+AUDIT_DIR="$(cd "$AUDIT_DIR_ARG" && pwd)"
+
+# Required tools
+for bin in cargo git tokei node; do
+  if ! command -v "$bin" >/dev/null 2>&1; then
+    echo "error: required tool '$bin' not found in PATH" >&2
+    case "$bin" in
+      cargo) echo "  install via https://rustup.rs" >&2 ;;
+      tokei) echo "  install via 'cargo install tokei'" >&2 ;;
+    esac
+    exit 3
+  fi
+done
+
+# Must be a Rust project
+if [[ ! -f "$TARGET/Cargo.toml" ]]; then
+  echo "recon pre-runner: Rust projects only" >&2
+  echo "  no Cargo.toml found in $TARGET" >&2
+  exit 2
+fi
+
+# Temp dir with trap cleanup
+TMP="$(mktemp -d -t cased-recon.XXXXXXXX)"
+trap 'rm -rf "$TMP"' EXIT
+
+cd "$TARGET"
+
+# Pre-flight: target must be inside a git repo for rev-parse and git log
+# to work. Without this check, `git rev-parse HEAD` blows up under set -e
+# with a raw fatal message and skips the friendly exit 3 path below.
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "recon: target is not inside a git repository" >&2
+  echo "  $TARGET" >&2
+  exit 3
+fi
+
+# Capture meta before running tools so window_start/recent_cutoff
+# use the same reference point.
+COMMIT="$(git rev-parse HEAD)"
+SHORT_SHA="$(git rev-parse --short=7 HEAD)"
+TIMESTAMP="$(date +"%Y-%m-%dT%H:%M:%S%z" | sed 's/\(..\)$/:\1/')"
+
+# Window computation (BSD/macOS `date` compatible)
+WINDOW_START="$(date -v-12m +"%Y-%m-01T00:00:00%z" | sed 's/\(..\)$/:\1/')"
+WINDOW_END="$TIMESTAMP"
+RECENT_CUTOFF="$(date -v-30d +"%Y-%m-%dT%H:%M:%S%z" | sed 's/\(..\)$/:\1/')"
+
+echo "recon: gathering cargo metadata"
+if ! cargo metadata --no-deps --format-version 1 > "$TMP/metadata.json" 2> "$TMP/cargo.err"; then
+  echo "recon: cargo metadata failed:" >&2
+  cat "$TMP/cargo.err" >&2
+  exit 3
+fi
+
+echo "recon: counting files with tokei"
+if ! tokei --output json > "$TMP/tokei.json" 2> "$TMP/tokei.err"; then
+  echo "recon: tokei failed:" >&2
+  cat "$TMP/tokei.err" >&2
+  exit 3
+fi
+
+echo "recon: parsing 12 months of git history"
+if ! git log \
+  --since='12 months ago' \
+  -M \
+  --format='---%n%H %ai %an' \
+  --name-only \
+  > "$TMP/git-log.raw" \
+  2> "$TMP/git.err"; then
+  echo "recon: git log failed in $TARGET. Is this a git repository?" >&2
+  cat "$TMP/git.err" >&2
+  exit 3
+fi
+
+# Write manifest.json by hand. No jq dependency.
+cat > "$TMP/manifest.json" <<EOF
+{
+  "commit": "$COMMIT",
+  "short_sha": "$SHORT_SHA",
+  "timestamp": "$TIMESTAMP",
+  "target_path": "$TARGET",
+  "audit_dir": "$AUDIT_DIR",
+  "window_start": "$WINDOW_START",
+  "window_end": "$WINDOW_END",
+  "recent_cutoff": "$RECENT_CUTOFF",
+  "scope": "full working tree at $SHORT_SHA"
+}
+EOF
+
+echo "recon: building recon.yaml"
+exec node "$SCRIPT_DIR/recon-to-yaml.mjs" "$TMP" "$AUDIT_DIR/recon.yaml"
