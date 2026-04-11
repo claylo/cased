@@ -51,6 +51,16 @@ narratives:
           # If the code is too long, narrow the line range or use
           # multiple locations.
 
+        evidence_lang: string    # Optional: syntax highlighting language
+                                 # (e.g. "rust", "toml"). Inferred from
+                                 # locations[0].path extension if absent.
+
+        evidence_markers:        # Optional: highlight lines in evidence block
+          - lines: string        # 1-based line or range, e.g. "3" or "3-7"
+                                 # (relative to the evidence block, not file)
+            type: string         # "mark" | "ins" | "del"
+            label: string        # Optional: shown on first line of range
+
         mechanism: |
           # One paragraph (2-5 sentences) explaining WHY this is a
           # problem. Assume the reader is a competent developer.
