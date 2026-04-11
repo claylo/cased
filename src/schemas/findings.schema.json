@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cased.dev/schemas/findings.schema.json",
+  "title": "Cased Findings",
+  "type": "object",
+  "required": ["audit_date", "scope", "commit", "assessment", "narratives", "summary"],
+  "properties": {
+    "audit_date": { "type": "string", "format": "date" },
+    "scope": { "type": "string" },
+    "commit": { "type": "string" },
+    "assessment": { "type": "string", "description": "One-paragraph opening assessment of the audit" },
+    "narratives": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["slug", "title", "thesis", "verdict", "findings"],
+        "properties": {
+          "slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "title": { "type": "string" },
+          "thesis": { "type": "string" },
+          "verdict": { "type": "string" },
+          "flow": {
+            "type": "array",
+            "description": "Optional process/data flow diagram for this surface",
+            "items": {
+              "type": "object",
+              "required": ["id", "label"],
+              "properties": {
+                "id": { "type": "string" },
+                "label": { "type": "string" },
+                "type": { "type": "string", "enum": ["start", "end", "process", "decision", "input", "store", "ref"] },
+                "findings": {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      { "type": "string" },
+                      { "type": "object", "properties": { "slug": { "type": "string" }, "label": { "type": "string" } }, "required": ["slug"] }
+                    ]
+                  }
+                },
+                "spine": { "type": "boolean" },
+                "no": { "type": "string", "description": "Step id for 'no' branch (decision only)" },
+                "next": { "type": "string", "description": "Override sequential flow (loop-back)" }
+              }
+            }
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["slug", "title", "concern", "locations", "evidence", "mechanism", "remediation"],
+              "properties": {
+                "slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+                "title": { "type": "string", "description": "Human-readable finding title" },
+                "concern": { "type": "string", "enum": ["critical", "significant", "moderate", "advisory", "note"] },
+                "locations": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["path", "start_line", "end_line"],
+                    "properties": {
+                      "path": { "type": "string" },
+                      "start_line": { "type": "integer" },
+                      "end_line": { "type": "integer" }
+                    }
+                  }
+                },
+                "evidence": { "type": "string" },
+                "evidence_lang": {
+                  "type": "string",
+                  "description": "Language identifier for syntax highlighting. Inferred from locations[0].path extension if absent."
+                },
+                "evidence_markers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "lines": { "type": "string", "description": "Line or range, e.g. '3' or '3-7'" },
+                      "type": { "type": "string", "enum": ["mark", "ins", "del"] },
+                      "label": { "type": "string", "description": "Optional label shown on first line of range" }
+                    },
+                    "required": ["lines", "type"]
+                  }
+                },
+                "mechanism": { "type": "string" },
+                "remediation": { "type": "string" },
+                "effort": { "type": "string", "enum": ["trivial", "small", "medium", "large"] },
+                "effort_notes": { "type": "string" },
+                "temporal": {
+                  "type": "object",
+                  "properties": {
+                    "introduced": { "type": "string", "format": "date" },
+                    "last_modified": { "type": "string", "format": "date" },
+                    "commit_count": { "type": "integer" },
+                    "monthly_commits": {
+                      "type": "array",
+                      "items": { "type": "integer" },
+                      "minItems": 12,
+                      "maxItems": 12
+                    }
+                  }
+                },
+                "chains": {
+                  "type": "object",
+                  "properties": {
+                    "enables": { "type": "array", "items": { "type": "string" } },
+                    "enabled_by": { "type": "array", "items": { "type": "string" } },
+                    "related": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["counts"],
+      "properties": {
+        "counts": {
+          "type": "object",
+          "required": ["critical", "significant", "moderate", "advisory", "note"],
+          "properties": {
+            "critical": { "type": "integer" },
+            "significant": { "type": "integer" },
+            "moderate": { "type": "integer" },
+            "advisory": { "type": "integer" },
+            "note": { "type": "integer" }
+          }
+        }
+      }
+    }
+  }
+}

@@ -2,6 +2,8 @@ import YAML from 'yaml';
 import { readFileSync, existsSync, writeFileSync, mkdirSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
+import Ajv2020 from 'ajv/dist/2020.js';
+import addFormats from 'ajv-formats';
 import { ExpressiveCodeEngine, ExpressiveCodeTheme } from '@expressive-code/core'
 import { toHtml } from '@expressive-code/core/hast'
 import { pluginTextMarkers } from '@expressive-code/plugin-text-markers'
@@ -47,6 +49,141 @@ export function parseFindings(yamlStr) {
  */
 export function parseRecon(yamlStr) {
   return YAML.parse(yamlStr);
+}
+
+/**
+ * Resolve the directory containing recon.schema.json and findings.schema.json.
+ * Tries several candidate locations in both the source tree and the shipped
+ * skill layout, returning the first directory that contains both schemas.
+ * @param {string} startDir — typically the directory of this script
+ * @returns {string|null}
+ */
+export function resolveSchemaDir(startDir) {
+  const candidates = [
+    join(startDir, '..', 'schemas'),            // src/viewer -> src/schemas
+    join(startDir, '..', 'references'),         // skills/cased/scripts -> skills/cased/references
+    join(startDir, '..', 'src', 'schemas'),     // build -> src/schemas (bundled at repo root)
+    join(startDir, '..', 'skills', 'cased', 'references'), // build -> skills/cased/references
+    join(startDir, 'references'),               // fallback: references next to the script
+  ];
+  for (const c of candidates) {
+    if (existsSync(join(c, 'recon.schema.json')) &&
+        existsSync(join(c, 'findings.schema.json'))) {
+      return c;
+    }
+  }
+  return null;
+}
+
+/**
+ * Compile recon and findings schema validators from a schema directory.
+ * @param {string} schemaDir
+ * @returns {{validateRecon: Function, validateFindings: Function}}
+ */
+export function compileValidators(schemaDir) {
+  const ajv = new Ajv2020.default({ allErrors: true, strict: false });
+  addFormats.default(ajv);
+
+  const reconSchema = JSON.parse(
+    readFileSync(join(schemaDir, 'recon.schema.json'), 'utf8')
+  );
+  const findingsSchema = JSON.parse(
+    readFileSync(join(schemaDir, 'findings.schema.json'), 'utf8')
+  );
+
+  return {
+    validateRecon: ajv.compile(reconSchema),
+    validateFindings: ajv.compile(findingsSchema),
+  };
+}
+
+/**
+ * Validate one YAML file against a compiled ajv validator. Returns an array
+ * of error records. Empty array means the file is valid.
+ * @param {string} filePath
+ * @param {string} fileLabel — short label for error messages (e.g., "recon.yaml")
+ * @param {Function} validator — an ajv-compiled validate function
+ * @returns {Array<{file: string, instancePath: string, message: string, params: object}>}
+ */
+export function validateYamlFile(filePath, fileLabel, validator) {
+  if (!existsSync(filePath)) {
+    return [{
+      file: fileLabel,
+      instancePath: '',
+      message: `file not found: ${filePath}`,
+      params: {},
+    }];
+  }
+  const content = readFileSync(filePath, 'utf8');
+  let data;
+  try {
+    data = YAML.parse(content);
+  } catch (e) {
+    return [{
+      file: fileLabel,
+      instancePath: '',
+      message: `YAML parse error: ${e.message}`,
+      params: {},
+    }];
+  }
+  const valid = validator(data);
+  if (valid) return [];
+  return (validator.errors || []).map(err => ({
+    file: fileLabel,
+    instancePath: err.instancePath || '/',
+    message: err.message || 'schema violation',
+    params: err.params || {},
+  }));
+}
+
+/**
+ * Validate an audit directory's recon.yaml and findings.yaml against their
+ * schemas. Returns a flat array of errors across both files; empty on success.
+ * @param {string} auditDir
+ * @param {string} schemaDir
+ * @returns {Array<object>}
+ */
+export function validateAuditDir(auditDir, schemaDir) {
+  const { validateRecon, validateFindings } = compileValidators(schemaDir);
+  const errors = [];
+  errors.push(...validateYamlFile(
+    join(auditDir, 'recon.yaml'),
+    'recon.yaml',
+    validateRecon,
+  ));
+  errors.push(...validateYamlFile(
+    join(auditDir, 'findings.yaml'),
+    'findings.yaml',
+    validateFindings,
+  ));
+  return errors;
+}
+
+/**
+ * Format validation errors for terminal display. Groups by file, prefixes
+ * each error with its instance path.
+ * @param {Array<object>} errors
+ * @returns {string}
+ */
+export function formatValidationErrors(errors) {
+  if (errors.length === 0) return '';
+  const byFile = new Map();
+  for (const e of errors) {
+    if (!byFile.has(e.file)) byFile.set(e.file, []);
+    byFile.get(e.file).push(e);
+  }
+  const lines = [];
+  for (const [file, errs] of byFile) {
+    lines.push(`${file}: ${errs.length} error${errs.length === 1 ? '' : 's'}`);
+    for (const e of errs) {
+      const path = e.instancePath || '/';
+      lines.push(`  ${path} — ${e.message}`);
+      if (e.params && Object.keys(e.params).length > 0) {
+        lines.push(`    params: ${JSON.stringify(e.params)}`);
+      }
+    }
+  }
+  return lines.join('\n');
 }
 
 /**
@@ -580,13 +717,46 @@ export async function assembleReport(auditDir, opts = {}) {
 // CLI entry point (resolve symlinks so skill installs work)
 if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   (async () => {
-    const auditDir = process.argv[2];
+    // Parse subcommand: `validate <dir>` or `build <dir>`; bare `<dir>` is
+    // treated as `build` for backward compatibility.
+    const rawArgs = process.argv.slice(2);
+    let subcommand = 'build';
+    let auditDir = rawArgs[0];
+    if (rawArgs[0] === 'validate' || rawArgs[0] === 'build') {
+      subcommand = rawArgs[0];
+      auditDir = rawArgs[1];
+    }
+
     if (!auditDir) {
-      console.error('Usage: node build-report.mjs <audit-directory>');
+      console.error('Usage: node build-report.mjs [build|validate] <audit-directory>');
+      console.error('  build     (default) assemble report.html and AGENTS.md');
+      console.error('  validate  check recon.yaml and findings.yaml against their schemas');
       process.exit(1);
     }
+
     const scriptDir = dirname(fileURLToPath(import.meta.url));
     const repoRoot = join(scriptDir, '..', '..');
+
+    if (subcommand === 'validate') {
+      const schemaDir = resolveSchemaDir(scriptDir);
+      if (!schemaDir) {
+        console.error('error: cannot locate recon.schema.json and findings.schema.json');
+        console.error('  looked near: ' + scriptDir);
+        process.exit(2);
+      }
+      const errors = validateAuditDir(auditDir, schemaDir);
+      if (errors.length === 0) {
+        console.log(`ok  ${auditDir}/recon.yaml`);
+        console.log(`ok  ${auditDir}/findings.yaml`);
+        process.exit(0);
+      } else {
+        console.error(formatValidationErrors(errors));
+        console.error(`\n${errors.length} validation error${errors.length === 1 ? '' : 's'}`);
+        process.exit(1);
+      }
+    }
+
+    // build subcommand (default)
     // Viewer dir: source layout has template.html alongside this script;
     // skill layout has it in ../templates/ relative to scripts/
     const viewerDirCandidates = [

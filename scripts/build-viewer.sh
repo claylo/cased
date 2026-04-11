@@ -4,6 +4,9 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
+echo "=== building + validating schema docs ==="
+bash src/schemas/build-schemas.sh
+
 echo "=== bundling viewer.js (client IIFE) ==="
 npx rolldown src/viewer/viewer.js --format iife --file build/viewer.js
 

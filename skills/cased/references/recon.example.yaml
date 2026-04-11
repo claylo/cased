@@ -1,17 +1,3 @@
-# Reconnaissance Schema
-
-The recon artifact captures the structural model of the codebase. It is
-saved as `recon.yaml` in the audit directory and fully validated against
-`recon.schema.json` (JSON Schema Draft 2020-12).
-
-The canonical example below is generated from the validated source at
-`src/schemas/recon.example.yaml` and is guaranteed to conform to the
-schema — if it ever drifts, the build fails. Treat the field layout and
-types shown here as authoritative.
-
-## Example
-
-```yaml
 ---
 meta:
   project: scrat
@@ -488,47 +474,3 @@ boundaries:
     description: "Building JSON context for git-cliff template rendering"
     modules: [notes, pipeline]
     notes: "Data injected into template engine via --from-context"
-```
-
-## Gathering Notes
-
-**File and line counts.** Use `find` + `wc -l`, scoped to the workspace
-member paths (`cargo metadata --no-deps --format-version 1 | jq '.workspace_members'`
-for Rust; top-level source directories otherwise). Exclude build artifacts,
-vendor directories, and generated code.
-
-**Modules.** In Rust, use `cargo metadata` packages for the authoritative
-list; each package's `targets` array tells you what's a library vs binary.
-For non-Rust projects, fall back to top-level directories under the
-conventional source root (`src/`, `lib/`, `app/`). The `entry_points`
-list should capture the public API surface — `pub fn` signatures for
-libraries, `#[command]`-annotated functions for CLIs, HTTP handlers for
-web services.
-
-**Internal module dependencies.** Grep for the language-specific import
-syntax: `^use crate::` or `^use <workspace_crate>` in Rust,
-`^(import|require|from) ` in Python/Node, `^import ` in Go. Bucket by
-module of origin and count sites per target — that count becomes `weight`.
-
-**Churn hotspots.** `git log --since="<period>" --format="" --name-only`
-piped through `sort | uniq -c | sort -rn | head -<N>`. For each hotspot,
-build the `monthly_commits` array with a 12-bucket loop over
-`git log --since="$((i+1)) months ago" --until="$i months ago" ... | wc -l`.
-Oldest month first, most recent month last.
-
-**Boundaries.** These are judgment calls — the pre-runner script should
-leave this array empty and let the auditing agent populate it during the
-narrative phase. Look for modules that handle untrusted input, touch
-credentials, cross network boundaries, or serialize/deserialize external
-data.
-
-## Validation
-
-Validate a recon.yaml against this schema before building the report:
-
-```bash
-node "${CLAUDE_SKILL_DIR}/scripts/build-report.js" validate <audit-directory>
-```
-
-The validator reports field paths and type violations so they can be
-fixed in place before assembly.

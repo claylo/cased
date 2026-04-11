@@ -3,7 +3,16 @@ import assert from 'node:assert/strict';
 import { parseFindings, parseRecon, renderHeader, renderLedger, assembleReport } from '../src/viewer/build-report.mjs';
 import { inferLangFromPath, buildMetaString, formatLocationTitle } from '../src/viewer/build-report.mjs';
 import { titleFromScope, renderAgentsFindingList, renderAgentsMd } from '../src/viewer/build-report.mjs';
-import { readFileSync } from 'node:fs';
+import {
+  resolveSchemaDir,
+  compileValidators,
+  validateYamlFile,
+  validateAuditDir,
+  formatValidationErrors,
+} from '../src/viewer/build-report.mjs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import YAML from 'yaml';
 
 const findingsYaml = readFileSync('example/2026-03-21-current-repo-review/findings.yaml', 'utf8');
@@ -181,5 +190,132 @@ describe('renderAgentsMd', () => {
     assert.ok(md.includes('## Dispositions'));
     assert.ok(md.includes('## What you must not do'));
     assert.ok(md.includes('## Finding index'));
+  });
+});
+
+describe('resolveSchemaDir', () => {
+  it('finds src/schemas from src/viewer', () => {
+    const dir = resolveSchemaDir('src/viewer');
+    assert.ok(dir);
+    assert.ok(dir.endsWith('schemas'));
+  });
+  it('returns null when no candidate contains both schemas', () => {
+    const dir = resolveSchemaDir('/nonexistent/path/nowhere');
+    assert.equal(dir, null);
+  });
+});
+
+describe('compileValidators', () => {
+  it('compiles recon and findings validators from src/schemas', () => {
+    const { validateRecon, validateFindings } = compileValidators('src/schemas');
+    assert.equal(typeof validateRecon, 'function');
+    assert.equal(typeof validateFindings, 'function');
+    // Call one to verify the compiled function actually runs
+    assert.equal(typeof validateRecon.errors, 'object'); // null or array, never undefined
+  });
+});
+
+describe('validateYamlFile', () => {
+  it('returns empty array for a valid file', () => {
+    const { validateRecon } = compileValidators('src/schemas');
+    const errors = validateYamlFile('src/schemas/recon.example.yaml', 'recon.yaml', validateRecon);
+    assert.deepEqual(errors, []);
+  });
+
+  it('returns errors for a missing file', () => {
+    const { validateRecon } = compileValidators('src/schemas');
+    const errors = validateYamlFile('/nonexistent/file.yaml', 'recon.yaml', validateRecon);
+    assert.equal(errors.length, 1);
+    assert.match(errors[0].message, /file not found/);
+  });
+
+  it('returns errors for malformed YAML', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'cased-test-'));
+    try {
+      const badPath = join(tmp, 'bad.yaml');
+      writeFileSync(badPath, 'not: [valid: yaml');
+      const { validateRecon } = compileValidators('src/schemas');
+      const errors = validateYamlFile(badPath, 'bad.yaml', validateRecon);
+      assert.equal(errors.length, 1);
+      assert.match(errors[0].message, /YAML parse error/);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it('returns errors for schema violations', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'cased-test-'));
+    try {
+      const badPath = join(tmp, 'bad.yaml');
+      // Minimal valid-ish shape but missing required structure.root
+      writeFileSync(badPath, [
+        'meta:',
+        '  project: test',
+        '  commit: abc1234',
+        '  timestamp: 2026-04-10T12:00:00Z',
+        '  scope: test',
+        'structure:',
+        '  total_files: 1',
+        '  total_lines: 10',
+        '  languages: []',
+        '  modules: []',
+        '',
+      ].join('\n'));
+      const { validateRecon } = compileValidators('src/schemas');
+      const errors = validateYamlFile(badPath, 'bad.yaml', validateRecon);
+      assert.ok(errors.length > 0);
+      // At least one error should mention 'root'
+      assert.ok(errors.some(e => e.message.includes('root') || JSON.stringify(e.params).includes('root')));
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('validateAuditDir', () => {
+  it('validates the src/schemas directory as a self-test fixture', () => {
+    // The schemas directory isn't an audit, but it contains both example.yaml files
+    // named *.example.yaml. Simulate an audit directory by copying them under the
+    // expected names.
+    const tmp = mkdtempSync(join(tmpdir(), 'cased-audit-'));
+    try {
+      writeFileSync(join(tmp, 'recon.yaml'), readFileSync('src/schemas/recon.example.yaml', 'utf8'));
+      writeFileSync(join(tmp, 'findings.yaml'), readFileSync('src/schemas/findings.example.yaml', 'utf8'));
+      const errors = validateAuditDir(tmp, 'src/schemas');
+      assert.deepEqual(errors, [], `unexpected errors: ${JSON.stringify(errors, null, 2)}`);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it('catches drift in the old colophon example recon.yaml', () => {
+    const errors = validateAuditDir('example/2026-03-21-current-repo-review', 'src/schemas');
+    // Old example uses flat schema, so recon.yaml should report errors
+    const reconErrors = errors.filter(e => e.file === 'recon.yaml');
+    assert.ok(reconErrors.length > 0, 'expected recon.yaml validation errors from stale schema');
+    // Should surface the missing `meta` and `structure` top-level fields
+    const messages = reconErrors.map(e => e.message).join(' ');
+    assert.ok(messages.includes('meta') || messages.includes('structure'),
+      'expected errors mentioning missing meta/structure');
+  });
+});
+
+describe('formatValidationErrors', () => {
+  it('returns empty string for no errors', () => {
+    assert.equal(formatValidationErrors([]), '');
+  });
+
+  it('groups errors by file with indented paths', () => {
+    const errors = [
+      { file: 'recon.yaml', instancePath: '/meta', message: 'missing commit', params: {} },
+      { file: 'recon.yaml', instancePath: '/structure', message: 'missing root', params: {} },
+      { file: 'findings.yaml', instancePath: '/narratives/0', message: 'missing slug', params: { missingProperty: 'slug' } },
+    ];
+    const out = formatValidationErrors(errors);
+    assert.ok(out.includes('recon.yaml: 2 errors'));
+    assert.ok(out.includes('findings.yaml: 1 error'));
+    assert.ok(out.includes('/meta — missing commit'));
+    assert.ok(out.includes('/narratives/0 — missing slug'));
+    assert.ok(out.includes('"missingProperty":"slug"'));
   });
 });

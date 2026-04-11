@@ -1,0 +1,12 @@
+# Reconnaissance Schema
+
+The recon artifact captures the structural model of the codebase. It is
+saved as `recon.yaml` in the audit directory and fully validated against
+`recon.schema.json` (JSON Schema Draft 2020-12).
+
+The canonical example below is generated from the validated source at
+`src/schemas/recon.example.yaml` and is guaranteed to conform to the
+schema — if it ever drifts, the build fails. Treat the field layout and
+types shown here as authoritative.
+
+## Example

@@ -1,0 +1,48 @@
+## Field Notes
+
+**`concern`.** Use one of `critical`, `significant`, `moderate`,
+`advisory`, or `note`. These map to the summary counts and the viewer's
+concern-badge colors. No other values are valid.
+
+**`slug`.** Kebab-case, lowercase, digits allowed. Must be unique across
+the whole audit. The slug becomes the anchor in `index.md` and the
+`Addresses` link target in `actions-taken.md`, so keep it descriptive
+and stable — once published, a slug should not be renamed.
+
+**`locations[]`.** One entry per file/range the finding refers to. A
+finding spanning two files gets two entries. Line numbers are inclusive
+and one-based. `start_line` and `end_line` can be equal for a single-line
+finding.
+
+**`evidence`.** The exact text that appears in the rendered code block.
+Line numbers for `evidence_markers` are relative to this string, not to
+the source file — they start at 1 at the first line of the `evidence`
+block.
+
+**`evidence_markers[]`.** Used to highlight specific lines within the
+evidence block. `type: mark` for plain highlights, `type: ins` for
+proposed insertions, `type: del` for things to remove. `lines` is a
+single line number or a range like `"3-7"`. The optional `label` appears
+on the first line of the range in the rendered HTML.
+
+**`temporal`.** Gathered from `git log` on the finding's primary file.
+`introduced` is the first commit that touched the file (bounded by the
+audit window); `last_modified` is the most recent commit. `monthly_commits`
+is a 12-element array driving the sparkline in the rendered report.
+
+**`flow`.** Optional per-narrative process/data flow diagram. The renderer
+builds an SVG spine with decision and process boxes. Off-spine branches
+use `spine: false`. Findings attach to specific flow steps via the
+`findings[]` array on each step, where the entry can be either a string
+slug or an object with `slug` and `label`.
+
+## Validation
+
+Validate a findings.yaml against this schema before building the report:
+
+```bash
+node "${CLAUDE_SKILL_DIR}/scripts/build-report.js" validate <audit-directory>
+```
+
+The validator reports field paths and type violations so they can be
+fixed in place before assembly.
