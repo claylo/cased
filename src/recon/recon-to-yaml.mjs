@@ -8,6 +8,8 @@
 // The CLI entry point at the bottom is guarded so tests can import
 // the parser functions without triggering the build pipeline.
 
+import { dirname } from 'node:path';
+
 /**
  * Parse `git log --since=... -M --format='---%n%H %ai %an' --name-only`
  * output into hotspot stats and recent-activity summary.
@@ -196,4 +198,70 @@ export function parseTokei(tokei) {
     languages,
     files,
   };
+}
+
+/**
+ * Extract workspace modules and direct dependencies from cargo
+ * metadata JSON. Workspace-internal dependencies are excluded.
+ *
+ * @param {object} metadata - parsed output of `cargo metadata --no-deps --format-version 1`
+ * @returns {{
+ *   workspace_root: string,
+ *   modules: Array<{ name: string, path: string, manifest_path: string }>,
+ *   dependencies: Array<{ name: string, version: string, kind: string }>
+ * }}
+ */
+export function parseMetadata(metadata) {
+  const memberIds = new Set(metadata.workspace_members || []);
+  const memberNames = new Set();
+  const modules = [];
+
+  for (const pkg of metadata.packages || []) {
+    if (!memberIds.has(pkg.id)) continue;
+    memberNames.add(pkg.name);
+    modules.push({
+      name: pkg.name,
+      path: dirname(pkg.manifest_path),
+      manifest_path: pkg.manifest_path,
+    });
+  }
+
+  const seen = new Map();
+  for (const pkg of metadata.packages || []) {
+    if (!memberIds.has(pkg.id)) continue;
+    for (const dep of pkg.dependencies || []) {
+      if (memberNames.has(dep.name)) continue;
+      const kind = mapDepKind(dep);
+      const key = `${dep.name}@${dep.req}@${kind}`;
+      if (seen.has(key)) continue;
+      seen.set(key, {
+        name: dep.name,
+        version: dep.req,
+        kind,
+      });
+    }
+  }
+
+  return {
+    workspace_root: metadata.workspace_root,
+    modules,
+    dependencies: [...seen.values()],
+  };
+}
+
+function mapDepKind(dep) {
+  // optional overrides kind: the schema enum treats optional as its own
+  // axis, not a modifier of dev/build. An optional dev-dep → 'optional'.
+  if (dep.optional === true) return 'optional';
+  switch (dep.kind) {
+    case 'dev': return 'dev';
+    case 'build': return 'build';
+    case null:
+    case undefined:
+    case 'normal':
+      return 'direct';
+    default:
+      // Defensive: cargo currently emits only the cases above.
+      return 'direct';
+  }
 }

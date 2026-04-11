@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { parseGitLog, parseTokei } from '../src/recon/recon-to-yaml.mjs';
+import { parseGitLog, parseTokei, parseMetadata } from '../src/recon/recon-to-yaml.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, 'fixtures', 'recon');
@@ -88,5 +88,51 @@ describe('parseTokei', () => {
       f => f.path === '/tmp/sample-rust-workspace/core/src/lib.rs'
     );
     assert.equal(libRs.lines, 245); // 15 + 200 + 30
+  });
+});
+
+describe('parseMetadata', () => {
+  const metadataJson = JSON.parse(
+    readFileSync(join(fixtures, 'metadata.json'), 'utf8')
+  );
+  const result = parseMetadata(metadataJson);
+
+  it('extracts workspace members as modules', () => {
+    assert.equal(result.modules.length, 3);
+    const names = result.modules.map(m => m.name).sort();
+    assert.deepEqual(names, ['sample-cli', 'sample-core', 'sample-macros']);
+  });
+
+  it('sets module paths to the directory containing Cargo.toml', () => {
+    const core = result.modules.find(m => m.name === 'sample-core');
+    assert.equal(core.path, '/tmp/sample-rust-workspace/core');
+  });
+
+  it('extracts direct dependencies and deduplicates', () => {
+    assert.equal(result.dependencies.length, 5);
+    const names = result.dependencies.map(d => d.name).sort();
+    assert.deepEqual(names, ['anyhow', 'clap', 'quote', 'serde', 'syn']);
+  });
+
+  it('maps kind correctly and excludes workspace-internal deps', () => {
+    const serde = result.dependencies.find(d => d.name === 'serde');
+    assert.equal(serde.kind, 'direct');
+    assert.equal(serde.version, '^1.0');
+
+    const quote = result.dependencies.find(d => d.name === 'quote');
+    assert.equal(quote.kind, 'build');
+
+    const anyhow = result.dependencies.find(d => d.name === 'anyhow');
+    assert.equal(anyhow.kind, 'optional');
+
+    // sample-core and sample-macros are workspace members; never in deps
+    assert.equal(
+      result.dependencies.find(d => d.name === 'sample-core'),
+      undefined
+    );
+    assert.equal(
+      result.dependencies.find(d => d.name === 'sample-macros'),
+      undefined
+    );
   });
 });
