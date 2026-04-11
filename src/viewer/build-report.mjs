@@ -774,11 +774,16 @@ if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url
       join(repoRoot, 'vendor', 'fonts'),
     ];
     const fontsDir = fontsDirCandidates.find(d => existsSync(d));
+    // Source mode runs from src/viewer/, where viewer.js is the unbundled
+    // rolldown entry point (~1 KB stub). The real 25 KB iife bundle lives at
+    // build/viewer.js after scripts/build-viewer.sh. Check build/ first so
+    // source-mode runs pick up the bundle instead of shadowing it with the
+    // stub. Build mode finds the same file via scriptDir; skill install mode
+    // falls through to viewerDir (skills/cased/templates/).
     const viewerJsCandidates = [
-      join(repoRoot, 'dist', 'viewer.js'),
+      join(repoRoot, 'build', 'viewer.js'),
       join(viewerDir, 'viewer.js'),
       join(scriptDir, 'viewer.js'),
-      join(scriptDir, 'viewer.iife.js'),
     ];
     const viewerJs = viewerJsCandidates.find(p => existsSync(p)) || null;
     const html = await assembleReport(auditDir, {
