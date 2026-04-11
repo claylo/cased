@@ -1,5 +1,5 @@
 ---
-audit_date: "2026-04-09"
+audit_date: 2026-04-09
 scope: "Full workspace audit — crates/scrat (CLI) and crates/scrat-core (library)"
 commit: f706dc96b708f63fc3c47f9dd09ca30fd89438a8
 assessment: |
@@ -92,8 +92,8 @@ narratives:
           format!("{}...", &trimmed[..boundary])
           floor_char_boundary is stable since Rust 1.82.0 (MSRV 1.89.0 qualifies).
         temporal:
-          introduced: "2026-02-10"
-          last_modified: "2026-02-10"
+          introduced: 2026-02-10
+          last_modified: 2026-02-10
           commit_count: 3
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,3,0]
         chains:
@@ -131,8 +131,8 @@ narratives:
           the child is still running after a write error, treat it as a hook failure rather
           than proceeding with potentially corrupt output.
         temporal:
-          introduced: "2026-02-10"
-          last_modified: "2026-02-10"
+          introduced: 2026-02-10
+          last_modified: 2026-02-10
           commit_count: 3
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,3,0]
         chains:
@@ -168,8 +168,8 @@ narratives:
               debug!(%e, "fetch failed, comparing with cached remote state");
           }
         temporal:
-          introduced: "2026-02-09"
-          last_modified: "2026-04-04"
+          introduced: 2026-02-09
+          last_modified: 2026-04-04
           commit_count: 4
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,3,1]
         chains:
@@ -239,8 +239,8 @@ narratives:
           for a "version" field, update it with serde_json, write back. Alternatively,
           shell out to the already-detected npm version --no-git-tag-version command.
         temporal:
-          introduced: "2026-02-09"
-          last_modified: "2026-04-09"
+          introduced: 2026-02-09
+          last_modified: 2026-04-09
           commit_count: 7
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,4,3]
         chains:
@@ -278,8 +278,8 @@ narratives:
           Implementing the parser requires a JSON state machine for
           package-lock.json's "packages" object.
         temporal:
-          introduced: "2026-02-10"
-          last_modified: "2026-03-27"
+          introduced: 2026-02-10
+          last_modified: 2026-03-27
           commit_count: 4
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,3,1]
         chains:
@@ -315,8 +315,8 @@ narratives:
           README that Ruby users should use version_files config to declare their
           version.rb path.
         temporal:
-          introduced: "2026-02-09"
-          last_modified: "2026-04-09"
+          introduced: 2026-02-09
+          last_modified: 2026-04-09
           commit_count: 7
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,4,3]
         chains:
@@ -370,8 +370,8 @@ narratives:
           changelog_tool field for all detection paths. Consider probing for ecosystem
           tools (npm, go, composer) to set more accurate defaults.
         temporal:
-          introduced: "2026-02-09"
-          last_modified: "2026-04-03"
+          introduced: 2026-02-09
+          last_modified: 2026-04-03
           commit_count: 7
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,5,2]
         chains:
@@ -454,8 +454,8 @@ narratives:
           Check whether the command list contains any "filter:" prefixed commands before
           serializing: cmds.iter().any(|c| c.starts_with("filter:")).
         temporal:
-          introduced: "2026-02-10"
-          last_modified: "2026-04-09"
+          introduced: 2026-02-10
+          last_modified: 2026-04-09
           commit_count: 15
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,8,7]
         chains:
@@ -490,8 +490,8 @@ narratives:
           Run detection once in plan_ship, then pass the result to both run_preflight
           and plan_bump. run_preflight's signature would need a new detection parameter.
         temporal:
-          introduced: "2026-02-09"
-          last_modified: "2026-04-04"
+          introduced: 2026-02-09
+          last_modified: 2026-04-04
           commit_count: 9
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,5,4]
         chains:
@@ -529,8 +529,8 @@ narratives:
           Cache the branch name in the plan phase and thread it through to execute().
           PipelineContextInit already has a branch field.
         temporal:
-          introduced: "2026-02-09"
-          last_modified: "2026-04-09"
+          introduced: 2026-02-09
+          last_modified: 2026-04-09
           commit_count: 15
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,8,7]
         chains:
@@ -565,8 +565,8 @@ narratives:
           updated recently (check reflog timestamp), or add a --no-fetch flag.
           The current let _ = already acknowledges this is best-effort.
         temporal:
-          introduced: "2026-02-09"
-          last_modified: "2026-04-04"
+          introduced: 2026-02-09
+          last_modified: 2026-04-04
           commit_count: 4
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,3,1]
         chains:
@@ -619,8 +619,8 @@ narratives:
           Replace with an enum: VersionFields { Single(String), Multiple(Vec<String>) }.
           Use #[serde(untagged)] for backward-compatible deserialization.
         temporal:
-          introduced: "2026-04-09"
-          last_modified: "2026-04-09"
+          introduced: 2026-04-09
+          last_modified: 2026-04-09
           commit_count: 1
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,0,1]
         chains:
@@ -674,8 +674,8 @@ narratives:
         remediation: |
           Add #[derive(Debug, Clone)] to PipelineContextInit. One-line change.
         temporal:
-          introduced: "2026-02-10"
-          last_modified: "2026-02-10"
+          introduced: 2026-02-10
+          last_modified: 2026-02-10
           commit_count: 2
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,2,0]
         chains:
@@ -708,8 +708,8 @@ narratives:
           Move ConfigFormat and ConfigStyle to the CLI crate, or define the enums in
           core without ValueEnum and implement the clap mapping in the CLI via From.
         temporal:
-          introduced: "2026-02-09"
-          last_modified: "2026-04-03"
+          introduced: 2026-02-09
+          last_modified: 2026-04-03
           commit_count: 9
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,6,3]
         chains:
@@ -745,8 +745,8 @@ narratives:
           Add re-exports for commonly used types: Ecosystem, ProjectDetection,
           ShipOptions, ShipPlan, BumpPlan, PipelineContext. Or add a pub mod prelude.
         temporal:
-          introduced: "2026-02-09"
-          last_modified: "2026-04-09"
+          introduced: 2026-02-09
+          last_modified: 2026-04-09
           commit_count: 12
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,6,6]
         chains:
@@ -778,8 +778,8 @@ narratives:
         remediation: |
           Add PartialEq, Eq to the derive list for these types.
         temporal:
-          introduced: "2026-02-10"
-          last_modified: "2026-02-10"
+          introduced: 2026-02-10
+          last_modified: 2026-02-10
           commit_count: 2
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,2,0]
         chains:
@@ -824,8 +824,8 @@ narratives:
               message: "temp path is not valid UTF-8".into(),
           })?
         temporal:
-          introduced: "2026-02-09"
-          last_modified: "2026-04-03"
+          introduced: 2026-02-09
+          last_modified: 2026-04-03
           commit_count: 3
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,2,1]
         chains:
@@ -858,8 +858,8 @@ narratives:
         remediation: |
           Replace .unwrap() with .expect("valid spinner template").
         temporal:
-          introduced: "2026-02-09"
-          last_modified: "2026-04-04"
+          introduced: 2026-02-09
+          last_modified: 2026-04-04
           commit_count: 10
           monthly_commits: [0,0,0,0,0,0,0,0,0,0,5,5]
         chains:

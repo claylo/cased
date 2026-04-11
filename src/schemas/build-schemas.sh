@@ -3,10 +3,12 @@
 # Validate schema examples against their JSON Schemas and generate the
 # markdown reference docs that ship with the skill.
 #
-# Runs locally on Clay's machine. Requires: yj, jsonschema-cli.
+# Runs locally on Clay's machine. Requires: node, jq, jsonschema-cli.
 #
 # For each schema pair (recon, findings):
-#   1. Convert the source example YAML to JSON via yj.
+#   1. Convert the source example YAML to JSON via the node `yaml` package —
+#      the same parser used by build-report.js, so the JSON representation
+#      matches what the shipped skill sees at audit time.
 #   2. Validate the JSON against its schema via jsonschema-cli.
 #   3. Fail the build on any validation error.
 #   4. Generate the markdown reference: header prose + fenced example + footer prose.
@@ -21,7 +23,7 @@ TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 # Required tooling check — fail loudly rather than producing silent drift.
-for bin in yj jq jsonschema-cli; do
+for bin in node jq jsonschema-cli; do
   if ! command -v "$bin" >/dev/null 2>&1; then
     echo "error: required tool '$bin' not found in PATH" >&2
     exit 1
@@ -54,8 +56,9 @@ build_one() {
     exit 1
   fi
 
-  # Convert example YAML -> JSON and validate against the schema.
-  yj -yj < "$example" > "$example_json"
+  # Convert example YAML -> JSON (via node yaml lib, matching the shipped
+  # skill's parser) and validate against the schema.
+  node "$SCHEMA_DIR/yaml-to-json.mjs" < "$example" > "$example_json"
   if ! jsonschema-cli validate \
         -d 2020 \
         --assert-format \
