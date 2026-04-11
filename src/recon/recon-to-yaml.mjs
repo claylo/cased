@@ -151,3 +151,49 @@ function monthBucket(commitDate, windowStart) {
   const monthDiff = commitDate.getUTCMonth() - windowStart.getUTCMonth();
   return yearDiff * 12 + monthDiff;
 }
+
+/**
+ * Aggregate tokei JSON output into recon structure fields. Returns
+ * total file and line counts, a languages[] array with percentages,
+ * and a flat file index for downstream per-module filtering.
+ *
+ * @param {object} tokei - parsed tokei JSON (output of `tokei --output json`)
+ * @returns {{
+ *   total_files: number,
+ *   total_lines: number,
+ *   languages: Array<{ language: string, files: number, lines: number, percentage: number }>,
+ *   files: Array<{ path: string, lines: number }>
+ * }}
+ */
+export function parseTokei(tokei) {
+  let totalFiles = 0;
+  let totalLines = 0;
+  const languages = [];
+  const files = [];
+
+  for (const [language, data] of Object.entries(tokei)) {
+    if (language === 'Total') continue;
+    const lines = (data.blanks || 0) + (data.code || 0) + (data.comments || 0);
+    totalFiles += data.files || 0;
+    totalLines += lines;
+    languages.push({ language, files: data.files || 0, lines });
+    for (const report of data.reports || []) {
+      const s = report.stats || {};
+      const fileLines = (s.blanks || 0) + (s.code || 0) + (s.comments || 0);
+      files.push({ path: report.name, lines: fileLines });
+    }
+  }
+
+  for (const lang of languages) {
+    lang.percentage = totalLines === 0
+      ? 0
+      : Math.round((lang.lines / totalLines) * 10000) / 100;
+  }
+
+  return {
+    total_files: totalFiles,
+    total_lines: totalLines,
+    languages,
+    files,
+  };
+}

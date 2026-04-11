@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { parseGitLog } from '../src/recon/recon-to-yaml.mjs';
+import { parseGitLog, parseTokei } from '../src/recon/recon-to-yaml.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, 'fixtures', 'recon');
@@ -56,5 +56,37 @@ describe('parseGitLog', () => {
     // count assertions above, but assert explicitly:
     const allPaths = new Set(result.hotspots.map(h => h.path));
     assert.equal(allPaths.has('abc0007'), false);
+  });
+});
+
+describe('parseTokei', () => {
+  const tokeiJson = JSON.parse(
+    readFileSync(join(fixtures, 'tokei.json'), 'utf8')
+  );
+  const result = parseTokei(tokeiJson);
+
+  it('aggregates total files and lines across all languages', () => {
+    assert.equal(result.total_files, 10);
+    assert.equal(result.total_lines, 805);
+  });
+
+  it('builds a languages array with per-language percentages', () => {
+    assert.equal(result.languages.length, 2);
+    const rust = result.languages.find(l => l.language === 'Rust');
+    assert.equal(rust.files, 6);
+    assert.equal(rust.lines, 750);
+    assert.equal(rust.percentage, 93.17);
+  });
+
+  it('exposes a file index for module path-prefix filtering', () => {
+    // parseTokei returns { total_files, total_lines, languages, files }
+    // where files is Array<{ path, lines }>. Downstream code filters
+    // this by path prefix to compute per-module counts.
+    assert.ok(Array.isArray(result.files));
+    assert.equal(result.files.length, 10);
+    const libRs = result.files.find(
+      f => f.path === '/tmp/sample-rust-workspace/core/src/lib.rs'
+    );
+    assert.equal(libRs.lines, 245); // 15 + 200 + 30
   });
 });
