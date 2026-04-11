@@ -6,6 +6,10 @@ build-schemas:
 build-viewer:
     scripts/build-viewer.sh
 
+# Run the recon pre-runner against a target Rust project
+recon target audit_dir:
+    bash src/recon/recon {{target}} {{audit_dir}}
+
 # Build a report from an audit directory (dev mode, uses source files)
 build-report audit_dir:
     node src/viewer/build-report.mjs {{audit_dir}}
