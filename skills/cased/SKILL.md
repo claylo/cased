@@ -88,25 +88,42 @@ The audit proceeds in five phases. Each phase produces a concrete artifact.
 
 ### Phase 1: Reconnaissance
 
-Build the structural model of the codebase. Produce `recon.yaml` in the
-audit directory (see File Inventory for the full path convention) containing:
+Build the structural model of the codebase. Produce `recon.yaml` in
+the audit directory (see File Inventory for the full path convention).
 
-- File tree with line counts and last-modified dates
-- Dependency graph (imports/requires between internal modules)
-- Entry points (HTTP handlers, CLI commands, main functions, exported APIs)
-- Dependency manifest (external deps with versions and ages)
-- Git churn data: files by commit frequency, recent authors, hotspots
-- Auth/trust boundaries identified
+**For Rust projects**, run the pre-runner:
 
-Read `${CLAUDE_SKILL_DIR}/references/recon-schema.yaml.md` for the full schema.
+```bash
+bash ${CLAUDE_SKILL_DIR}/scripts/recon <target-project-dir> <audit-dir>
+```
 
-**How to gather this data:**
+The pre-runner gathers mechanical data (cargo metadata, tokei, and a
+single-pass `git log` with 12-month sparkline computation) and writes
+a schema-validated `recon.yaml` covering:
+
+- `meta` — project, commit, timestamp, scope
+- `structure` — file/line totals, languages, workspace modules with per-module counts
+- `dependencies` — direct dependencies with version requirements
+- `churn` — top 15 hotspots with 12-month sparklines, 30-day recent activity
+
+Exit codes: `0` success, `2` not a Rust project, `3` tool missing or
+failed, `4` schema validation failure. On exit 2, fall back to the
+hand-gathering instructions below.
+
+The pre-runner does not populate `boundaries` (agent-owned per the
+schema design) or `modules[].entry_points` (optional). Add those by
+editing the emitted `recon.yaml` if the audit needs them.
+
+**For non-Rust projects**, gather the same data by hand:
+
 - Parse the file tree, count lines, read modification dates
 - Static analysis of imports/use statements for the dependency graph
-- Read Cargo.toml / package.json / go.mod / requirements.txt for external deps
+- Read `package.json` / `go.mod` / `requirements.txt` / etc. for external deps
 - Use `git log --format='%H %ai %s' --name-only` for churn analysis
-- Identify entry points by convention (main.rs, mod.rs with pub fn, handler
-  functions, exported symbols)
+- Identify entry points by convention (main function, handler functions,
+  exported symbols, public API boundaries)
+
+Read `${CLAUDE_SKILL_DIR}/references/recon-schema.yaml.md` for the full schema.
 
 ### Phase 2: Analysis
 
