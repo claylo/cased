@@ -8,10 +8,12 @@
 // The CLI entry point at the bottom is guarded so tests can import
 // the parser functions without triggering the build pipeline.
 
-import { readFileSync } from 'node:fs';
-import { dirname, basename } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
+import YAML from 'yaml';
 
 /**
  * Parse `git log --since=... -M --format='---%n%H %ai %an' --name-only`
@@ -359,4 +361,66 @@ export function validateRecon(recon, schemaPath) {
   const validate = ajv.compile(schema);
   const valid = validate(recon);
   return valid ? [] : validate.errors;
+}
+
+// CLI entry point. Guarded so tests can import the parser functions
+// without triggering the build pipeline.
+if (
+  process.argv[1] &&
+  realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
+) {
+  const [, , tmpDir, outYamlPath] = process.argv;
+  if (!tmpDir || !outYamlPath) {
+    console.error('Usage: node recon-to-yaml.mjs <tmp-dir> <out-yaml-path>');
+    process.exit(1);
+  }
+
+  try {
+    const manifest = JSON.parse(
+      readFileSync(join(tmpDir, 'manifest.json'), 'utf8')
+    );
+    const metadata = JSON.parse(
+      readFileSync(join(tmpDir, 'metadata.json'), 'utf8')
+    );
+    const tokei = JSON.parse(
+      readFileSync(join(tmpDir, 'tokei.json'), 'utf8')
+    );
+    const gitLog = readFileSync(join(tmpDir, 'git-log.raw'), 'utf8');
+
+    const recon = buildReconObject({ manifest, metadata, tokei, gitLog });
+
+    // Locate the schema. In the source layout it's at
+    // ../schemas/recon.schema.json relative to this file. In the
+    // shipped skill it's at ../references/recon.schema.json.
+    const scriptDir = dirname(fileURLToPath(import.meta.url));
+    const schemaCandidates = [
+      resolve(scriptDir, '..', 'schemas', 'recon.schema.json'),
+      resolve(scriptDir, '..', 'references', 'recon.schema.json'),
+    ];
+    const schemaPath = schemaCandidates.find(p => existsSync(p));
+    if (!schemaPath) {
+      console.error('error: cannot locate recon.schema.json');
+      console.error('  looked near: ' + scriptDir);
+      process.exit(3);
+    }
+
+    const errors = validateRecon(recon, schemaPath);
+    if (errors.length > 0) {
+      console.error('recon: validation failed');
+      for (const err of errors) {
+        console.error(`  ${err.instancePath || '/'}: ${err.message}`);
+      }
+      process.exit(4);
+    }
+
+    mkdirSync(dirname(outYamlPath), { recursive: true });
+    const yaml = YAML.stringify(recon, { indent: 2, lineWidth: 100 });
+    writeFileSync(outYamlPath, yaml);
+
+    const sizeKb = (yaml.length / 1024).toFixed(1);
+    console.log(`wrote ${outYamlPath} (${sizeKb}KB)`);
+  } catch (err) {
+    console.error(`recon: ${err.message}`);
+    process.exit(3);
+  }
 }

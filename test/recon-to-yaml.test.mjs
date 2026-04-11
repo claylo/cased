@@ -1,6 +1,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { readFileSync, mkdtempSync, writeFileSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { parse as parseYaml } from 'yaml';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -221,5 +224,48 @@ describe('validateRecon', () => {
       errors.some(e => e.instancePath === '/meta' || e.schemaPath?.includes('project')),
       'expected an error mentioning the missing project field'
     );
+  });
+});
+
+describe('recon-to-yaml CLI', () => {
+  it('reads a tmp dir of raw outputs and emits a valid recon.yaml', () => {
+    const work = mkdtempSync(join(tmpdir(), 'recon-test-'));
+    // Copy the four fixtures into the work dir under the expected names
+    for (const name of ['manifest.json', 'metadata.json', 'tokei.json', 'git-log.raw']) {
+      writeFileSync(join(work, name), readFileSync(join(fixtures, name), 'utf8'));
+    }
+    const outYaml = join(work, 'recon.yaml');
+    const scriptPath = join(here, '..', 'src', 'recon', 'recon-to-yaml.mjs');
+
+    execFileSync('node', [scriptPath, work, outYaml], {
+      stdio: 'pipe',
+    });
+
+    assert.ok(existsSync(outYaml));
+    const parsed = parseYaml(readFileSync(outYaml, 'utf8'));
+    assert.equal(parsed.meta.project, 'sample-rust-workspace');
+    assert.equal(parsed.structure.total_files, 10);
+    assert.equal(parsed.churn.hotspots[0].path, 'src/auth.rs');
+  });
+
+  it('exits 4 on schema validation failure', () => {
+    const work = mkdtempSync(join(tmpdir(), 'recon-test-'));
+    // Write a manifest that is missing the required `scope` field.
+    const badManifest = { ...loadManifest() };
+    delete badManifest.scope;
+    writeFileSync(join(work, 'manifest.json'), JSON.stringify(badManifest));
+    for (const name of ['metadata.json', 'tokei.json', 'git-log.raw']) {
+      writeFileSync(join(work, name), readFileSync(join(fixtures, name), 'utf8'));
+    }
+    const outYaml = join(work, 'recon.yaml');
+    const scriptPath = join(here, '..', 'src', 'recon', 'recon-to-yaml.mjs');
+
+    let code = 0;
+    try {
+      execFileSync('node', [scriptPath, work, outYaml], { stdio: 'pipe' });
+    } catch (err) {
+      code = err.status;
+    }
+    assert.equal(code, 4);
   });
 });
