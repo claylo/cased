@@ -75,50 +75,17 @@ Are there patterns that will make future changes painful? Look for:
 **Would a competent developer using this API for the first time fall into
 pits of failure, or pits of success?**
 
-## Output Format
+## Output
 
-Return findings as structured YAML:
+Return your response per the envelope defined in
+`${CLAUDE_SKILL_DIR}/references/subagent-output-contract.md`. Emit
+`status` (one of `DONE | DONE_WITH_PARTIAL_COVERAGE | BLOCKED |
+NEEDS_CONTEXT`) and either `findings` or `blocker`. Surface-specific
+fields for this rubric:
 
-```yaml
-findings:
-  - slug: "<kebab-case-finding-id>"
-    title: "<Human-readable finding title>"
-    criterion: "API-2"
-    surface: "API Design"
-    concern: critical | significant | moderate | advisory | note
-    locations:
-      - path: "src/file.ext"
-        start_line: 42
-        end_line: 55
-    evidence: |
-      <VERBATIM code from the file — no added comments, no // ... elisions.
-      Line numbers are rendered from start_line, so every line must match
-      the source exactly. Use multiple locations for non-contiguous code.>
-    evidence_lang: "<language>"
-    evidence_markers:
-      - lines: "<line or range, e.g. '3' or '3-7'>"
-        type: del | mark | ins
-        label: "<optional: what this marker highlights>"
-    mechanism: "<what is wrong and why>"
-    remediation: "<how to fix>"
-    temporal:
-      introduced: "<date if discoverable>"
-      last_modified: "<date if discoverable>"
-      commit_count: <int if discoverable>
-      monthly_commits: [0,0,0,0,0,0,0,0,0,0,0,0]
-    chains:
-      enables: []
-      enabled_by: []
-      related: []
-    effort: trivial | small | medium | large
-    effort_notes: "<brief justification>"
-```
+- `findings[].criterion:` — use the `API-N` prefix matching the criterion you evaluated.
+- `findings[].surface:` — always `"API Design"` (maps to the narrative title).
+- `findings[].evidence_lang:` — the language of the evidence file.
 
-## Validation
-
-Your output MUST validate against `${CLAUDE_SKILL_DIR}/references/findings.schema.json`.
-Every finding needs: slug, title, concern, locations (with start_line/end_line),
-evidence, mechanism, remediation.
-
-Report only confirmed findings. If the API is well-designed and consistent,
-say so briefly and return an empty findings list.
+Report only confirmed findings. If the API is well-designed and
+consistent, say so briefly via `status: DONE` with `findings: []`.

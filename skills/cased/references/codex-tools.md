@@ -72,7 +72,11 @@ dependencies"**, do this on Codex:
 4. Call `spawn_agent(agent_type="worker", message=<filled template>)`
 5. Issue all per-surface spawns together — do not wait between dispatches
 6. `wait` for all agents, then `close_agent` for each
-7. Merge each returned YAML fragment into the working `findings.yaml`
+7. Parse each returned envelope (see `subagent-output-contract.md` for
+   the exact shape). Route on `status` first, then merge the `findings`
+   array for DONE / DONE_WITH_PARTIAL_COVERAGE responses into the
+   working `findings.yaml` under a narrative keyed by the subagent's
+   `surface:` field.
 
 ### Dispatch message template
 
@@ -101,39 +105,25 @@ findings_schema: /absolute/path/to/skills/cased/references/findings.schema.json
 </agent-instructions>
 
 <output-contract>
-Return a YAML fragment conforming to the narratives[] schema in
-findings-schema.yaml.md. Structure:
+Return a YAML document per the envelope defined in
+skills/cased/references/subagent-output-contract.md. Shape:
 
 status: DONE | DONE_WITH_PARTIAL_COVERAGE | BLOCKED | NEEDS_CONTEXT
-narrative:
-  slug: <kebab-case surface identifier>
-  title: "The <Surface Name> Surface"
-  thesis: "<one sentence>"
-  verdict: "<net assessment after collecting findings>"
-  findings:
-    - slug: <kebab-case>
-      title: <string>
-      concern: critical | significant | moderate | advisory | note
-      locations: [...]
-      evidence: |
-        <verbatim code>
-      evidence_markers: [...]
-      mechanism: |
-        <one paragraph>
-      remediation: |
-        <concrete action>
-      temporal: {...}
-      chains: {enables: [], enabled_by: [], related: []}
-      effort: trivial | small | medium | large
-      effort_notes: <string>
+findings: [...]        # present when status is DONE or DONE_WITH_PARTIAL_COVERAGE
+coverage_notes: |      # present when status is DONE_WITH_PARTIAL_COVERAGE
+  <what you could not cover and why>
+blocker: |             # present when status is BLOCKED or NEEDS_CONTEXT
+  <what is missing>
 
-If status is DONE_WITH_PARTIAL_COVERAGE, declare in a top-level
-`coverage_notes:` field what you could not cover and why.
-If status is BLOCKED or NEEDS_CONTEXT, omit `narrative:` and populate
-`blocker:` with what is missing.
+Each findings[] entry follows the rubric's surface-specific fields
+(criterion prefix, surface name, evidence_lang default) plus the
+full finding schema at findings.schema.json. Do NOT emit narrative-
+level fields (thesis, verdict, title) at the top level — the
+controller writes those after assembling findings from every
+dispatched subagent.
 </output-contract>
 
-Execute this now. Output ONLY the YAML fragment described above,
+Execute this now. Output ONLY the YAML document described above,
 with no surrounding prose.
 ```
 
@@ -152,14 +142,14 @@ Three framing rules, all load-bearing:
 ## Status handling
 
 When a dispatched surface agent returns, read the `status` field before
-reading the `narrative`:
+reading `findings`:
 
-- **DONE** — merge the narrative into the working `findings.yaml` and
-  proceed.
-- **DONE_WITH_PARTIAL_COVERAGE** — merge the narrative, then record the
-  `coverage_notes` as an entry in the audit directory's recon-side log
-  so the reader knows what was not examined. Do NOT silently discard
-  partial coverage.
+- **DONE** — merge `findings[]` into the working `findings.yaml` under
+  a narrative keyed by the subagent's `surface:` value, and proceed.
+- **DONE_WITH_PARTIAL_COVERAGE** — merge `findings[]` the same way,
+  then record the `coverage_notes` entry in the audit directory's
+  recon-side log so the reader knows what was not examined. Do NOT
+  silently discard partial coverage.
 - **BLOCKED** — read `blocker`, decide whether to provide more context
   and re-dispatch (same model), escalate to a more capable model, or
   mark the surface unauditable and note it in the final report.
@@ -170,6 +160,9 @@ reading the `narrative`:
 Never ignore a non-DONE status. A cased audit that silently drops a
 partial-coverage result is indistinguishable from one that never
 dispatched the agent in the first place.
+
+For the full contract including examples for each status, see
+`subagent-output-contract.md`.
 
 ## Parallel dispatch shape
 

@@ -82,56 +82,22 @@ followed? Look for:
 
 **Is the dependency tree intentional, current, and free of known risks?**
 
-## Output Format
+## Output
 
-Return findings as structured YAML:
+Return your response per the envelope defined in
+`${CLAUDE_SKILL_DIR}/references/subagent-output-contract.md`. Emit
+`status` (one of `DONE | DONE_WITH_PARTIAL_COVERAGE | BLOCKED |
+NEEDS_CONTEXT`) and either `findings` or `blocker`. Surface-specific
+fields for this rubric:
 
-```yaml
-findings:
-  - slug: "<kebab-case-finding-id>"
-    title: "<Human-readable finding title>"
-    criterion: "DEP-2"
-    surface: "Dependencies"
-    concern: critical | significant | moderate | advisory | note
-    locations:
-      - path: "Cargo.toml"
-        start_line: 15
-        end_line: 15
-    evidence: |
-      <VERBATIM manifest lines or tool output — no added comments,
-      no elisions. Line numbers are rendered from start_line.
-      Use multiple locations for non-contiguous code.>
-    evidence_lang: "toml"
-    evidence_markers:
-      - lines: "<line or range, e.g. '3' or '3-7'>"
-        type: del | mark | ins
-        label: "<optional: what this marker highlights>"
-    mechanism: "<what is wrong and why>"
-    remediation: "<how to fix>"
-    temporal:
-      introduced: "<date if discoverable>"
-      last_modified: "<date if discoverable>"
-      commit_count: <int if discoverable>
-      monthly_commits: [0,0,0,0,0,0,0,0,0,0,0,0]
-    chains:
-      enables: []
-      enabled_by: []
-      related: []
-    effort: trivial | small | medium | large
-    effort_notes: "<brief justification>"
-```
-
-## Flow Diagrams
+- `findings[].criterion:` — use the `DEP-N` prefix matching the criterion you evaluated.
+- `findings[].surface:` — always `"Dependencies"` (maps to the narrative title).
+- `findings[].evidence_lang:` — default `toml` for Cargo.toml / package.json-adjacent manifests; otherwise the relevant manifest language.
 
 Do NOT include a `flow` array in dependency findings. Dependency audits
 are item-by-item evaluations (advisory, version, license), not process
 flows. There is no sequential or branching structure to diagram.
 
-## Validation
-
-Your output MUST validate against `${CLAUDE_SKILL_DIR}/references/findings.schema.json`.
-Every finding needs: slug, title, concern, locations (with start_line/end_line),
-evidence, mechanism, remediation.
-
 Report only actionable findings. "This dependency is 3 months old" is not
 a finding. "This dependency has a published CVE affecting our usage" is.
+Use `status: DONE` with `findings: []` for a clean surface.

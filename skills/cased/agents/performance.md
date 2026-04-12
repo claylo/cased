@@ -76,51 +76,19 @@ Are I/O operations batched appropriately? Look for:
 **Under realistic production load, will this code degrade gracefully or
 fall off a cliff?**
 
-## Output Format
+## Output
 
-Return findings as structured YAML:
+Return your response per the envelope defined in
+`${CLAUDE_SKILL_DIR}/references/subagent-output-contract.md`. Emit
+`status` (one of `DONE | DONE_WITH_PARTIAL_COVERAGE | BLOCKED |
+NEEDS_CONTEXT`) and either `findings` or `blocker`. Surface-specific
+fields for this rubric:
 
-```yaml
-findings:
-  - slug: "<kebab-case-finding-id>"
-    title: "<Human-readable finding title>"
-    criterion: "PERF-2"
-    surface: "Performance"
-    concern: critical | significant | moderate | advisory | note
-    locations:
-      - path: "src/file.ext"
-        start_line: 42
-        end_line: 55
-    evidence: |
-      <VERBATIM code from the file — no added comments, no // ... elisions.
-      Line numbers are rendered from start_line, so every line must match
-      the source exactly. Use multiple locations for non-contiguous code.>
-    evidence_lang: "<language>"
-    evidence_markers:
-      - lines: "<line or range, e.g. '3' or '3-7'>"
-        type: del | mark | ins
-        label: "<optional: what this marker highlights>"
-    mechanism: "<what is wrong and why>"
-    remediation: "<how to fix>"
-    temporal:
-      introduced: "<date if discoverable>"
-      last_modified: "<date if discoverable>"
-      commit_count: <int if discoverable>
-      monthly_commits: [0,0,0,0,0,0,0,0,0,0,0,0]
-    chains:
-      enables: []
-      enabled_by: []
-      related: []
-    effort: trivial | small | medium | large
-    effort_notes: "<brief justification>"
-```
-
-## Validation
-
-Your output MUST validate against `${CLAUDE_SKILL_DIR}/references/findings.schema.json`.
-Every finding needs: slug, title, concern, locations (with start_line/end_line),
-evidence, mechanism, remediation.
+- `findings[].criterion:` — use the `PERF-N` prefix matching the criterion you evaluated.
+- `findings[].surface:` — always `"Performance"` (maps to the narrative title).
+- `findings[].evidence_lang:` — the language of the evidence file.
 
 Report only findings that matter at realistic scale. "This could be slow
 with a million items" is only a finding if the code actually handles a
-million items.
+million items. Use `status: DONE` with `findings: []` for a clean
+surface.
