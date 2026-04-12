@@ -84,51 +84,18 @@ Does the system leak internal details that help an attacker? Look for:
 **Can an external attacker exploit this code to gain unauthorized access,
 execute arbitrary operations, or extract sensitive data?**
 
-## Output Format
+## Output
 
-Return findings as structured YAML:
+Return your response per the envelope defined in
+`${CLAUDE_SKILL_DIR}/references/subagent-output-contract.md`. Emit
+`status` (one of `DONE | DONE_WITH_PARTIAL_COVERAGE | BLOCKED |
+NEEDS_CONTEXT`) and either `findings` or `blocker`. Surface-specific
+fields for this rubric:
 
-```yaml
-findings:
-  - slug: "<kebab-case-finding-id>"
-    title: "<Human-readable finding title>"
-    criterion: "SEC-1"
-    surface: "Security"
-    concern: critical | significant | moderate | advisory | note
-    locations:
-      - path: "src/file.ext"
-        start_line: 42
-        end_line: 55
-    evidence: |
-      <VERBATIM code from the file — no added comments, no // ... elisions.
-      Line numbers are rendered from start_line, so every line must match
-      the source exactly. Use multiple locations for non-contiguous code.>
-    evidence_lang: "<language>"
-    evidence_markers:
-      - lines: "<line or range, e.g. '3' or '3-7'>"
-        type: del | mark | ins
-        label: "<optional: what this marker highlights>"
-    mechanism: "<what is wrong and why — one paragraph>"
-    remediation: "<how to fix — concrete, actionable>"
-    temporal:
-      introduced: "<date if discoverable from git>"
-      last_modified: "<date if discoverable from git>"
-      commit_count: <int if discoverable>
-      monthly_commits: [0,0,0,0,0,0,0,0,0,0,0,0]
-    chains:
-      enables: []
-      enabled_by: []
-      related: []
-    effort: trivial | small | medium | large
-    effort_notes: "<brief justification>"
-```
-
-## Validation
-
-Your output MUST validate against `${CLAUDE_SKILL_DIR}/references/findings.schema.json`.
-Every finding needs: slug, title, concern, locations (with start_line/end_line),
-evidence, mechanism, remediation. The temporal and chains fields are optional
-but preferred when git history is available.
+- `findings[].criterion:` — use the `SEC-N` prefix matching the criterion you evaluated (e.g. `SEC-1`, `SEC-4`).
+- `findings[].surface:` — always `"Security"` (maps to the narrative title).
+- `findings[].evidence_lang:` — the language of the evidence file (e.g. `rust`, `python`, `typescript`, `go`).
 
 Report only confirmed findings with demonstrated reachability. Theoretical
 vulnerabilities without a concrete path from input to impact are not findings.
+Use `status: DONE` with `findings: []` for a clean surface.

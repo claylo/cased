@@ -515,5 +515,6 @@ Read these before generating output:
 - `${CLAUDE_SKILL_DIR}/references/report-template.md` — Exact markdown structure for the report
 - `${CLAUDE_SKILL_DIR}/references/actions-taken-schema.md` — Format for the remediation log
 - `${CLAUDE_SKILL_DIR}/references/codex-tools.md` — Codex tool mapping and parallel-dispatch instructions (required on Codex)
+- `${CLAUDE_SKILL_DIR}/references/subagent-output-contract.md` — Envelope every subagent returns (status + findings/blocker), the output contract the dispatched agents implement
 - `${CLAUDE_SKILL_DIR}/examples/sample-audit.md` — A complete rendered example report
 - `${CLAUDE_SKILL_DIR}/examples/sample-actions-taken.md` — Example remediation log

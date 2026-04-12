@@ -59,13 +59,27 @@ For each finding in the report:
 
 ## Output
 
-Produce a review summary with one of three verdicts per finding:
+Return your response per the envelope defined in
+`${CLAUDE_SKILL_DIR}/references/subagent-output-contract.md` — the
+reviewer's `findings` shape is **different** from the analysis agents
+(see the "reviewer agent" section of the contract). Emit `status` and
+either `findings` (one entry per finding reviewed) or `blocker`.
+
+Each reviewer `findings` entry is:
+
+```yaml
+- slug: "<slug of the original finding being reviewed>"
+  verdict: confirmed | adjusted | disputed
+  notes: "<required when adjusted or disputed; explain what to change or why the finding is wrong>"
+```
 
 - **confirmed** — evidence, mechanism, and remediation all check out
-- **adjusted** — finding is valid but a detail needs correction (cite what)
-- **disputed** — finding is inaccurate or unreachable (cite evidence)
+- **adjusted** — finding is valid but a detail needs correction (cite what in `notes`)
+- **disputed** — finding is inaccurate or unreachable (cite evidence in `notes`)
 
-Format:
+After the envelope, you may also emit a human-readable summary table
+for the controller to paste into the review log — but the structured
+envelope is what gets merged into the audit artifacts:
 
 ```markdown
 ## Review: {audit directory name}
@@ -77,8 +91,9 @@ Format:
 | [{slug}](README.md#{anchor}) | disputed | guard clause at line 38 prevents this path |
 ```
 
-If all findings are confirmed, say so and stop. Do not invent concerns
-to justify your existence.
+If every finding is confirmed, emit `status: DONE` with a `findings`
+array of all-confirmed entries and stop. Do not invent concerns to
+justify your existence.
 
 ## Rules
 

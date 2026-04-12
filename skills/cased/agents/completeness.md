@@ -105,44 +105,17 @@ feature names in the current year?**
 Do NOT include a `flow` array in completeness findings. These are
 per-feature evaluations, not process flows.
 
-## Output Format
+## Output
 
-Return findings as structured YAML:
+Return your response per the envelope defined in
+`${CLAUDE_SKILL_DIR}/references/subagent-output-contract.md`. Emit
+`status` (one of `DONE | DONE_WITH_PARTIAL_COVERAGE | BLOCKED |
+NEEDS_CONTEXT`) and either `findings` or `blocker`. Surface-specific
+fields for this rubric:
 
-```yaml
-findings:
-  - slug: "<kebab-case-finding-id>"
-    title: "<Human-readable finding title>"
-    criterion: "FC-1"
-    surface: "Completeness"
-    concern: critical | significant | moderate | advisory | note
-    locations:
-      - path: "src/file.ext"
-        start_line: 42
-        end_line: 55
-    evidence: |
-      <VERBATIM code from the file — no added comments, no // ... elisions.
-      Line numbers are rendered from start_line, so every line must match
-      the source exactly. Use multiple locations for non-contiguous code.>
-    evidence_lang: "<language>"
-    evidence_markers:
-      - lines: "<line or range, e.g. '3' or '3-7'>"
-        type: del | mark | ins
-        label: "<optional: what this marker highlights>"
-    mechanism: "<what is wrong and why>"
-    remediation: "<how to fix>"
-    temporal:
-      introduced: "<date if discoverable>"
-      last_modified: "<date if discoverable>"
-      commit_count: <int if discoverable>
-      monthly_commits: [0,0,0,0,0,0,0,0,0,0,0,0]
-    chains:
-      enables: []
-      enabled_by: []
-      related: []
-    effort: trivial | small | medium | large
-    effort_notes: "<brief justification>"
-```
+- `findings[].criterion:` — use the `FC-N` prefix matching the criterion you evaluated.
+- `findings[].surface:` — always `"Completeness"` (maps to the narrative title).
+- `findings[].evidence_lang:` — the language of the evidence file.
 
 ## Concern Level Guidance
 
@@ -152,12 +125,7 @@ findings:
 - `advisory` — Feature exists but is underdocumented, making discovery unlikely
 - `note` — Minor gap between docs and implementation, no real user impact
 
-## Validation
-
-Your output MUST validate against `${CLAUDE_SKILL_DIR}/references/findings.schema.json`.
-Every finding needs: slug, title, concern, locations (with start_line/end_line),
-evidence, mechanism, remediation.
-
 Report only findings that would surprise or block a user who is trying to
 use this code as advertised. "This could have more features" is not a
-finding. "This feature doesn't do what the docs say" is.
+finding. "This feature doesn't do what the docs say" is. Use `status:
+DONE` with `findings: []` for a clean surface.
