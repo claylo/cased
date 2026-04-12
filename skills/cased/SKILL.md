@@ -14,6 +14,23 @@ description: >
 
 # Code Audit Skill
 
+## Platform adaptation
+
+This skill uses Claude Code tool names (`Task`, `TodoWrite`, `Skill`,
+`Read`, `Bash`, etc.) as the lingua franca. If you are running this
+skill under a different harness, read the platform-specific tool
+mapping **before** continuing:
+
+- **Codex:** `references/codex-tools.md` — covers the required
+  `multi_agent = true` config flag, the `spawn_agent` / `wait` /
+  `close_agent` mapping, and the named-agent dispatch workaround.
+  Phase 2 parallel dispatch will silently collapse into single-context
+  sequential analysis without this setup.
+- **Claude Code:** no adapter needed — tool names are native.
+- **Other harnesses:** check your platform's documentation for
+  equivalents of the tools listed above, or add a new adapter under
+  `references/`.
+
 ## Required first line
 
 In the first `commentary` message of the turn, output this exact sentence verbatim and as the first line:
@@ -173,6 +190,14 @@ When no domain skill is present, dispatch the built-in analysis agents:
 3. **Wait for ALL agents to complete.** Same rules as domain skill
    dispatch — agents ARE the analysis. Do not proceed until all return.
 4. Collect agent output, deduplicate, and organize into narratives.
+
+**Codex note:** "Dispatch in parallel" here maps to multiple
+`spawn_agent` calls issued back-to-back before the first `wait`. Read
+`references/codex-tools.md` for the named-agent dispatch workaround and
+the message-framing template (task-delegation framing, XML-tagged
+instructions, explicit execution directive). Dispatching sequentially —
+or via a single worker that "covers all surfaces" — is the failure mode
+this skill is trying to prevent.
 
 | Agent | Surface | When to Dispatch | Definition |
 |-------|---------|-----------------|------------|
@@ -446,5 +471,6 @@ Read these before generating output:
 - `${CLAUDE_SKILL_DIR}/references/findings.example.yaml` — Canonical validated example for `findings.yaml`
 - `${CLAUDE_SKILL_DIR}/references/report-template.md` — Exact markdown structure for the report
 - `${CLAUDE_SKILL_DIR}/references/actions-taken-schema.md` — Format for the remediation log
+- `${CLAUDE_SKILL_DIR}/references/codex-tools.md` — Codex tool mapping and parallel-dispatch instructions (required on Codex)
 - `${CLAUDE_SKILL_DIR}/examples/sample-audit.md` — A complete rendered example report
 - `${CLAUDE_SKILL_DIR}/examples/sample-actions-taken.md` — Example remediation log
