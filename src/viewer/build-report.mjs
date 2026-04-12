@@ -620,6 +620,41 @@ export function renderAgentsMd(findings, templateStr) {
 }
 
 /**
+ * Render the README.md scaffold by interpolating the template with audit
+ * metadata, concern counts, and the finding index. The scaffold exists to
+ * signal to the agent that README.md is the GitHub-rendered narrative
+ * companion to report.html — the agent fills in the prose; the script
+ * pre-fills structural metadata so the agent knows the scope.
+ * @param {object} findings — parsed findings YAML
+ * @param {string} templateStr — raw template markdown
+ * @returns {string}
+ */
+export function renderReadmeMd(findings, templateStr) {
+  const auditTitle = titleFromScope(findings.scope);
+  const narratives = findings.narratives || [];
+  let findingCount = 0;
+  for (const n of narratives) {
+    findingCount += (n.findings || []).length;
+  }
+  const counts = findings.summary?.counts || {};
+  const findingList = renderAgentsFindingList(findings);
+
+  return templateStr
+    .replaceAll('{{audit_title}}', auditTitle)
+    .replaceAll('{{audit_scope}}', findings.scope || '')
+    .replaceAll('{{audit_date}}', findings.audit_date || '')
+    .replaceAll('{{audit_commit}}', findings.commit || '')
+    .replaceAll('{{finding_count}}', String(findingCount))
+    .replaceAll('{{narrative_count}}', String(narratives.length))
+    .replaceAll('{{finding_list}}', findingList)
+    .replaceAll('{{count_critical}}', String(counts.critical ?? 0))
+    .replaceAll('{{count_significant}}', String(counts.significant ?? 0))
+    .replaceAll('{{count_moderate}}', String(counts.moderate ?? 0))
+    .replaceAll('{{count_advisory}}', String(counts.advisory ?? 0))
+    .replaceAll('{{count_note}}', String(counts.note ?? 0));
+}
+
+/**
  * Assemble a single self-contained report.html from audit YAML, template, CSS, and fonts.
  * @param {string} auditDir — path to audit directory (contains recon.yaml, findings.yaml)
  * @param {object} opts
@@ -798,9 +833,9 @@ if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url
     // Write AGENTS.md from template. Template lives next to template.html in
     // both source and skill layouts, so the same viewerDir candidate resolution
     // that found template.html will find this too.
+    const findings = parseFindings(readFileSync(join(auditDir, 'findings.yaml'), 'utf8'));
     const agentsTemplatePath = join(viewerDir, 'agents-md-template.md');
     if (existsSync(agentsTemplatePath)) {
-      const findings = parseFindings(readFileSync(join(auditDir, 'findings.yaml'), 'utf8'));
       const template = readFileSync(agentsTemplatePath, 'utf8');
       const agentsMd = renderAgentsMd(findings, template);
       const agentsPath = join(auditDir, 'AGENTS.md');
@@ -808,6 +843,24 @@ if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url
       console.log(`wrote ${agentsPath} (${(agentsMd.length / 1024).toFixed(1)}KB)`);
     } else {
       console.warn(`agents-md-template.md not found at ${agentsTemplatePath}; skipping AGENTS.md`);
+    }
+
+    // Write README.md scaffold from template. The scaffold is only written if
+    // README.md does not already exist — the agent fills it in with narrative
+    // prose and subsequent build-report runs must not clobber that work.
+    const readmeTemplatePath = join(viewerDir, 'readme-template.md');
+    const readmePath = join(auditDir, 'README.md');
+    if (existsSync(readmeTemplatePath)) {
+      if (existsSync(readmePath)) {
+        console.log(`skipped ${readmePath} (already exists; scaffold never overwrites authored prose)`);
+      } else {
+        const template = readFileSync(readmeTemplatePath, 'utf8');
+        const readmeMd = renderReadmeMd(findings, template);
+        writeFileSync(readmePath, readmeMd);
+        console.log(`wrote ${readmePath} (${(readmeMd.length / 1024).toFixed(1)}KB) — scaffold, agent must fill in`);
+      }
+    } else {
+      console.warn(`readme-template.md not found at ${readmeTemplatePath}; skipping README.md`);
     }
   })();
 }

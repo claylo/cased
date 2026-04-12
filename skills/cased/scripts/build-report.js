@@ -39534,6 +39534,25 @@ function renderAgentsMd(findings, templateStr) {
 	return templateStr.replaceAll("{{audit_title}}", auditTitle).replaceAll("{{audit_slug}}", auditSlug).replaceAll("{{audit_scope}}", findings.scope || "").replaceAll("{{audit_date}}", findings.audit_date || "").replaceAll("{{finding_count}}", String(findingCount)).replaceAll("{{finding_list}}", findingList);
 }
 /**
+* Render the README.md scaffold by interpolating the template with audit
+* metadata, concern counts, and the finding index. The scaffold exists to
+* signal to the agent that README.md is the GitHub-rendered narrative
+* companion to report.html — the agent fills in the prose; the script
+* pre-fills structural metadata so the agent knows the scope.
+* @param {object} findings — parsed findings YAML
+* @param {string} templateStr — raw template markdown
+* @returns {string}
+*/
+function renderReadmeMd(findings, templateStr) {
+	const auditTitle = titleFromScope(findings.scope);
+	const narratives = findings.narratives || [];
+	let findingCount = 0;
+	for (const n of narratives) findingCount += (n.findings || []).length;
+	const counts = findings.summary?.counts || {};
+	const findingList = renderAgentsFindingList(findings);
+	return templateStr.replaceAll("{{audit_title}}", auditTitle).replaceAll("{{audit_scope}}", findings.scope || "").replaceAll("{{audit_date}}", findings.audit_date || "").replaceAll("{{audit_commit}}", findings.commit || "").replaceAll("{{finding_count}}", String(findingCount)).replaceAll("{{narrative_count}}", String(narratives.length)).replaceAll("{{finding_list}}", findingList).replaceAll("{{count_critical}}", String(counts.critical ?? 0)).replaceAll("{{count_significant}}", String(counts.significant ?? 0)).replaceAll("{{count_moderate}}", String(counts.moderate ?? 0)).replaceAll("{{count_advisory}}", String(counts.advisory ?? 0)).replaceAll("{{count_note}}", String(counts.note ?? 0));
+}
+/**
 * Assemble a single self-contained report.html from audit YAML, template, CSS, and fonts.
 * @param {string} auditDir — path to audit directory (contains recon.yaml, findings.yaml)
 * @param {object} opts
@@ -39655,13 +39674,23 @@ if ((0, node_fs.realpathSync)(process.argv[1]) === (0, node_fs.realpathSync)((0,
 	const outPath = (0, node_path.join)(auditDir, "report.html");
 	(0, node_fs.writeFileSync)(outPath, html);
 	console.log(`wrote ${outPath} (${(html.length / 1024).toFixed(0)}KB)`);
+	const findings = parseFindings((0, node_fs.readFileSync)((0, node_path.join)(auditDir, "findings.yaml"), "utf8"));
 	const agentsTemplatePath = (0, node_path.join)(viewerDir, "agents-md-template.md");
 	if ((0, node_fs.existsSync)(agentsTemplatePath)) {
-		const agentsMd = renderAgentsMd(parseFindings((0, node_fs.readFileSync)((0, node_path.join)(auditDir, "findings.yaml"), "utf8")), (0, node_fs.readFileSync)(agentsTemplatePath, "utf8"));
+		const agentsMd = renderAgentsMd(findings, (0, node_fs.readFileSync)(agentsTemplatePath, "utf8"));
 		const agentsPath = (0, node_path.join)(auditDir, "AGENTS.md");
 		(0, node_fs.writeFileSync)(agentsPath, agentsMd);
 		console.log(`wrote ${agentsPath} (${(agentsMd.length / 1024).toFixed(1)}KB)`);
 	} else console.warn(`agents-md-template.md not found at ${agentsTemplatePath}; skipping AGENTS.md`);
+	const readmeTemplatePath = (0, node_path.join)(viewerDir, "readme-template.md");
+	const readmePath = (0, node_path.join)(auditDir, "README.md");
+	if ((0, node_fs.existsSync)(readmeTemplatePath)) if ((0, node_fs.existsSync)(readmePath)) console.log(`skipped ${readmePath} (already exists; scaffold never overwrites authored prose)`);
+	else {
+		const readmeMd = renderReadmeMd(findings, (0, node_fs.readFileSync)(readmeTemplatePath, "utf8"));
+		(0, node_fs.writeFileSync)(readmePath, readmeMd);
+		console.log(`wrote ${readmePath} (${(readmeMd.length / 1024).toFixed(1)}KB) — scaffold, agent must fill in`);
+	}
+	else console.warn(`readme-template.md not found at ${readmeTemplatePath}; skipping README.md`);
 })();
 //#endregion
 exports.assembleReport = assembleReport;
@@ -39680,6 +39709,7 @@ exports.renderHeader = renderHeader;
 exports.renderLedger = renderLedger;
 exports.renderNarrative = renderNarrative;
 exports.renderProse = renderProse;
+exports.renderReadmeMd = renderReadmeMd;
 exports.resolveSchemaDir = resolveSchemaDir;
 exports.titleFromScope = titleFromScope;
 exports.validateAuditDir = validateAuditDir;

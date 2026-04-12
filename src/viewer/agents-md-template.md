@@ -9,7 +9,7 @@ up remediation work without thrashing. Read it once, then act.
 
 ## Files in this directory
 
-- `index.md`         — authored narrative report. Read-only.
+- `README.md`        — authored narrative report (markdown, GitHub-rendered companion to report.html). Read-only for remediation work.
 - `report.html`      — interactive rendered report (primary deliverable). Read-only.
 - `findings.yaml`    — structured findings (source for the build). Read-only.
 - `recon.yaml`       — structural model. Read-only.
@@ -22,7 +22,7 @@ up remediation work without thrashing. Read it once, then act.
 
 For each finding you address:
 
-1. Find it in `index.md` or `report.html` by its slug. Anchors match the slug
+1. Find it in `README.md` or `report.html` by its slug. Anchors match the slug
    exactly; every finding is pre-listed in the index below so you don't need
    to grep.
 2. Read the concern, location, and remediation text.
@@ -53,14 +53,14 @@ status:
 
 # Actions Taken: {{audit_title}}
 
-Summary of remediation status for the [{{audit_date}} {{audit_scope}} audit](index.md).
+Summary of remediation status for the [{{audit_date}} {{audit_scope}} audit](README.md).
 
 ---
 
 ## YYYY-MM-DD — brief description of the action
 
 **Disposition:** fixed
-**Addresses:** [finding-slug](index.md#finding-slug)
+**Addresses:** [finding-slug](README.md#finding-slug)
 **Commit:** {SHA or PR link}
 **Author:** {who did the work}
 
@@ -77,14 +77,14 @@ must be here. If `deferred`, include the target date or milestone.
 - `accepted` — risk acknowledged; rationale mandatory (who decided, why).
   This is not a euphemism for "ignored"
 - `disputed` — finding contested with evidence; not a dismissal. The
-  original finding stays in `index.md`; this entry records the counterargument
+  original finding stays in `README.md`; this entry records the counterargument
 - `deferred` — scheduled for later; target date or milestone reference
   required. A deferred finding without a target is an accepted finding in
   disguise
 
 ## What you must not do
 
-- Do not edit `index.md`, `report.html`, `findings.yaml`, `recon.yaml`, or
+- Do not edit `README.md`, `report.html`, `findings.yaml`, `recon.yaml`, or
   anything in `assets/`. They are the audit artifact and must stay immutable.
 - Do not edit past `actions-taken.md` entries. The file is append-only. If
   a previous action is superseded, add a new entry referencing the old one.
