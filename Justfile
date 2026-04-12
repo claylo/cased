@@ -39,4 +39,4 @@ build-example: build-viewer
 
 # Run tests
 test:
-    node --test test/build-report.test.mjs
+    node --test test/build-report.test.mjs test/recon-to-yaml.test.mjs

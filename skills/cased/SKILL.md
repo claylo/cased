@@ -126,6 +126,7 @@ a schema-validated `recon.yaml` covering:
 - `structure` — file/line totals, languages, workspace modules with per-module counts
 - `dependencies` — direct dependencies with version requirements
 - `churn` — top 15 hotspots with 12-month sparklines, 30-day recent activity
+- `testing` — detected canonical test runner and command, surfaced from scrat config, Justfile, package.json, or nextest config
 
 Exit codes: `0` success, `2` not a Rust project, `3` tool missing or
 failed, `4` schema validation failure. On exit 2, fall back to the
@@ -145,6 +146,8 @@ editing the emitted `recon.yaml` if the audit needs them.
   exported symbols, public API boundaries)
 
 Read `${CLAUDE_SKILL_DIR}/references/recon-schema.yaml.md` for the full schema.
+
+**Running tests during the audit.** Do NOT run tests (`cargo test`, `npm test`, etc.) as part of reconnaissance, analysis, or verification. The audit is static analysis. If a finding legitimately requires dynamic verification, use `recon.yaml#testing.command` — running the wrong runner (e.g., `cargo test` against a nextest-configured project) produces false failures that look like real findings. When in doubt, note the observation and let the user decide whether to execute tests.
 
 ### Phase 2: Analysis
 
