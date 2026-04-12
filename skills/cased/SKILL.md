@@ -93,11 +93,11 @@ not the commentary.
 
 **Division of labor:** During Phase 2 (Analysis), you are a dispatcher,
 not an analyst. Do NOT read project source files yourself — that is
-what the agents do. Your job is to classify the codebase from recon
-data and manifest files (Cargo.toml, package.json, etc.), dispatch
-agents, wait for results, and assemble findings. If you find yourself
-reading `.rs`, `.ts`, `.py`, or other source files during Phase 2,
-you are doing the agents' work and wasting tokens.
+what the subagents do. Your job is to classify the codebase from recon
+data and manifest files (Cargo.toml, package.json, etc.), dispatch one
+subagent per surface, wait for all of them, and assemble findings. If
+you find yourself reading `.rs`, `.ts`, `.py`, or other source files
+during Phase 2, you are doing the subagents' work and wasting tokens.
 
 ## Workflow
 
@@ -158,46 +158,87 @@ as the narrative framework and dispatch its agents for parallel review.
 |----------|-------|-----------|-------------|
 | Rust | `crustoleum` | `Cargo.toml` present | 13 surfaces, 84 criteria, 6 parallel agents. Covers unsafe soundness, ownership model, error architecture, concurrency, supply chain, and performance. |
 
-When a domain skill is present:
+### When a domain skill is present
+
 1. Load the skill (`skill: crustoleum`) to get the full rubric.
 2. Run the skill's tool prerequisites (e.g., `${CLAUDE_SKILL_DIR}/scripts/run-tools --full`).
 3. Classify the codebase using the skill's surface selection guide to
-   determine which agents to dispatch.
-4. Dispatch the skill's agents in parallel. Each agent returns findings
-   in cased's `findings.yaml` schema.
-5. **Wait for ALL agents to complete.** Do not proceed to findings
-   assembly until every dispatched agent has returned. The agents ARE
-   the analysis — you do not have "sufficient data from direct code
-   reading" to substitute for their structured rubric evaluation.
-   If an agent is slow, wait. If an agent fails, report the failure.
-   Never skip agent results to save time.
-6. Collect agent output, deduplicate, and organize into narratives.
+   determine which of its subagents apply.
+4. Build one `<audit-context>` block (target repo path, commit SHA,
+   2–4 sentence recon summary, path to `findings.schema.json`) and
+   reuse it for every dispatch in this audit. See
+   `${CLAUDE_SKILL_DIR}/references/codex-tools.md` for the exact message
+   framing — the same shape works on Claude Code.
+5. Dispatch one subagent per selected surface, in parallel. For
+   crustoleum the set is: `safety-auditor` (safety-auditor.md),
+   `api-type-design` (api-type-design.md), `error-robustness`
+   (error-robustness.md), `concurrency-reviewer` (concurrency.md),
+   `supply-chain-deps` (supply-chain-deps.md), and `performance-reviewer`
+   (performance.md) — all under `${CRUSTOLEUM_SKILL_DIR}/agents/`. The
+   `completeness` surface is covered by cased's own subagent of the
+   same name; do not dispatch it twice. **Issue every dispatch before
+   the first wait.** On Codex that means every `spawn_agent` call
+   precedes the first `wait`; on Claude Code that means every `Task`
+   call is in a single assistant turn.
+6. **Wait for ALL subagents to complete.** Each subagent returns
+   findings in cased's `findings.yaml` schema with a `status` field
+   (`DONE | DONE_WITH_PARTIAL_COVERAGE | BLOCKED | NEEDS_CONTEXT`).
+   Handle every non-DONE status before proceeding — see
+   `references/codex-tools.md` for the controller behaviour for each.
+   Do not proceed to findings assembly until every dispatch has
+   returned and been handled. The subagents ARE the analysis — you
+   do not have "sufficient data from direct code reading" to substitute
+   for their structured rubric evaluation. Never skip subagent results
+   to save time.
+7. Collect subagent output, deduplicate, and organize into narratives.
    Each surface becomes a narrative. The skill's `surface` field maps
    to the narrative title (e.g., surface "Unsafe Code" → narrative
    "The Unsafe Code Surface").
-7. Write the thesis and verdict for each narrative based on the
-   collected findings — these are your assessment, not the agents'.
+8. Write the thesis and verdict for each narrative based on the
+   collected findings — these are your assessment, not the subagents'.
 
-When no domain skill is present, dispatch the built-in analysis agents:
+### When no domain skill is present
 
-1. Classify the codebase to determine which agents to dispatch:
-   - `security`, `error-handling`, `code-quality`, and `completeness` always apply.
-   - Has external dependencies (package.json, Cargo.toml, go.mod, etc.)? → `dependencies`
-   - Exposes a public API (library, HTTP endpoints, CLI)? → `api-design`
-   - Performance-sensitive or has hot paths? → `performance`
-2. Dispatch applicable agents in parallel. Each agent returns findings
-   in cased's `findings.yaml` schema.
-3. **Wait for ALL agents to complete.** Same rules as domain skill
-   dispatch — agents ARE the analysis. Do not proceed until all return.
-4. Collect agent output, deduplicate, and organize into narratives.
+Dispatch cased's built-in subagents. The rubric files live in
+`${CLAUDE_SKILL_DIR}/agents/` — each file's `name:` frontmatter is the
+subagent name used in the dispatch instructions below.
 
-**Codex note:** "Dispatch in parallel" here maps to multiple
-`spawn_agent` calls issued back-to-back before the first `wait`. Read
-`references/codex-tools.md` for the named-agent dispatch workaround and
-the message-framing template (task-delegation framing, XML-tagged
-instructions, explicit execution directive). Dispatching sequentially —
-or via a single worker that "covers all surfaces" — is the failure mode
-this skill is trying to prevent.
+1. Decide which subagents apply:
+   - **Always:** `security`, `error-handling`, `code-quality`, `completeness`
+   - **External dependencies present** (Cargo.toml, package.json, go.mod, requirements.txt, etc.): add `dependencies`
+   - **Codebase exposes a public API** (library crate, HTTP endpoints, CLI surface): add `api-design`
+   - **Performance-sensitive code or large hot paths:** add `performance`
+
+2. Build one `<audit-context>` block (target repo path, commit SHA,
+   2–4 sentence recon summary, path to `findings.schema.json`) and
+   reuse it for every dispatch. See `references/codex-tools.md` for
+   the exact message framing.
+
+3. Dispatch each applicable subagent in parallel. **Issue every
+   dispatch before the first wait** — sequential dispatch is the
+   primary failure mode this skill is designed to prevent.
+
+   Always:
+   - Dispatch the `security` subagent (agents/security.md).
+   - Dispatch the `error-handling` subagent (agents/error-handling.md).
+   - Dispatch the `code-quality` subagent (agents/code-quality.md).
+   - Dispatch the `completeness` subagent (agents/completeness.md).
+
+   Conditionally, per step 1:
+   - If external dependencies are present: dispatch the `dependencies`
+     subagent (agents/dependencies.md).
+   - If a public API is present: dispatch the `api-design` subagent
+     (agents/api-design.md).
+   - If performance-sensitive code is present: dispatch the
+     `performance` subagent (agents/performance.md).
+
+4. **Wait for ALL subagents to complete.** Each returns findings in
+   cased's `findings.yaml` schema with a `status` field — same rules
+   as domain-skill dispatch. Handle every non-DONE status before
+   proceeding. The subagents ARE the analysis; do not proceed until
+   every dispatch has returned and been handled.
+
+5. Collect subagent output, deduplicate, and organize into narratives.
 
 | Agent | Surface | When to Dispatch | Definition |
 |-------|---------|-----------------|------------|
@@ -313,11 +354,13 @@ It reports each violation with a field path and a specific error, so you
 can fix the YAML in place before continuing. A passing validate is a
 prerequisite for assembly; do not proceed to 3b if validation fails.
 
-**3b. Evidence review.** Spawn the `cased:audit-reviewer` agent defined
-in `${CLAUDE_SKILL_DIR}/agents/reviewer.md` to validate findings against
-the codebase. The reviewer checks that evidence exists at cited locations,
-mechanisms are accurate, and remediations are sound. It produces a verdict
-table (confirmed / adjusted / disputed) for each finding.
+**3b. Evidence review.** Dispatch the `audit-reviewer` subagent
+(agents/reviewer.md) to validate findings against the codebase. Reuse
+the same `<audit-context>` block from Phase 2; see
+`references/codex-tools.md` for the message framing. The reviewer
+checks that evidence exists at cited locations, mechanisms are
+accurate, and remediations are sound. It produces a verdict table
+(confirmed / adjusted / disputed) for each finding.
 
 If any finding is **disputed**, revise or remove it. If any finding is
 **adjusted**, apply the correction. Findings that are **confirmed** need
