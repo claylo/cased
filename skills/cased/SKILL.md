@@ -12,6 +12,10 @@ description: >
   in the project's record/ directory as a process artifact.
 ---
 
+<SUBAGENT-STOP>
+If you were dispatched as a subagent to execute a specific task, skip this skill.
+</SUBAGENT-STOP>
+
 # Code Audit Skill
 
 ## Platform adaptation

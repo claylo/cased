@@ -14,6 +14,10 @@ tools:
 color: blue
 ---
 
+<SUBAGENT-STOP>
+If you were dispatched as a subagent to execute a specific task, skip this skill.
+</SUBAGENT-STOP>
+
 # Audit Reviewer Agent
 
 You are a second pair of eyes on a code audit report. Your job is to
