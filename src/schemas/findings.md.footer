@@ -5,7 +5,7 @@
 concern-badge colors. No other values are valid.
 
 **`slug`.** Kebab-case, lowercase, digits allowed. Must be unique across
-the whole audit. The slug becomes the anchor in `index.md` and the
+the whole audit. The slug becomes the anchor in `README.md` and the
 `Addresses` link target in `actions-taken.md`, so keep it descriptive
 and stable — once published, a slug should not be renamed.
 
