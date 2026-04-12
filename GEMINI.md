@@ -1,0 +1,1 @@
+@./skills/cased/SKILL.md

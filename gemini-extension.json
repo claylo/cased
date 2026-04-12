@@ -1,0 +1,6 @@
+{
+  "name": "cased",
+  "description": "Structured code audits that produce beautiful, information-dense reports inspired by Tufte",
+  "version": "0.1.0",
+  "contextFileName": "GEMINI.md"
+}

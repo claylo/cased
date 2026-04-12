@@ -81,6 +81,33 @@ ln -s /path/to/cased/skills/cased ~/.claude/skills/cased
 
 The HTML report renderer ships pre-built in the skill directory. No build step required.
 
+## Multi-platform setup
+
+Cased speaks Claude Code tool names by default (`Task`, `TodoWrite`, `Skill`, etc.). Other harnesses need the tool-mapping reference loaded before the skill dispatches subagents, or Phase 2 parallel dispatch silently collapses to sequential single-context analysis.
+
+### Claude Code
+
+No setup. Tool names are native.
+
+### Codex
+
+Enable subagents in `~/.codex/config.toml`:
+
+```toml
+[features]
+multi_agent = true
+```
+
+Without this, `spawn_agent` is unavailable and Phase 2 degrades silently. Then add this line to your project's `AGENTS.md` so the tool mapping loads at session start rather than lazily on first dispatch:
+
+```markdown
+When invoking the cased skill, read its `references/codex-tools.md` before dispatching subagents.
+```
+
+### Gemini
+
+Install cased as a Gemini extension. The shipped `gemini-extension.json` + `GEMINI.md` auto-load the skill at session start.
+
 ## Usage
 
 ### Full audit
