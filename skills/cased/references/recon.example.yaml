@@ -449,6 +449,16 @@ churn:
     active_authors: 1
     files_changed: 32
 
+testing:
+  runner: just
+  command: just test
+  sources:
+    - .config/scrat.yaml
+  notes: >
+    `.config/nextest.toml` is present — `just test` likely wraps `cargo nextest run`.
+    Do not run `cargo test` directly: env-mutating tests assume nextest process
+    isolation and fail under plain cargo test.
+
 boundaries:
   - name: shell_execution
     description: "Modules that spawn external processes (git, git-cliff, gh, cargo, ecosystem CLIs)"

@@ -291,6 +291,213 @@ function mapDepKind(dep) {
 }
 
 /**
+ * Deterministically detect the project's canonical test command by scanning
+ * config files in a fixed priority order. Priority: human-curated wrappers
+ * (scrat, Justfile, package.json) before tool-specific config (nextest)
+ * before language defaults (cargo test).
+ *
+ * Priority rationale: a scrat-configured `commands.test` or a Justfile `test:`
+ * recipe encodes the maintainer's canonical command, including wrapper
+ * semantics we can't infer from tool config alone. Tool-specific config
+ * (nextest.toml) is next because its presence implies a preference even
+ * when no human-curated wrapper exists. Cargo default only fires when
+ * nothing else applies.
+ *
+ * Notes are emitted only when warranted — specifically, when nextest
+ * config is present and the chosen command bypasses it (e.g., `cargo test`
+ * directly).
+ *
+ * @param {string} targetPath - absolute path to the project root
+ * @returns {{ runner: string, command: string, sources: string[], notes?: string }}
+ */
+export function detectTesting(targetPath) {
+  // Priority 1: scrat config commands.test
+  const scratResult = detectScratTest(targetPath);
+  if (scratResult) {
+    return finalizeTesting({
+      command: scratResult.command,
+      sources: [scratResult.source],
+      targetPath,
+    });
+  }
+
+  // Priority 2: Justfile with a `test:` recipe
+  const justResult = detectJustTest(targetPath);
+  if (justResult) {
+    return finalizeTesting({
+      command: 'just test',
+      sources: [justResult.source],
+      targetPath,
+    });
+  }
+
+  // Priority 3: package.json scripts.test
+  const npmResult = detectNpmTest(targetPath);
+  if (npmResult) {
+    return finalizeTesting({
+      command: 'npm test',
+      sources: ['package.json'],
+      targetPath,
+    });
+  }
+
+  // Priority 4: nextest config — use nextest directly
+  const nextestResult = detectNextestConfig(targetPath);
+  if (nextestResult) {
+    return {
+      runner: 'nextest',
+      command: 'cargo nextest run --workspace',
+      sources: [nextestResult.source],
+      notes: 'Nextest provides per-test process isolation. Running `cargo test` instead will cause env-mutating tests to fail unexpectedly.',
+    };
+  }
+
+  // Priority 5: Rust default — Cargo.toml exists, no other signal
+  if (existsSync(join(targetPath, 'Cargo.toml'))) {
+    return {
+      runner: 'cargo-test',
+      command: 'cargo test --workspace',
+      sources: ['Cargo.toml'],
+    };
+  }
+
+  // Nothing detected
+  return {
+    runner: 'unknown',
+    command: '',
+    sources: [],
+  };
+}
+
+/**
+ * Finalize a detected command into a schema-valid testing entry.
+ * Infers the runner label from the command and attaches a note when
+ * nextest config is present but the chosen command doesn't use nextest.
+ */
+function finalizeTesting({ command, sources, targetPath }) {
+  const runner = inferRunner(command);
+  const entry = { runner, command, sources };
+
+  const nextestPresent = detectNextestConfig(targetPath) !== null;
+  if (nextestPresent && runner !== 'nextest') {
+    if (/\bcargo\s+test\b/.test(command)) {
+      // Direct cargo test when nextest.toml exists — misconfiguration risk.
+      entry.notes =
+        '`.config/nextest.toml` is present, but the configured test command invokes `cargo test` directly. This bypasses nextest\'s process isolation and will cause env-mutating tests to fail unexpectedly.';
+    } else {
+      // Wrapper command (just/npm/custom) — likely calls nextest internally.
+      entry.notes =
+        '`.config/nextest.toml` is present — the wrapper command likely invokes `cargo nextest run`. Do not invoke `cargo test` directly: env-mutating tests assume nextest process isolation.';
+    }
+  }
+
+  return entry;
+}
+
+function inferRunner(command) {
+  if (/^\s*just\s/.test(command)) return 'just';
+  if (/\bnextest\b/.test(command)) return 'nextest';
+  if (/^\s*cargo\s+test\b/.test(command)) return 'cargo-test';
+  if (/^\s*(npm|yarn|pnpm)\s+(run\s+)?test\b/.test(command)) return 'npm';
+  return 'custom';
+}
+
+function detectScratTest(targetPath) {
+  const candidates = [
+    { path: '.config/scrat.yaml', type: 'yaml' },
+    { path: '.config/scrat.yml', type: 'yaml' },
+    { path: '.config/scrat.toml', type: 'toml' },
+  ];
+  for (const { path, type } of candidates) {
+    const full = join(targetPath, path);
+    if (!existsSync(full)) continue;
+    let raw;
+    try {
+      raw = readFileSync(full, 'utf8');
+    } catch {
+      continue;
+    }
+    let command;
+    if (type === 'yaml') {
+      try {
+        const parsed = YAML.parse(raw);
+        command = parsed?.commands?.test;
+      } catch {
+        continue;
+      }
+    } else {
+      command = extractTomlCommandsTest(raw);
+    }
+    if (command && typeof command === 'string' && command.trim()) {
+      return { command: command.trim(), source: path };
+    }
+  }
+  return null;
+}
+
+/**
+ * Minimal TOML extractor for `[commands]\ntest = "..."`. Not a general
+ * TOML parser — scoped to the one field we need, to avoid adding a TOML
+ * dependency. Handles basic backslash escapes inside the string value.
+ */
+function extractTomlCommandsTest(content) {
+  const headerMatch = content.match(/^\[commands\]\s*$/m);
+  if (!headerMatch) return null;
+  const start = headerMatch.index + headerMatch[0].length;
+  const rest = content.slice(start);
+  // Section body runs until the next `[section]` header or end of file.
+  const nextHeader = rest.match(/^\s*\[/m);
+  const section = nextHeader ? rest.slice(0, nextHeader.index) : rest;
+  const testMatch = section.match(/^\s*test\s*=\s*"((?:[^"\\]|\\.)*)"\s*$/m);
+  return testMatch ? testMatch[1].replace(/\\(.)/g, '$1') : null;
+}
+
+function detectJustTest(targetPath) {
+  for (const name of ['Justfile', 'justfile']) {
+    const full = join(targetPath, name);
+    if (!existsSync(full)) continue;
+    let raw;
+    try {
+      raw = readFileSync(full, 'utf8');
+    } catch {
+      continue;
+    }
+    // Match a top-level recipe header `test:` (optionally with deps after).
+    // Uses [ \t] (not \s) to keep the colon on the same line as the name,
+    // and excludes leading whitespace so indented recipe bodies and
+    // commented lines don't false-positive.
+    if (/^test[ \t]*:/m.test(raw)) {
+      return { source: name };
+    }
+  }
+  return null;
+}
+
+function detectNpmTest(targetPath) {
+  const pkgPath = join(targetPath, 'package.json');
+  if (!existsSync(pkgPath)) return null;
+  try {
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+    if (pkg?.scripts?.test && typeof pkg.scripts.test === 'string') {
+      return { command: pkg.scripts.test };
+    }
+  } catch {
+    // Malformed package.json — silent skip; higher-priority detection
+    // already returned null.
+  }
+  return null;
+}
+
+function detectNextestConfig(targetPath) {
+  for (const path of ['.config/nextest.toml', '.cargo/nextest.toml']) {
+    if (existsSync(join(targetPath, path))) {
+      return { source: path };
+    }
+  }
+  return null;
+}
+
+/**
  * Combine parsed inputs into a complete recon object matching
  * src/schemas/recon.schema.json. Does not validate — that happens
  * in the separate validateRecon step.
@@ -347,7 +554,9 @@ export function buildReconObject({ manifest, metadata, tokei, gitLog }) {
     recent_activity: parsedGitLog.recent_activity,
   };
 
-  return { meta, structure, dependencies, churn };
+  const testing = detectTesting(manifest.target_path);
+
+  return { meta, structure, dependencies, churn, testing };
 }
 
 function buildMeta(manifest, metadata) {

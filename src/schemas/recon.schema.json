@@ -215,6 +215,32 @@
         }
       }
     },
+    "testing": {
+      "type": "object",
+      "description": "Project's canonical test tooling, detected deterministically from config files. Agents should consult this before running any tests — the wrong runner (e.g., plain `cargo test` against a nextest-configured project) can produce false failures that look like real findings.",
+      "required": ["runner", "command"],
+      "additionalProperties": false,
+      "properties": {
+        "runner": {
+          "type": "string",
+          "enum": ["nextest", "cargo-test", "just", "npm", "custom", "unknown"],
+          "description": "Label for the test harness or wrapper. Inferred from the command string."
+        },
+        "command": {
+          "type": "string",
+          "description": "The canonical shell command to run the project's test suite. Empty string when runner is 'unknown'."
+        },
+        "sources": {
+          "type": "array",
+          "description": "File paths (relative to project root) that informed the detection.",
+          "items": { "type": "string" }
+        },
+        "notes": {
+          "type": "string",
+          "description": "Warnings about test tooling peculiarities — emitted only when something non-obvious applies (e.g., nextest process isolation caveats)."
+        }
+      }
+    },
     "boundaries": {
       "type": "array",
       "description": "Trust, security, or architectural boundaries identified in the codebase. Judgment-driven.",

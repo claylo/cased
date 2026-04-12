@@ -1,13 +1,13 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, mkdtempSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { parse as parseYaml } from 'yaml';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { parseGitLog, parseTokei, parseMetadata, buildReconObject, validateRecon } from '../src/recon/recon-to-yaml.mjs';
+import { parseGitLog, parseTokei, parseMetadata, buildReconObject, detectTesting, validateRecon } from '../src/recon/recon-to-yaml.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, 'fixtures', 'recon');
@@ -267,5 +267,127 @@ describe('recon-to-yaml CLI', () => {
       code = err.status;
     }
     assert.equal(code, 4);
+  });
+});
+
+describe('detectTesting', () => {
+  // Helper: create an ephemeral project root populated with the given files
+  // (relative paths → contents). Caller discards the handle when done.
+  function makeProject(files) {
+    const root = mkdtempSync(join(tmpdir(), 'detect-testing-'));
+    for (const [relPath, content] of Object.entries(files)) {
+      const full = join(root, relPath);
+      mkdirSync(dirname(full), { recursive: true });
+      writeFileSync(full, content);
+    }
+    return root;
+  }
+
+  it('picks up commands.test from scrat.yaml (priority 1)', () => {
+    const root = makeProject({
+      '.config/scrat.yaml': 'project:\n  type: node\n\ncommands:\n  test: just test\n',
+    });
+    const result = detectTesting(root);
+    assert.equal(result.runner, 'just');
+    assert.equal(result.command, 'just test');
+    assert.deepEqual(result.sources, ['.config/scrat.yaml']);
+    assert.equal(result.notes, undefined);
+  });
+
+  it('picks up commands.test from scrat.toml (priority 1)', () => {
+    const root = makeProject({
+      '.config/scrat.toml': '[project]\ntype = "rust"\n\n[commands]\ntest = "just test"\n',
+    });
+    const result = detectTesting(root);
+    assert.equal(result.runner, 'just');
+    assert.equal(result.command, 'just test');
+    assert.deepEqual(result.sources, ['.config/scrat.toml']);
+  });
+
+  it('picks up a Justfile `test:` recipe (priority 2)', () => {
+    const root = makeProject({
+      'Justfile': 'build:\n    cargo build\n\ntest:\n    cargo test\n',
+    });
+    const result = detectTesting(root);
+    assert.equal(result.runner, 'just');
+    assert.equal(result.command, 'just test');
+    assert.deepEqual(result.sources, ['Justfile']);
+  });
+
+  it('picks up package.json scripts.test (priority 3)', () => {
+    const root = makeProject({
+      'package.json': JSON.stringify({ scripts: { test: 'vitest' } }),
+    });
+    const result = detectTesting(root);
+    assert.equal(result.runner, 'npm');
+    assert.equal(result.command, 'npm test');
+    assert.deepEqual(result.sources, ['package.json']);
+  });
+
+  it('falls back to nextest when only nextest.toml is present (priority 4)', () => {
+    const root = makeProject({
+      '.config/nextest.toml': '[profile.default]\nretries = 1\n',
+      'Cargo.toml': '[package]\nname = "x"\nversion = "0.1.0"\n',
+    });
+    const result = detectTesting(root);
+    assert.equal(result.runner, 'nextest');
+    assert.equal(result.command, 'cargo nextest run --workspace');
+    assert.deepEqual(result.sources, ['.config/nextest.toml']);
+    assert.match(result.notes, /process isolation/);
+  });
+
+  it('falls back to cargo test when only Cargo.toml is present (priority 5)', () => {
+    const root = makeProject({
+      'Cargo.toml': '[package]\nname = "x"\nversion = "0.1.0"\n',
+    });
+    const result = detectTesting(root);
+    assert.equal(result.runner, 'cargo-test');
+    assert.equal(result.command, 'cargo test --workspace');
+    assert.deepEqual(result.sources, ['Cargo.toml']);
+    assert.equal(result.notes, undefined);
+  });
+
+  it('returns unknown when nothing testing-related is detected', () => {
+    const root = makeProject({
+      'README.md': '# test\n',
+    });
+    const result = detectTesting(root);
+    assert.equal(result.runner, 'unknown');
+    assert.equal(result.command, '');
+    assert.deepEqual(result.sources, []);
+    assert.equal(result.notes, undefined);
+  });
+
+  it('warns when scrat points at cargo test but nextest.toml is present', () => {
+    const root = makeProject({
+      '.config/scrat.toml': '[commands]\ntest = "cargo test --workspace --all-features"\n',
+      '.config/nextest.toml': '[profile.default]\n',
+    });
+    const result = detectTesting(root);
+    assert.equal(result.runner, 'cargo-test');
+    assert.equal(result.command, 'cargo test --workspace --all-features');
+    assert.match(result.notes, /bypasses nextest/);
+  });
+
+  it('adds a wrapper note when scrat wraps via just and nextest.toml is present', () => {
+    const root = makeProject({
+      '.config/scrat.toml': '[commands]\ntest = "just test"\n',
+      '.config/nextest.toml': '[profile.default]\n',
+    });
+    const result = detectTesting(root);
+    assert.equal(result.runner, 'just');
+    assert.equal(result.command, 'just test');
+    assert.match(result.notes, /wrapper command likely invokes/);
+  });
+
+  it('scrat beats Justfile when both are present (priority order)', () => {
+    const root = makeProject({
+      '.config/scrat.yaml': 'commands:\n  test: custom-runner\n',
+      'Justfile': 'test:\n    cargo test\n',
+    });
+    const result = detectTesting(root);
+    assert.equal(result.command, 'custom-runner');
+    assert.equal(result.runner, 'custom');
+    assert.deepEqual(result.sources, ['.config/scrat.yaml']);
   });
 });
