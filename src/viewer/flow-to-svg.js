@@ -80,6 +80,36 @@ export function renderShape(type, x, y) {
   }
 }
 
+// Render margin-sidebar finding annotations for a single step (spine or
+// off-spine). Emits the diagonal hairline connector + arrowhead once per
+// step, then stacks finding titles and concern badges in the margin.
+// Records the title y-coordinate of each finding in `findingPositions`
+// so chain references can draw between them.
+function renderFindingAnnotations({ step, x, y, findingMap, findingPositions, parts }) {
+  const entries = (step.findings || []).map(normalizeFindingEntry);
+  let connectorDrawn = false;
+  const findingBaseY = y - 50;
+  for (let fi = 0; fi < entries.length; fi++) {
+    const { slug, label } = entries[fi];
+    const finding = findingMap[slug];
+    if (!finding) continue;
+
+    const style = CONCERN_STYLES[finding.concern] || CONCERN_STYLES.note;
+    const displayTitle = label || finding.title;
+    const titleY = findingBaseY - 2 + fi * 20;
+    const badgeY = titleY + 10;
+
+    if (!connectorDrawn) {
+      parts.push(`<line x1="${V.marginX}" y1="${findingBaseY}" x2="${x + 10}" y2="${y}" stroke="${style.stroke}" stroke-width="0.5"/>`);
+      parts.push(`<polygon points="${x + 6},${y} ${x + 10},${y - 2} ${x + 10},${y + 2}" fill="${style.stroke}"/>`);
+      connectorDrawn = true;
+    }
+    parts.push(`<text x="${V.marginTextX}" y="${titleY}" font-size="9" font-weight="600" fill="${style.fill}">${esc(displayTitle)}</text>`);
+    parts.push(`<text x="${V.marginTextX}" y="${badgeY}" font-size="7" fill="${style.badge}" font-weight="500" letter-spacing="0.5">${finding.concern.toUpperCase()}</text>`);
+    findingPositions[slug] = { y: titleY };
+  }
+}
+
 // --- Main export ---
 
 export function flowToSvg(flow, findings = []) {
@@ -142,38 +172,18 @@ function renderVertical(steps, findingMap, offSpineSteps = []) {
     parts.push(renderShape(step.type, V.spineX, y));
     parts.push(`<text x="${V.labelX}" y="${y + 4}" text-anchor="end" font-size="11" fill="${isEnd ? C.muted : C.shape}">${esc(step.label)}</text>`);
 
-    // Finding annotations (margin sidenotes, offset up for diagonal connectors)
-    const entries = (step.findings || []).map(normalizeFindingEntry);
-    let connectorDrawn = false;
-    const findingBaseY = y - 50;
-    for (let fi = 0; fi < entries.length; fi++) {
-      const { slug, label } = entries[fi];
-      const finding = findingMap[slug];
-      if (!finding) continue;
-
-      const style = CONCERN_STYLES[finding.concern] || CONCERN_STYLES.note;
-      const displayTitle = label || finding.title;
-      const titleY = findingBaseY - 2 + fi * 20;
-      const badgeY = titleY + 10;
-
-      // Hairline from finding down to step (one per step, first finding's color)
-      if (!connectorDrawn) {
-        parts.push(`<line x1="${V.marginX}" y1="${findingBaseY}" x2="${V.spineX + 10}" y2="${y}" stroke="${style.stroke}" stroke-width="0.5"/>`);
-        parts.push(`<polygon points="${V.spineX + 6},${y} ${V.spineX + 10},${y - 2} ${V.spineX + 10},${y + 2}" fill="${style.stroke}"/>`);
-        connectorDrawn = true;
-      }
-      // Title in margin
-      parts.push(`<text x="${V.marginTextX}" y="${titleY}" font-size="9" font-weight="600" fill="${style.fill}">${esc(displayTitle)}</text>`);
-      // Badge in margin
-      parts.push(`<text x="${V.marginTextX}" y="${badgeY}" font-size="7" fill="${style.badge}" font-weight="500" letter-spacing="0.5">${finding.concern.toUpperCase()}</text>`);
-      findingPositions[slug] = { y: titleY };
-    }
+    renderFindingAnnotations({
+      step, x: V.spineX, y, findingMap, findingPositions, parts,
+    });
   }
 
-  // Chain references (margin column)
-  for (const step of steps) {
+  // Chain references (margin column). Iterates both spine and off-spine steps
+  // so chain sources/targets on branch landings are reachable — the annotation
+  // loop below populates off-spine findingPositions entries.
+  for (const step of [...steps, ...offSpineSteps]) {
     for (const { slug } of (step.findings || []).map(normalizeFindingEntry)) {
       const finding = findingMap[slug];
+      if (!finding) continue;
       const chainRefs = finding.chains;
       if (!chainRefs) continue;
       for (const targetSlug of (chainRefs.enables || [])) {
@@ -201,13 +211,20 @@ function renderVertical(steps, findingMap, offSpineSteps = []) {
     parts.push(`<polygon points="${V.spineX + 6},${toY} ${V.spineX + 12},${toY - 3} ${V.spineX + 12},${toY + 3}" fill="${C.muted}"/>`);
   }
 
-  // Off-spine shapes and labels (painted on top of loop-back lines)
+  // Off-spine shapes, labels, and margin-sidebar finding annotations
+  // (painted on top of loop-back lines). Branch-landing findings are
+  // rendered here rather than in the spine loop because they attach to
+  // off-spine steps.
   for (const offStep of offSpineSteps) {
     const offY = stepY[offStep.id];
     if (offY === undefined) continue;
     const isEnd = offStep.type === 'end';
     parts.push(renderShape(offStep.type, V.offSpineX, offY));
     parts.push(`<text x="${V.offSpineLabelX}" y="${offY + 4}" font-size="11" fill="${isEnd ? C.muted : C.shape}">${esc(offStep.label)}</text>`);
+
+    renderFindingAnnotations({
+      step: offStep, x: V.offSpineX, y: offY, findingMap, findingPositions, parts,
+    });
   }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-${V.padLeft} 0 ${V.viewBoxW + V.padLeft} ${height}" font-family="${FONT}">\n  ${parts.join('\n  ')}\n</svg>`;
