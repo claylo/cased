@@ -49,51 +49,9 @@ describe('flowToSvg', () => {
     assert.ok(svg8.includes('viewBox="-60 0 600 580"'));
   });
 
-  it('renders horizontal SVG for <=4 spine steps', () => {
-    const flow = [
-      { id: 's1', label: 'Begin', type: 'start' },
-      { id: 's2', label: 'Do thing' },
-      { id: 's3', label: 'Done', type: 'end' },
-    ];
-    const svg = flowToSvg(flow, []);
-    // Horizontal layout indicators
-    assert.ok(svg.includes('viewBox="0 0'));
-    assert.ok(svg.includes('text-anchor="middle"'));
-    // Height is fixed at 130
-    assert.ok(svg.includes(' 130"'));
-    // Labels present
-    assert.ok(svg.includes('Begin'));
-    assert.ok(svg.includes('Do thing'));
-  });
-
-  it('computes viewBox width from step count', () => {
-    const flow3 = [
-      { id: 'a', label: 'A', type: 'start' },
-      { id: 'b', label: 'B' },
-      { id: 'c', label: 'C', type: 'end' },
-    ];
-    const flow4 = [
-      { id: 'a', label: 'A', type: 'start' },
-      { id: 'b', label: 'B' },
-      { id: 'c', label: 'C' },
-      { id: 'd', label: 'D', type: 'end' },
-    ];
-    const svg3 = flowToSvg(flow3, []);
-    const svg4 = flowToSvg(flow4, []);
-    // 3 steps: width = 2*120 + 100 = 340
-    assert.ok(svg3.includes('viewBox="0 0 340 130"'));
-    // 4 steps: width = 3*120 + 100 = 460
-    assert.ok(svg4.includes('viewBox="0 0 460 130"'));
-  });
-
-  it('uses 4 as the horizontal threshold', () => {
-    const flow4 = Array.from({ length: 4 }, (_, i) => ({ id: `s${i}`, label: `S${i}` }));
-    const flow5 = Array.from({ length: 5 }, (_, i) => ({ id: `s${i}`, label: `S${i}` }));
-    const svg4 = flowToSvg(flow4, []);
-    const svg5 = flowToSvg(flow5, []);
-    assert.ok(svg4.includes('text-anchor="middle"'), '4 steps should be horizontal');
-    assert.ok(svg5.includes('text-anchor="end"'), '5 steps should be vertical');
-  });
+  // Horizontal layout was removed (src/viewer/flow-to-svg.js). All flows
+  // render vertical regardless of step count; step-count thresholds and
+  // horizontal-specific geometry no longer apply.
 });
 
 describe('finding annotations', () => {
@@ -176,6 +134,27 @@ describe('finding annotations', () => {
     const svg = flowToSvg(flow, []);
     assert.ok(!svg.includes('nonexistent'));
   });
+
+  it('renders margin annotations for findings on off-spine steps', () => {
+    const flow = [
+      { id: 's1', label: 'Start', type: 'start' },
+      { id: 's2', label: 'Step' },
+      { id: 's3', label: 'Check?', type: 'decision', no: 'branch' },
+      { id: 's4', label: 'Continue' },
+      { id: 's5', label: 'End', type: 'end' },
+      { id: 'branch', label: 'Branch landing', spine: false, findings: ['off-finding'] },
+    ];
+    const offFindings = [
+      { slug: 'off-finding', title: 'Off-spine Issue', concern: 'significant', chains: {} },
+    ];
+    const svg = flowToSvg(flow, offFindings);
+    // Finding title and badge render in the margin.
+    assert.ok(svg.includes('Off-spine Issue'), 'title in margin');
+    assert.ok(svg.includes('SIGNIFICANT'), 'concern badge');
+    // Connector lands at the off-spine step (offSpineX + 10 = 240), not
+    // the spine (spineX + 10 = 140).
+    assert.ok(svg.includes('x2="240"'), 'hairline lands at off-spine step x');
+  });
 });
 
 describe('chain references', () => {
@@ -204,17 +183,6 @@ describe('chain references', () => {
     ];
     const svg = flowToSvg(flow, findings);
     assert.ok(svg.includes('stroke-dasharray="2,2"'));
-    assert.ok(svg.includes('enables'));
-  });
-
-  it('renders horizontal chain ref as dashed line between columns', () => {
-    const flow = [
-      { id: 's1', label: 'A', type: 'start', findings: ['first'] },
-      { id: 's2', label: 'B', findings: ['second'] },
-      { id: 's3', label: 'C', type: 'end' },
-    ];
-    const svg = flowToSvg(flow, findings);
-    assert.ok(svg.includes('stroke-dasharray="3,2"'));
     assert.ok(svg.includes('enables'));
   });
 
