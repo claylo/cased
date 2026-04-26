@@ -174,7 +174,7 @@ describe('renderAgentsMd', () => {
   it('interpolates template placeholders from findings', () => {
     const findings = parseFindings(findingsYaml);
     const template = readFileSync('src/viewer/agents-md-template.md', 'utf8');
-    const md = renderAgentsMd(findings, template);
+    const md = renderAgentsMd(findings, template, '2026-03-21-current-repo-review');
     // All placeholders replaced
     assert.ok(!md.includes('{{'));
     // Audit metadata correctly interpolated

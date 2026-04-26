@@ -14,7 +14,7 @@ by markdown entries in chronological order.
 
 ```markdown
 ---
-audit: YYYY-MM-DD-scope-slug
+audit: YYYY-MM-DD-HH-scope-slug
 last_updated: YYYY-MM-DD
 status:
   fixed: {n}

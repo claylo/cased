@@ -39543,10 +39543,10 @@ function renderAgentsFindingList(findings) {
 * audit metadata and the pre-rendered finding list.
 * @param {object} findings — parsed findings YAML
 * @param {string} templateStr — raw template markdown
+* @param {string} auditSlug — directory basename (e.g. "2026-04-12-14-full-crate")
 * @returns {string}
 */
-function renderAgentsMd(findings, templateStr) {
-	const auditSlug = `${findings.audit_date}-${findings.scope}`;
+function renderAgentsMd(findings, templateStr, auditSlug) {
 	const auditTitle = titleFromScope(findings.scope);
 	let findingCount = 0;
 	for (const n of findings.narratives || []) findingCount += (n.findings || []).length;
@@ -39697,7 +39697,7 @@ if ((0, node_fs.realpathSync)(process.argv[1]) === (0, node_fs.realpathSync)((0,
 	const findings = parseFindings((0, node_fs.readFileSync)((0, node_path.join)(auditDir, "findings.yaml"), "utf8"));
 	const agentsTemplatePath = (0, node_path.join)(viewerDir, "agents-md-template.md");
 	if ((0, node_fs.existsSync)(agentsTemplatePath)) {
-		const agentsMd = renderAgentsMd(findings, (0, node_fs.readFileSync)(agentsTemplatePath, "utf8"));
+		const agentsMd = renderAgentsMd(findings, (0, node_fs.readFileSync)(agentsTemplatePath, "utf8"), (0, node_path.basename)(auditDir));
 		const agentsPath = (0, node_path.join)(auditDir, "AGENTS.md");
 		(0, node_fs.writeFileSync)(agentsPath, agentsMd);
 		console.log(`wrote ${agentsPath} (${(agentsMd.length / 1024).toFixed(1)}KB)`);

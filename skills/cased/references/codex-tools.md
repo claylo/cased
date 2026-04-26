@@ -92,7 +92,7 @@ information you need is missing, return status NEEDS_CONTEXT.
 <audit-context>
 target_repo: /absolute/path/to/audited/repo
 commit: <full SHA from recon.yaml>
-audit_dir: /absolute/path/to/record/audits/YYYY-MM-DD-slug
+audit_dir: /absolute/path/to/record/audits/YYYY-MM-DD-HH-slug
 recon_summary: |
   <2-4 sentences from recon.yaml meta + structure + key hotspots>
 findings_schema: /absolute/path/to/skills/cased/references/findings.schema.json

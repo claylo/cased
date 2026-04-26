@@ -599,10 +599,10 @@ export function renderAgentsFindingList(findings) {
  * audit metadata and the pre-rendered finding list.
  * @param {object} findings — parsed findings YAML
  * @param {string} templateStr — raw template markdown
+ * @param {string} auditSlug — directory basename (e.g. "2026-04-12-14-full-crate")
  * @returns {string}
  */
-export function renderAgentsMd(findings, templateStr) {
-  const auditSlug = `${findings.audit_date}-${findings.scope}`;
+export function renderAgentsMd(findings, templateStr, auditSlug) {
   const auditTitle = titleFromScope(findings.scope);
   let findingCount = 0;
   for (const n of findings.narratives || []) {
@@ -837,7 +837,7 @@ if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url
     const agentsTemplatePath = join(viewerDir, 'agents-md-template.md');
     if (existsSync(agentsTemplatePath)) {
       const template = readFileSync(agentsTemplatePath, 'utf8');
-      const agentsMd = renderAgentsMd(findings, template);
+      const agentsMd = renderAgentsMd(findings, template, basename(auditDir));
       const agentsPath = join(auditDir, 'AGENTS.md');
       writeFileSync(agentsPath, agentsMd);
       console.log(`wrote ${agentsPath} (${(agentsMd.length / 1024).toFixed(1)}KB)`);
