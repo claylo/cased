@@ -39,7 +39,7 @@ mapping **before** continuing:
 
 In the first `commentary` message of the turn, output this exact sentence verbatim and as the first line:
 
-    _Let's take a look with claylo's **cased** skill._
+    _Firing up claylo's **cased** skill._
 
 Do not paraphrase it. Do not replace it with a summary like "Using cased...".
 If multiple skills are active, print this line first, then mention the others on the next line.
@@ -401,10 +401,11 @@ alongside it — they are the machine-readable representation for downstream
 tools (e.g., CI checks, remediation tracking).
 
 **Directory naming convention:**
-`record/audits/YYYY-MM-DD-{scope-slug}/` where `{scope-slug}` is a
-kebab-case summary of the audit scope (e.g., `full-crate`, `auth-surface`,
-`dependency-review`, `pr-237`). The date + slug combination must be unique
-within the repository.
+`record/audits/YYYY-MM-DD-HH-{scope-slug}/` where `HH` is the two-digit
+hour (24h, local time) and `{scope-slug}` is a kebab-case summary of the
+audit scope (e.g., `full-crate`, `auth-surface`, `dependency-review`,
+`pr-237`). The date + hour + slug combination must be unique within the
+repository.
 
 **Front matter** (YAML): metadata block with audit date, scope, commit SHA,
 agent identity, and a findings summary (counts by concern level, not a
@@ -486,7 +487,7 @@ Entries are append-only. The directory reconstructs the full finding lifecycle.
 Each audit lives in its own directory under `record/audits/`:
 
 ```
-record/audits/YYYY-MM-DD-scope-slug/
+record/audits/YYYY-MM-DD-HH-scope-slug/
 ├── README.md             # Authored narrative report (markdown, GitHub-rendered companion to report.html)
 ├── report.html           # Rendered interactive report (primary deliverable)
 ├── AGENTS.md             # Remediation briefing for agents picking up findings
