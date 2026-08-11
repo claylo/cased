@@ -1,6 +1,21 @@
-# Validate schema examples and regenerate the markdown reference docs
+# Validate schema examples and stamp the contract into all consumer skills
 build-schemas:
     bash src/schemas/build-schemas.sh
+
+# Restamp the shared contract and fail if any consumer skill drifted
+check-contract:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bash src/schemas/build-schemas.sh
+    if ! git diff --quiet skills/*/references/; then
+        echo "" >&2
+        echo "error: stamped contract files drifted from src/schemas/" >&2
+        git diff --stat skills/*/references/ >&2
+        echo "" >&2
+        echo "Never edit references/ copies directly; edit src/schemas/ and rebuild." >&2
+        exit 1
+    fi
+    echo "contract ok"
 
 # Build viewer JS bundles and copy to skill directory
 build-viewer:

@@ -1,45 +1,48 @@
 #!/usr/bin/env bash
 #
-# Validate schema examples against their JSON Schemas and generate the
-# markdown reference docs that ship with the skill.
+# Validate schema examples against their JSON Schemas and stamp the shared
+# contract into every consumer skill's references directory.
 #
-# Runs locally on Clay's machine. Requires: node, jq, jsonschema-cli.
+# Requires: jq, ys (cargo install yaml-schema).
 #
-# For each schema pair (recon, findings):
-#   1. Convert the source example YAML to JSON via the node `yaml` package —
-#      the same parser used by build-report.js, so the JSON representation
-#      matches what the shipped skill sees at audit time.
-#   2. Validate the JSON against its schema via jsonschema-cli.
-#   3. Fail the build on any validation error.
-#   4. Generate the markdown reference: header prose + fenced example + footer prose.
-#   5. Copy the schema, example, and generated markdown into skills/cased/references/.
+# src/schemas/ is the single canonical source for the audit contract. Each
+# consumer listed for a schema gets identical stamped copies of the schema,
+# the canonical example, and the generated markdown reference. Consumers
+# never edit their references/ copies — `just check-contract` fails CI on
+# any drift.
+#
+# For each schema (recon, findings):
+#   1. Validate the example YAML directly against the schema via ys.
+#      (ajv validates the parsed-JSON path at audit time via build-report.)
+#   2. Fail the build on any validation error.
+#   3. Generate the markdown reference: header prose + fenced example + footer prose.
+#   4. Copy schema, example, and generated markdown into each consumer skill.
 
 set -euo pipefail
 
 SCHEMA_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCHEMA_DIR/../.." && pwd)"
-OUT_DIR="$REPO_ROOT/skills/cased/references"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 # Required tooling check — fail loudly rather than producing silent drift.
-for bin in node jq jsonschema-cli; do
+for bin in jq ys; do
   if ! command -v "$bin" >/dev/null 2>&1; then
     echo "error: required tool '$bin' not found in PATH" >&2
+    [[ "$bin" == "ys" ]] && echo "  install: cargo install yaml-schema --locked" >&2
     exit 1
   fi
 done
 
-mkdir -p "$OUT_DIR"
-
 build_one() {
   local name="$1"
+  shift
+  local consumers=("$@")
   local schema="$SCHEMA_DIR/$name.schema.json"
   local example="$SCHEMA_DIR/$name.example.yaml"
   local header="$SCHEMA_DIR/$name.md.header"
   local footer="$SCHEMA_DIR/$name.md.footer"
-  local example_json="$TMP_DIR/$name.example.json"
-  local out_md="$OUT_DIR/$name-schema.yaml.md"
+  local out_md="$TMP_DIR/$name-schema.yaml.md"
 
   echo "=== building $name schema docs ==="
 
@@ -56,15 +59,8 @@ build_one() {
     exit 1
   fi
 
-  # Convert example YAML -> JSON (via node yaml lib, matching the shipped
-  # skill's parser) and validate against the schema.
-  node "$SCHEMA_DIR/yaml-to-json.mjs" < "$example" > "$example_json"
-  if ! jsonschema-cli validate \
-        -d 2020 \
-        --assert-format \
-        --errors-only \
-        "$schema" \
-        -i "$example_json"; then
+  # Validate the canonical example against the schema.
+  if ! ys -f "$schema" "$example"; then
     echo "error: $example failed validation against $schema" >&2
     exit 1
   fi
@@ -78,16 +74,20 @@ build_one() {
     cat "$footer"
   } > "$out_md"
 
-  # Copy the schema and example into the shipped references directory.
-  cp "$schema" "$OUT_DIR/$name.schema.json"
-  cp "$example" "$OUT_DIR/$name.example.yaml"
-
-  echo "wrote $out_md"
-  echo "wrote $OUT_DIR/$name.schema.json"
-  echo "wrote $OUT_DIR/$name.example.yaml"
+  # Stamp schema, example, and generated markdown into each consumer skill.
+  for skill in "${consumers[@]}"; do
+    local dest="$REPO_ROOT/skills/$skill/references"
+    mkdir -p "$dest"
+    cp "$out_md" "$dest/$name-schema.yaml.md"
+    cp "$schema" "$dest/$name.schema.json"
+    cp "$example" "$dest/$name.example.yaml"
+    echo "stamped $name contract -> skills/$skill/references/"
+  done
 }
 
-build_one recon
-build_one findings
+# recon is cased-internal; findings is the cross-skill contract.
+# New language skills (embargo, snakeoil, ...) join the findings list.
+build_one recon cased
+build_one findings cased crustoleum
 
 echo "=== schema docs built and validated ==="

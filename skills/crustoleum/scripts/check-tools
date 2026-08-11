@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+# Checks availability of Rust code review tooling prerequisites.
+# Outputs a markdown table for dynamic injection into SKILL.md.
+
+check() {
+  local cmd="$1"
+  if command -v "$cmd" >/dev/null 2>&1; then
+    echo "installed"
+  else
+    echo "not found"
+  fi
+}
+
+check_component() {
+  local toolchain="$1" component="$2"
+  if rustup component list --toolchain "$toolchain" 2>/dev/null \
+     | grep -q "^${component}.*installed"; then
+    echo "installed"
+  else
+    echo "not found"
+  fi
+}
+
+has_nightly() {
+  rustup toolchain list 2>/dev/null | grep -q '^nightly'
+}
+
+has_sanitizer_support() {
+  # Sanitizers need nightly + the right target
+  if has_nightly; then
+    echo "installed"
+  else
+    echo "not found (needs nightly)"
+  fi
+}
+
+# --- nightly toolchain (gates several tools) ---
+nightly_status="not found"
+if has_nightly; then
+  nightly_status="installed"
+fi
+
+# --- dependency audit tools ---
+clippy_status=$(check_component stable clippy 2>/dev/null || echo "not found")
+audit_status=$(check cargo-audit)
+deny_status=$(check cargo-deny)
+geiger_status=$(check cargo-geiger)
+
+udeps_status=$(check cargo-udeps)
+if [[ "$udeps_status" == "installed" && "$nightly_status" == "not found" ]]; then
+  udeps_status="installed (needs nightly)"
+fi
+machete_status=$(check cargo-machete)
+
+# --- your-code safety tools ---
+miri_status="not found"
+if [[ "$nightly_status" == "installed" ]]; then
+  miri_status=$(check_component nightly miri 2>/dev/null || echo "not found")
+fi
+sanitizer_status=$(has_sanitizer_support)
+fuzz_status=$(check cargo-fuzz)
+
+# --- output ---
+echo "### Dependency audit tools"
+echo ""
+echo "| Tool | What It Catches | Command | Status |"
+echo "|------|----------------|---------|--------|"
+echo "| \`cargo clippy\` | 800+ lints: correctness, perf, style | \`cargo clippy --all-targets -- -D warnings\` | ${clippy_status} |"
+echo "| \`cargo audit\` | Known CVEs in dependencies (RustSec) | \`cargo audit\` | ${audit_status} |"
+echo "| \`cargo deny\` | Advisories + licenses + banned crates + sources | \`cargo deny check\` | ${deny_status} |"
+echo "| \`cargo-geiger\` | Unsafe code census across dependency tree | \`cargo geiger\` | ${geiger_status} |"
+echo "| \`cargo-udeps\` | Unused declared dependencies | \`cargo +nightly udeps\` | ${udeps_status} |"
+echo "| \`cargo-machete\` | Unused dependencies (stable, heuristic) | \`cargo machete\` | ${machete_status} |"
+echo ""
+echo "### Your-code safety tools"
+echo ""
+echo "These catch the bugs in YOUR code that create advisories."
+echo ""
+echo "| Tool | What It Catches | Command | Status |"
+echo "|------|----------------|---------|--------|"
+echo "| \`Miri\` | UB in pure/deterministic code | \`cargo +nightly miri test\` | ${miri_status} |"
+echo "| \`AddressSanitizer\` | Buffer overflow, use-after-free, leaks | \`RUSTFLAGS=\"-Zsanitizer=address\" cargo +nightly test\` | ${sanitizer_status} |"
+echo "| \`ThreadSanitizer\` | Data races | \`RUSTFLAGS=\"-Zsanitizer=thread\" cargo +nightly test\` | ${sanitizer_status} |"
+echo "| \`cargo-fuzz\` | Input-driven crashes, panics, UB | \`cargo +nightly fuzz run <target>\` | ${fuzz_status} |"
+
+# Missing tools summary
+missing=()
+[[ "$clippy_status" != "installed" ]] && missing+=("rustup component add clippy")
+[[ "$audit_status" != "installed" ]] && missing+=("cargo install cargo-audit")
+[[ "$deny_status" != "installed" ]] && missing+=("cargo install cargo-deny")
+[[ "$geiger_status" != "installed" ]] && missing+=("cargo install cargo-geiger")
+[[ "$nightly_status" != "installed" ]] && missing+=("rustup toolchain install nightly  # required for miri, sanitizers, udeps, fuzz")
+[[ "$udeps_status" == "not found" ]] && missing+=("cargo install cargo-udeps")
+[[ "$machete_status" == "not found" && "$udeps_status" == "not found" ]] && missing+=("cargo install cargo-machete  # stable alternative to udeps")
+[[ "$miri_status" != "installed" && "$nightly_status" == "installed" ]] && missing+=("rustup component add miri --toolchain nightly")
+[[ "$fuzz_status" != "installed" ]] && missing+=("cargo install cargo-fuzz")
+
+if [[ ${#missing[@]} -gt 0 ]]; then
+  echo ""
+  echo "**Missing tools — install with:**"
+  echo '```bash'
+  for cmd in "${missing[@]}"; do
+    echo "$cmd"
+  done
+  echo '```'
+fi
