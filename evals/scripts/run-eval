@@ -74,7 +74,7 @@ ALLOWED_TOOLS="Bash,Read,Write,Edit,Glob,Grep,Task,Skill,TodoWrite"
 
 case "$PLATFORM" in
   claude)
-    CMD=(claude -p "$PROMPT" --permission-mode acceptEdits --allowedTools "$ALLOWED_TOOLS")
+    CMD=(claude -p "$PROMPT" --output-format text --permission-mode acceptEdits --allowedTools "$ALLOWED_TOOLS")
     [[ "$MODEL" != "default" ]] && CMD+=(--model "$MODEL")
     ;;
   codex)
