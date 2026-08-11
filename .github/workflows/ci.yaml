@@ -28,6 +28,7 @@ jobs:
       - run: npm ci
       - run: just test
       - run: just check-bundle
+      - run: just build-smoke
 
   contract:
     runs-on: ubuntu-latest

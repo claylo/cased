@@ -132,12 +132,35 @@ Cased will ask what to focus on: full repo, recent changes, or a specific area. 
 
 ### After the audit
 
-Reports live in `record/audits/YYYY-MM-DD-scope-slug/`. Open `report.html` for the interactive version. The report includes:
+Reports live in `record/audits/YYYY-MM-DD-HH-scope-slug/`. Open `report.html` for the interactive version. The report includes:
 
 - **Slide mode** — press S to present findings one at a time
 - **Navigation** — click a finding in the nav bar to jump to it
 - **Flow diagrams** — visual process flows with findings pinned to steps
 - **Sparklines** — 12-month commit activity for each finding's file
+
+### Keeping GitHub language stats honest
+
+Audit reports are large generated HTML files. Check in more than one and
+GitHub's linguist will happily reclassify your Rust crate as an "HTML"
+project. Add this to your repo's `.gitattributes`:
+
+```gitattributes
+# cased audits — generated artifacts: exclude from language stats,
+# collapse in PR diffs
+record/audits/**/report.html linguist-generated=true
+record/audits/**/findings.yaml linguist-generated=true
+record/audits/**/recon.yaml linguist-generated=true
+record/audits/**/README.md linguist-generated=true
+record/audits/**/CLAUDE.md linguist-generated=true
+record/audits/**/AGENTS.md linguist-generated=true
+record/audits/**/assets/*.svg linguist-generated=true
+```
+
+`linguist-generated` also collapses these files in pull request diffs —
+reviewers see "generated file" instead of 350KB of inline report HTML.
+The `actions-taken.md` remediation ledger is deliberately absent from the
+list: it's human-relevant history and belongs in diffs.
 
 ### Remediation tracking
 

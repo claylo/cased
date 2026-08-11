@@ -49,9 +49,19 @@ build-report audit_dir:
 validate audit_dir:
     node src/viewer/build-report.mjs validate {{audit_dir}}
 
-# Build everything: bundle JS, then build report from example data
-build-example: build-viewer
-    node build/build-report.js example/2026-03-21-current-repo-review
+# End-to-end render smoke test from the canonical schema examples.
+# Can't go stale: the same files the contract stamps into every skill.
+build-smoke: build-viewer
+    #!/usr/bin/env bash
+    set -euo pipefail
+    smoke="$(mktemp -d)/smoke-audit"
+    mkdir -p "$smoke"
+    cp src/schemas/recon.example.yaml "$smoke/recon.yaml"
+    cp src/schemas/findings.example.yaml "$smoke/findings.yaml"
+    node build/build-report.js validate "$smoke"
+    node build/build-report.js "$smoke"
+    test -s "$smoke/report.html" && test -s "$smoke/AGENTS.md" && test -s "$smoke/CLAUDE.md"
+    echo "smoke ok: $smoke/report.html"
 
 # Run tests
 test:
