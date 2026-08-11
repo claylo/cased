@@ -75,10 +75,18 @@ node evals/scripts/score-eval.mjs evals/fixtures/error-handling-rs path/to/findi
    test; a bare-tool invocation during the audit is a process failure.
 4. Never let the model see `expected-findings.yaml` (run-eval excludes it).
 
+## Comparing runs
+
+```bash
+just eval-compare evals/runs/error-handling-rs/<run-a> evals/runs/error-handling-rs/<run-b>
+```
+
+Prints per-seed hits across runs (which model found what, at what concern),
+per-run totals, and pairwise Jaccard similarity of matched-seed sets — the
+variance number the matrix exists to measure.
+
 ## Not yet built
 
-- `compare-runs` — variance report (Jaccard on matched-seed sets) across a
-  matrix of run dirs; the data model already supports it.
 - Codex/Gemini platform cases in `run-eval` — the switch is stubbed.
 - Process-compliance scoring from `transcript.txt` (task-runner usage,
   parallel dispatch).

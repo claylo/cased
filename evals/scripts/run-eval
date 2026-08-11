@@ -67,9 +67,14 @@ STARTED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 PROMPT="Use the cased skill to run a full audit of this project. Scope: full repo. Do not ask for scope confirmation or tool selection — use defaults and proceed to completion, including verification and assembly."
 
+# Tools the audit pipeline needs. Declared explicitly so the run survives
+# CLAUDE_CODE_SUBPROCESS_ENV_SCRUB hardening, which forces permission mode
+# back to default and would otherwise auto-deny every tool call headlessly.
+ALLOWED_TOOLS="Bash,Read,Write,Edit,Glob,Grep,Task,Skill,TodoWrite"
+
 case "$PLATFORM" in
   claude)
-    CMD=(claude -p "$PROMPT" --permission-mode bypassPermissions)
+    CMD=(claude -p "$PROMPT" --permission-mode acceptEdits --allowedTools "$ALLOWED_TOOLS")
     [[ "$MODEL" != "default" ]] && CMD+=(--model "$MODEL")
     ;;
   *)

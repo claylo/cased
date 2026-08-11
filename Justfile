@@ -54,7 +54,7 @@ build-example: build-viewer
 
 # Run tests
 test:
-    node --test test/build-report.test.mjs test/recon-to-yaml.test.mjs test/eval-score.test.mjs
+    node --test test/build-report.test.mjs test/recon-to-yaml.test.mjs test/eval-score.test.mjs test/compare-runs.test.mjs
 
 # Run one audit eval against a fixture (full multi-agent audit — costs real tokens)
 eval fixture *args:
@@ -63,3 +63,7 @@ eval fixture *args:
 # Score an existing findings.yaml against a fixture's ground truth
 eval-score fixture findings:
     node evals/scripts/score-eval.mjs evals/fixtures/{{fixture}} {{findings}}
+
+# Compare scored runs across the model/effort/platform matrix
+eval-compare +runs:
+    node evals/scripts/compare-runs.mjs {{runs}}
