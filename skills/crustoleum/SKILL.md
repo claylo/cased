@@ -1,6 +1,6 @@
 ---
 name: crustoleum
-description: A comprehensive Rust code review skill. Use when reviewing Rust code for safety, correctness, performance, and idiomatic quality. Provides 13 evaluation surfaces with binary criteria that go beyond what cargo clippy, cargo audit, and other static tools catch — ownership model analysis, unsafe soundness reasoning, error type architecture, concurrency design, and non-obvious performance costs.
+description: A comprehensive Rust code review skill. Use when reviewing Rust code for safety, correctness, performance, and idiomatic quality. Provides 14 evaluation surfaces with binary criteria that go beyond what cargo clippy, cargo audit, and other static tools catch — ownership model analysis, unsafe soundness reasoning, error type architecture, concurrency design, and non-obvious performance costs.
 ---
 
 # Rust Code Review Rubrics
@@ -12,7 +12,8 @@ description: A comprehensive Rust code review skill. Use when reviewing Rust cod
 Run these before applying any rubric surface. Findings from tools are inputs to
 the rubric evaluation, not replacements for it.
 
-!`${CLAUDE_SKILL_DIR}/scripts/check-tools`
+Run `${CLAUDE_SKILL_DIR}/scripts/check-tools` now and read its output before
+applying any rubric.
 
 Tools that fail = immediate findings. Tools that pass = green light to apply
 judgment rubrics.
@@ -94,7 +95,7 @@ for the code under review.
    Example: `${CLAUDE_SKILL_DIR}/scripts/run-tools clippy deny geiger`
 
    Findings land in `.crustoleum/*.txt`.
-2. **Identify applicable surfaces.** Not all 13 apply to every review:
+2. **Identify applicable surfaces.** Not all 14 apply to every review:
    - No unsafe code? Skip Surfaces 1, 8.
    - No async? Surface 6 partially applies.
    - Binary, not library? Surface 9 is less relevant.
@@ -132,13 +133,13 @@ notation for actions that don't need user attention:
 ```
 [Run tools: cargo clippy, cargo audit, cargo deny]
 [Classify codebase — unsafe blocks, FFI, async]
-[Dispatch 6 agents in parallel]
+[Dispatch 7 agents in parallel]
 [Waiting for all agents to return]
 ```
 
 **What to say out loud:**
 - Tool selection and run confirmation
-- Agent dispatch summary: "Dispatching 6 agents in parallel."
+- Agent dispatch summary: "Dispatching 7 agents in parallel."
 - Blocked or failed agents
 - Phase completion with finding counts
 
@@ -163,7 +164,7 @@ tokens.
 
 ## Running a Full Review (Subagent Dispatch)
 
-For a comprehensive review, dispatch six specialized agents in parallel.
+For a comprehensive review, dispatch seven specialized agents in parallel.
 Each agent loads only its assigned surfaces, keeping context focused.
 
 **Step 1: Select and run tools** (before dispatching agents).

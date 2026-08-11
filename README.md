@@ -1,6 +1,6 @@
 # crustoleum
 
-A structured Rust code review skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Thirteen surfaces. Eighty-four binary criteria. Six parallel agents that find the bugs `cargo clippy` told you didn't exist.
+A structured Rust code review skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Fourteen surfaces. Eighty-nine binary criteria. Seven parallel agents that find the bugs `cargo clippy` told you didn't exist.
 
 ## What it catches
 
@@ -14,7 +14,7 @@ crustoleum     →  "your unsafe block has no SAFETY comment,
                     across an await point"
 ```
 
-The 13 surfaces, briefly:
+The 14 surfaces, briefly:
 
 | # | Surface | The question it answers |
 |---|---------|----------------------|
@@ -31,30 +31,31 @@ The 13 surfaces, briefly:
 | 11 | Panic & Program Flow | Process-killing panics in library code? |
 | 12 | Performance | Hidden allocations on hot paths? |
 | 13 | Dependency Fitness | Pulling a bulldozer to pick a flower? |
+| 14 | Feature Completeness | Does the crate deliver what the docs and feature names promise? |
 
 Every criterion is binary — pass or fail, with verbatim evidence. No vibes-based "consider also" padding.
 
 ## How it works
 
-Crustoleum dispatches six specialist agents in parallel. Each one loads its assigned surfaces, reads tool output from `.crustoleum/`, and returns structured findings.
+Crustoleum dispatches seven specialist agents in parallel. Each one loads its assigned surfaces, reads tool output from `.crustoleum/`, and returns structured findings.
 
 ```
-┌─────────────────┐
-│  crustoleum      │
-│  SKILL.md        │──→ run-tools (clippy, audit, deny, geiger, ...)
-│                  │         │
-│  Classify code   │         ▼
-│  Dispatch agents │    .crustoleum/*.txt
-└──┬──┬──┬──┬──┬──┘
-   │  │  │  │  │  │
-   ▼  ▼  ▼  ▼  ▼  ▼
-  ┌──┐┌──┐┌──┐┌──┐┌──┐┌──┐
-  │SA││AT││ER││CC││SC││PF│  ← agents, in parallel
-  └──┘└──┘└──┘└──┘└──┘└──┘
-   │  │  │  │  │  │
-   └──┴──┴──┼──┴──┘
-            ▼
-      findings.yaml
+┌────────────────────────────┐
+│  crustoleum                │
+│  SKILL.md                  │──→ run-tools (clippy, audit, deny, geiger, ...)
+│                            │         │
+│  Classify code             │         ▼
+│  Dispatch agents           │    .crustoleum/*.txt
+└──┬───┬───┬───┬───┬───┬───┬─┘
+   │   │   │   │   │   │   │
+   ▼   ▼   ▼   ▼   ▼   ▼   ▼
+  ┌──┐┌──┐┌──┐┌──┐┌──┐┌──┐┌──┐
+  │SA││AT││ER││CC││SC││PF││CP│  ← agents, in parallel
+  └──┘└──┘└──┘└──┘└──┘└──┘└──┘
+   │   │   │   │   │   │   │
+   └───┴───┴───┼───┴───┴───┘
+               ▼
+         findings.yaml
 ```
 
 | Agent | Surfaces | When dispatched |
@@ -65,6 +66,7 @@ Crustoleum dispatches six specialist agents in parallel. Each one loads its assi
 | Concurrency | 6 | Code uses async/await or threads |
 | Supply Chain & Deps | 7, 8, 13 | Always |
 | Performance | 12 + cross-refs | Performance-sensitive code |
+| Completeness | 14 | Always |
 
 The Safety Auditor and Concurrency agents run at `effort: ultrathink` (maximum reasoning depth) — they prove the absence of UB and deadlocks, not scan for lint. The rest use standard effort.
 
