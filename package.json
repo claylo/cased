@@ -1,9 +1,9 @@
 {
   "devDependencies": {
-    "@expressive-code/core": "^0.41.7",
-    "@expressive-code/plugin-frames": "^0.41.7",
-    "@expressive-code/plugin-line-numbers": "^0.41.7",
-    "@expressive-code/plugin-text-markers": "^0.41.7",
+    "@expressive-code/core": "^0.44.1",
+    "@expressive-code/plugin-frames": "^0.44.1",
+    "@expressive-code/plugin-line-numbers": "^0.44.1",
+    "@expressive-code/plugin-text-markers": "^0.44.1",
     "@shikijs/core": "^4.0.2",
     "@shikijs/engine-javascript": "^4.0.2",
     "@shikijs/langs": "^4.0.2",
