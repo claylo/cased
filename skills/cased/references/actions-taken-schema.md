@@ -63,6 +63,35 @@ If `deferred`, include the target date or milestone.}
 findings gets one entry with all three slugs in the `Addresses` field.
 A finding that requires two separate changes gets two entries.
 
+**Recording commits truthfully.** A ledger entry cannot cite a fix's SHA
+in the same commit as the fix — the SHA does not exist until the commit
+does. Do NOT solve this with two commits per finding; that doubles
+history noise. Instead:
+
+1. Each fix commit carries a git trailer naming the finding(s) it
+   addresses:
+
+   ```
+   fix(store): propagate snapshot write failures
+
+   Audit-Finding: silent-write-discard
+   ```
+
+   Multi-finding commits repeat the trailer, one line per slug. The
+   commit declares its findings at the moment it exists — no SHA needed.
+
+2. Ledger entries are appended after the fix commits exist, singly or
+   in batches (N fix commits, one ledger commit). The trailers make the
+   finding-to-commit mapping recoverable from history even before the
+   ledger catches up:
+
+   ```
+   git log --format='%h %(trailers:key=Audit-Finding,valueonly,separator=%x2C)'
+   ```
+
+The ledger is the narrative record; the trailers are the ground truth
+that keeps it honest.
+
 **Dispositions:**
 
 - `fixed` — The finding is resolved by a code change. The commit field

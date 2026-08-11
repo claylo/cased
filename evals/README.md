@@ -86,8 +86,22 @@ Prints per-seed hits across runs (which model found what, at what concern),
 per-run totals, and pairwise Jaccard similarity of matched-seed sets — the
 variance number the matrix exists to measure.
 
+## Platforms
+
+`--platform claude` (default) drives a headless Claude Code session.
+`--platform codex` drives `codex exec` with the multi_agent feature forced
+on, workspace-write sandbox with network (advisory DB fetches), and the
+codex-tools.md mapping loaded — the same setup the README documents for
+interactive Codex audits. `--effort` maps to `model_reasoning_effort` on
+codex; on claude it is currently recorded in provenance but not passed.
+
+```bash
+just eval error-handling-rs --platform codex --model gpt-5.4-codex --effort high
+```
+
 ## Not yet built
 
-- Codex/Gemini platform cases in `run-eval` — the switch is stubbed.
+- Gemini platform case in `run-eval` — removed pre-launch; returns with an
+  adapter and eval verification.
 - Process-compliance scoring from `transcript.txt` (task-runner usage,
   parallel dispatch).

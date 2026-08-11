@@ -82,6 +82,22 @@ must be here. If `deferred`, include the target date or milestone.
   required. A deferred finding without a target is an accepted finding in
   disguise
 
+## Recording fixes in git
+
+One focused commit per logical fix. Each fix commit names the finding(s)
+it addresses with a git trailer, one line per slug:
+
+    Audit-Finding: <finding-slug>
+
+Do not pair every fix commit with a ledger commit — a ledger entry cannot
+cite a SHA that doesn't exist yet, and per-fix ledger commits double the
+history noise. Land the fix commits first, then append ledger entries
+(batching several per entry-commit is fine) citing the real SHAs. The
+trailers keep the finding-to-commit mapping recoverable before the ledger
+catches up:
+
+    git log --format='%h %(trailers:key=Audit-Finding,valueonly)'
+
 ## What you must not do
 
 - Do not edit `README.md`, `report.html`, `findings.yaml`, `recon.yaml`, or

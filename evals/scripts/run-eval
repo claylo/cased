@@ -77,6 +77,19 @@ case "$PLATFORM" in
     CMD=(claude -p "$PROMPT" --permission-mode acceptEdits --allowedTools "$ALLOWED_TOOLS")
     [[ "$MODEL" != "default" ]] && CMD+=(--model "$MODEL")
     ;;
+  codex)
+    # Per README multi-platform setup: codex needs the tool-mapping
+    # reference loaded or Phase 2 collapses to sequential analysis.
+    # multi_agent is forced on so dispatch never depends on local config.
+    # workspace-write + network lets cargo-audit/deny fetch advisory DBs.
+    CODEX_PROMPT="$PROMPT When invoking the cased skill, read its references/codex-tools.md before dispatching subagents."
+    CMD=(codex exec --skip-git-repo-check -s workspace-write
+         --enable multi_agent
+         -c 'sandbox_workspace_write.network_access=true'
+         "$CODEX_PROMPT")
+    [[ "$MODEL" != "default" ]] && CMD+=(--model "$MODEL")
+    [[ "$EFFORT" != "default" ]] && CMD+=(-c "model_reasoning_effort=\"$EFFORT\"")
+    ;;
   *)
     echo "error: platform '$PLATFORM' not wired yet (add a case here)" >&2
     exit 1
