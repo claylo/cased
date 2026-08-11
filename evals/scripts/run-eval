@@ -98,6 +98,16 @@ if [[ -z "$FINDINGS" ]]; then
   exit 1
 fi
 
+# Workspace hygiene: the workdir was committed at baseline, so anything
+# outside the sanctioned output paths is agent litter (scratch notes,
+# review dumps, temp scripts). Observed in the wild: review-N.md files
+# left in audit dirs by some models.
+STRAYS="$(git -C "$WORKDIR" status --porcelain \
+  | grep -vE '^.. (record/|\.crustoleum/|target/)' \
+  | sed 's/^...//' || true)"
+STRAY_COUNT=0
+[[ -n "$STRAYS" ]] && STRAY_COUNT="$(echo "$STRAYS" | wc -l | tr -d ' ')"
+
 cat > "$RUN_DIR/run-meta.yaml" <<EOF
 fixture: $FIXTURE
 platform: $PLATFORM
@@ -107,7 +117,16 @@ cased_commit: $CASED_COMMIT
 started: $STARTED
 finished: $FINISHED
 findings: ${FINDINGS#"$RUN_DIR/"}
+stray_file_count: $STRAY_COUNT
 EOF
+if [[ -n "$STRAYS" ]]; then
+  {
+    echo "stray_files:"
+    echo "$STRAYS" | sed 's/^/  - /'
+  } >> "$RUN_DIR/run-meta.yaml"
+  echo "hygiene: $STRAY_COUNT stray file(s) left by agents:" >&2
+  echo "$STRAYS" | sed 's/^/  /' >&2
+fi
 
 node "$EVALS_DIR/scripts/score-eval.mjs" "$FIXTURE_DIR" "$FINDINGS" --json \
   > "$RUN_DIR/score.json"

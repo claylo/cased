@@ -20,6 +20,7 @@ overlapping line range (± tolerance), regardless of what the model named it.
 | false positives | findings in `clean_paths` — files that are deliberately correct |
 | unexpected | findings elsewhere that match no seed (review by hand; may be real) |
 | calibration misses | seeded defect found but rated below its `concern_floor` |
+| stray files | files agents left in the workdir outside sanctioned output paths (`record/`, `.crustoleum/`, `target/`) — recorded in `run-meta.yaml` |
 
 Restraint is scored, not assumed: every fixture contains at least one
 deliberately clean file, because "when there's nothing wrong, say so" is a

@@ -7,10 +7,11 @@ check-contract:
     #!/usr/bin/env bash
     set -euo pipefail
     bash src/schemas/build-schemas.sh
-    if ! git diff --quiet skills/*/references/; then
+    stamped=('skills/*/references/*.schema.json' 'skills/*/references/*.example.yaml' 'skills/*/references/*-schema.yaml.md')
+    if ! git diff --quiet -- "${stamped[@]}"; then
         echo "" >&2
         echo "error: stamped contract files drifted from src/schemas/" >&2
-        git diff --stat skills/*/references/ >&2
+        git diff --stat -- "${stamped[@]}" >&2
         echo "" >&2
         echo "Never edit references/ copies directly; edit src/schemas/ and rebuild." >&2
         exit 1

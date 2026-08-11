@@ -154,6 +154,11 @@ Do not narrate what you are reading, what you found in each file, or
 what each agent is doing as it works. The report is the deliverable,
 not the commentary.
 
+**Workspace hygiene.** A review writes `.crustoleum/` tool output and
+nothing else into the target repo. Agents return findings in their
+final message, never as files — no `review-N.md`, scratch notes, or
+temp scripts. Anything else created must be deleted before finishing.
+
 **Division of labor:** During agent dispatch, you are a dispatcher,
 not an analyst. Do NOT read project source files yourself — that is
 what the agents do. Your job is to run tools, classify the codebase

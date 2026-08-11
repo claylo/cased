@@ -96,6 +96,13 @@ Do not narrate what you are reading, what you found in each file, or
 what each agent is doing as it works. The report is the deliverable,
 not the commentary.
 
+**Workspace hygiene.** The audit writes exactly the audit directory
+artifacts (File Inventory below) and tool output directories
+(e.g., `.crustoleum/`) — nothing else. Subagents return analysis in
+their final message, never as files; do not leave `review-N.md`,
+scratch notes, or temp scripts in the target repo. Anything else the
+audit creates must be deleted before the audit completes.
+
 **Division of labor:** During Phase 2 (Analysis), you are a dispatcher,
 not an analyst. Do NOT read project source files yourself — that is
 what the subagents do. Your job is to classify the codebase from recon

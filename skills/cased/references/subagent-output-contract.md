@@ -217,3 +217,14 @@ Before returning, emit the YAML to stdout and mentally validate:
 The controller will run schema validation on the merged `findings.yaml`
 before assembly; a subagent that emits malformed YAML fails the whole
 audit.
+
+## Workspace hygiene
+
+Your final message IS your output. Never write your analysis, review
+notes, verdicts, or scratch work as files into the target repository —
+no `review-N.md`, no `notes.md`, no temp scripts. The only files an
+audit creates are the audit directory artifacts and tool output
+directories (e.g., `.crustoleum/`). If a temporary file is unavoidable,
+create it in the system temp directory and delete it before returning.
+Stray files left in the repo are a contract violation and are measured
+by the eval harness.
