@@ -17,6 +17,30 @@ the rubric evaluation, not replacements for it.
 Tools that fail = immediate findings. Tools that pass = green light to apply
 judgment rubrics.
 
+## Task Runners Before Bare Cargo
+
+Before running ANY cargo tool directly, check for a project task runner:
+`Justfile`/`justfile` (list recipes with `just --list`), `Makefile`,
+`Makefile.toml` (cargo-make), and `.cargo/config.toml` aliases.
+
+If a recipe wraps the tool you need (`just deny`, `just audit`,
+`just lint`), invoke the recipe — it carries the project's config paths
+and invocation preferences. A bare `cargo deny check` skips the
+project's `deny.toml` discovery and tuned flags, and reports findings
+the project has already dispatched. Those false positives destroy
+report credibility.
+
+- `${CLAUDE_SKILL_DIR}/scripts/run-tools` is the sanctioned path for
+  the tool catalog — it discovers `deny.toml` in `.config/` and the
+  project root. Use it; do not hand-run its tools "to be quick."
+- The rule covers everything OUTSIDE run-tools too: ad-hoc verification
+  runs, `cargo tree`, re-running a single tool to confirm a finding.
+  Recipe first, bare cargo only when no recipe covers it.
+- When dispatching agents, include the discovered recipes in their
+  context so they follow the same rule.
+
+"A quick bare run is faster" — it is also wrong.
+
 ## The 14 Surfaces
 
 Each surface is a coherent concern area with a thesis, binary criteria, and

@@ -29,6 +29,15 @@ Read from `.crustoleum/` if they exist:
 - `machete.txt` or `udeps.txt` — unused dependencies
 - Also run directly: `cargo tree` and `cargo tree -d` (duplicates)
 
+**Never run bare `cargo deny` / `cargo audit`.** If a tool output file
+is missing or you need to re-run a tool to confirm a finding, check the
+project's task runner first — `just --list`, `Makefile`, cargo-make —
+and use the matching recipe (`just deny`, `just audit`). Recipes carry
+the project's config (`deny.toml` location, tuned flags); a bare run
+skips them and produces findings the project has already dispatched.
+If your dispatch context names recipes, use those. Bare invocation is
+a last resort when no recipe or `run-tools` output covers the tool.
+
 ## Evaluation Process
 
 1. Read all tool output files and both reference files.
