@@ -512,16 +512,10 @@ export function buildReconObject({ manifest, metadata, tokei, gitLog }) {
   });
 
   // Tokei paths (from parseTokei) are workspace-root-relative after
-  // ./ stripping. Module paths from cargo metadata are absolute. Compute
-  // a relative module path for the per-module tokei match.
-  //
-  // Known gap: a workspace that is ALSO a root package (hybrid layout
-  // with [workspace] + [package] at the root and src/ alongside) will
-  // produce rel === '' for the root member. countPerModule's prefix
-  // becomes '/', which matches no relative path — the root member
-  // under-counts (returns 0 files, 0 lines). Virtual workspaces (bito,
-  // scrat, most Cargo workspaces in practice) don't hit this case.
-  // Tracked as a future enhancement; flagged in the commit message.
+  // ./ stripping. Module paths from cargo metadata are absolute. Emitted
+  // paths are workspace-root-relative to match the canonical example and
+  // keep artifacts free of host-specific paths; the root member itself
+  // is emitted as '.'.
   const workspaceRoot = parsedMetadata.workspace_root;
   const relativize = absPath => {
     if (absPath === workspaceRoot) return '';
@@ -531,20 +525,31 @@ export function buildReconObject({ manifest, metadata, tokei, gitLog }) {
     return absPath;
   };
 
+  // A root member (single crate, or hybrid [workspace]+[package] layout)
+  // relativizes to ''. It owns every file not claimed by a deeper member,
+  // so it counts against the sibling prefixes rather than its own.
+  const moduleRels = parsedMetadata.modules.map(mod => relativize(mod.path));
+
   const structure = {
     root: manifest.target_path,
     total_files: parsedTokei.total_files,
     total_lines: parsedTokei.total_lines,
     languages: parsedTokei.languages,
-    modules: parsedMetadata.modules.map(mod => ({
-      name: mod.name,
-      path: mod.path,
-      ...countPerModule(parsedTokei.files, relativize(mod.path)),
-    })),
+    modules: parsedMetadata.modules.map((mod, i) => {
+      const rel = moduleRels[i];
+      const counts = rel === ''
+        ? countRootModule(parsedTokei.files, moduleRels.filter(r => r !== ''))
+        : countPerModule(parsedTokei.files, rel);
+      return {
+        name: mod.name,
+        path: rel === '' ? '.' : rel,
+        ...counts,
+      };
+    }),
   };
 
   const dependencies = {
-    manifest: `${parsedMetadata.workspace_root}/Cargo.toml`,
+    manifest: relativize(`${parsedMetadata.workspace_root}/Cargo.toml`) || 'Cargo.toml',
     items: parsedMetadata.dependencies,
   };
 
@@ -576,6 +581,23 @@ function buildMeta(manifest, metadata) {
     timestamp: manifest.timestamp,
     scope: manifest.scope,
   };
+}
+
+/**
+ * Count files owned by a root member: everything not claimed by a
+ * deeper workspace member. siblingRels are the non-root members'
+ * workspace-root-relative paths.
+ */
+function countRootModule(files, siblingRels) {
+  const prefixes = siblingRels.map(r => (r.endsWith('/') ? r : r + '/'));
+  let fileCount = 0;
+  let lineCount = 0;
+  for (const f of files) {
+    if (prefixes.some(p => f.path === p.slice(0, -1) || f.path.startsWith(p))) continue;
+    fileCount += 1;
+    lineCount += f.lines;
+  }
+  return { files: fileCount, lines: lineCount };
 }
 
 function countPerModule(files, modulePath) {

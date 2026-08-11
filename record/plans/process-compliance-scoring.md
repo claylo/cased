@@ -39,6 +39,7 @@ A post-run analyzer walks the event stream and scores binary checks:
 | Dispatcher discipline | Orchestrator issues no `Read` on fixture source files during Phase 2 |
 | Hygiene attribution | `Write`/`Edit` targets outside sanctioned paths, attributed to the specific agent |
 | No test execution | No `cargo test`/`npm test` invocations (audits are static analysis) |
+| Intermediates immutable | No `Edit`/`Write` on `recon.yaml` after the pre-runner emits it, or on `findings.yaml` after validation passes — observed live: codex hand-groomed generated recon post-assembly (prettified scope, relativized paths), breaking provenance even where the edits looked like improvements |
 
 Results land in `score.json` as a `process` block alongside the findings
 metrics, and `compare-runs` grows columns for them — process compliance is

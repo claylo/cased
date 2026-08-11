@@ -119,12 +119,18 @@ if [[ -z "$FINDINGS" ]]; then
 fi
 
 # Workspace hygiene: the workdir was committed at baseline, so anything
-# outside the sanctioned output paths is agent litter (scratch notes,
-# review dumps, temp scripts). Observed in the wild: review-N.md files
-# left in audit dirs by some models.
-STRAYS="$(git -C "$WORKDIR" status --porcelain \
-  | grep -vE '^.. (record/|\.crustoleum/|target/)' \
-  | sed 's/^...//' || true)"
+# outside the sanctioned output set is agent litter (scratch notes,
+# review dumps, temp scripts, ghost artifacts). Observed in the wild:
+# review-N.md files in audit dirs; an unreferenced terrain-map.svg from
+# a deprecated report format. The audit dir is NOT blanket-sanctioned —
+# only the enumerated File Inventory artifacts are. -uall matters:
+# without it, porcelain collapses untracked directories and hides every
+# file inside them.
+SANCTIONED='^record/audits/[^/]+/(README\.md|report\.html|AGENTS\.md|CLAUDE\.md|recon\.yaml|findings\.yaml|actions-taken\.md|assets/sparkline-[^/]+\.svg)$'
+STRAYS="$(git -C "$WORKDIR" status --porcelain -uall \
+  | sed 's/^...//' \
+  | grep -vE '^(\.crustoleum/|target/)' \
+  | grep -vE "$SANCTIONED" || true)"
 STRAY_COUNT=0
 [[ -n "$STRAYS" ]] && STRAY_COUNT="$(echo "$STRAYS" | wc -l | tr -d ' ')"
 

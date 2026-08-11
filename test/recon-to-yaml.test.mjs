@@ -178,9 +178,14 @@ describe('buildReconObject', () => {
     assert.equal(core.lines, 442); // 245 + 180 + 17
   });
 
-  it('populates dependencies', () => {
-    assert.equal(recon.dependencies.manifest,
-      '/tmp/sample-rust-workspace/Cargo.toml');
+  it('emits workspace-root-relative module paths', () => {
+    for (const mod of recon.structure.modules) {
+      assert.ok(!mod.path.startsWith('/'), `absolute path leaked: ${mod.path}`);
+    }
+  });
+
+  it('populates dependencies with a relative manifest path', () => {
+    assert.equal(recon.dependencies.manifest, 'Cargo.toml');
     assert.equal(recon.dependencies.items.length, 5);
   });
 
@@ -193,6 +198,84 @@ describe('buildReconObject', () => {
 
   it('does not include boundaries (agent-owned)', () => {
     assert.equal(recon.boundaries, undefined);
+  });
+});
+
+describe('buildReconObject root-package layouts', () => {
+  const manifest = loadManifest();
+  const gitLogRaw = readFileSync(join(fixtures, 'git-log.raw'), 'utf8');
+  const root = '/tmp/single-crate';
+
+  const singleCrateMetadata = {
+    workspace_root: root,
+    workspace_members: ['single 0.1.0 (path)'],
+    packages: [
+      {
+        id: 'single 0.1.0 (path)',
+        name: 'single',
+        manifest_path: `${root}/Cargo.toml`,
+        dependencies: [],
+      },
+    ],
+  };
+  const tokei = {
+    Rust: {
+      reports: [
+        { name: './src/main.rs', stats: { code: 100, comments: 5, blanks: 3 } },
+        { name: './src/lib.rs', stats: { code: 50, comments: 2, blanks: 1 } },
+      ],
+    },
+  };
+
+  it('counts all files for a single root crate (regression: 0/0)', () => {
+    const recon = buildReconObject({
+      manifest, metadata: singleCrateMetadata, tokei, gitLog: gitLogRaw,
+    });
+    const mod = recon.structure.modules[0];
+    assert.equal(mod.path, '.');
+    assert.equal(mod.files, 2);
+    assert.equal(mod.lines, 161);
+    assert.equal(recon.dependencies.manifest, 'Cargo.toml');
+  });
+
+  it('root member of a hybrid workspace excludes deeper members', () => {
+    const hybridMetadata = {
+      workspace_root: root,
+      workspace_members: ['single 0.1.0 (path)', 'sub 0.1.0 (path)'],
+      packages: [
+        {
+          id: 'single 0.1.0 (path)',
+          name: 'single',
+          manifest_path: `${root}/Cargo.toml`,
+          dependencies: [],
+        },
+        {
+          id: 'sub 0.1.0 (path)',
+          name: 'sub',
+          manifest_path: `${root}/crates/sub/Cargo.toml`,
+          dependencies: [],
+        },
+      ],
+    };
+    const hybridTokei = {
+      Rust: {
+        reports: [
+          { name: './src/main.rs', stats: { code: 100, comments: 5, blanks: 3 } },
+          { name: './crates/sub/src/lib.rs', stats: { code: 40, comments: 1, blanks: 1 } },
+        ],
+      },
+    };
+    const recon = buildReconObject({
+      manifest, metadata: hybridMetadata, tokei: hybridTokei, gitLog: gitLogRaw,
+    });
+    const rootMod = recon.structure.modules.find(m => m.name === 'single');
+    const subMod = recon.structure.modules.find(m => m.name === 'sub');
+    assert.equal(rootMod.path, '.');
+    assert.equal(rootMod.files, 1);
+    assert.equal(rootMod.lines, 108);
+    assert.equal(subMod.path, 'crates/sub');
+    assert.equal(subMod.files, 1);
+    assert.equal(subMod.lines, 42);
   });
 });
 

@@ -15,23 +15,31 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import YAML from 'yaml';
 
-const findingsYaml = readFileSync('example/2026-03-21-current-repo-review/findings.yaml', 'utf8');
-const reconYaml = readFileSync('example/2026-03-21-current-repo-review/recon.yaml', 'utf8');
+// Test fixture: an audit dir assembled from the canonical schema examples —
+// the same files the contract stamps into every skill, so the fixture can
+// never drift from the schema (the failure mode that killed the old
+// checked-in example/ directory).
+const findingsYaml = readFileSync('src/schemas/findings.example.yaml', 'utf8');
+const reconYaml = readFileSync('src/schemas/recon.example.yaml', 'utf8');
+const fixtureDir = mkdtempSync(join(tmpdir(), 'cased-test-audit-'));
+writeFileSync(join(fixtureDir, 'findings.yaml'), findingsYaml);
+writeFileSync(join(fixtureDir, 'recon.yaml'), reconYaml);
 
 describe('parseFindings', () => {
-  it('parses example findings.yaml without error', () => {
+  it('parses canonical findings.yaml without error', () => {
     const data = parseFindings(findingsYaml);
-    assert.equal(data.narratives.length, 2);
-    assert.equal(data.narratives[0].findings.length, 2);
+    assert.equal(data.narratives.length, 5);
+    assert.equal(data.narratives[0].findings.length, 3);
     assert.equal(data.narratives[0].findings[0].concern, 'significant');
   });
 });
 
 describe('parseRecon', () => {
-  it('parses example recon.yaml without error', () => {
+  it('parses canonical recon.yaml without error', () => {
     const data = parseRecon(reconYaml);
-    assert.ok(data.files.length > 0);
-    assert.ok(data.dependency_graph.length > 0);
+    assert.ok(data.structure.total_files > 0);
+    assert.ok(data.dependencies.items.length > 0);
+    assert.ok(data.churn.hotspots.length > 0);
   });
 });
 
@@ -40,7 +48,6 @@ describe('renderHeader', () => {
     const findings = parseFindings(findingsYaml);
     const html = renderHeader(findings);
     assert.ok(html.includes('<h1>'));
-    assert.ok(html.includes('current-repo-review'));
     assert.ok(html.includes('summary-bar'));
   });
 });
@@ -88,30 +95,30 @@ describe('formatLocationTitle', () => {
 
 describe('renderNarrative', () => {
   it('generates narrative section with findings', async () => {
-    const html = await assembleReport('example/2026-03-21-current-repo-review', {
+    const html = await assembleReport(fixtureDir, {
       viewerDir: 'src/viewer',
       fontsDir: 'vendor/fonts',
       viewerJs: null,
     });
-    assert.ok(html.includes('data-slug="location-truthfulness"'));
+    assert.ok(html.includes('data-slug="hooks-filter-truncate-panic"'));
     assert.ok(html.includes('class="finding"'));
     assert.ok(html.includes('concern-badge'));
     assert.ok(html.includes('expressive-code'));
   });
 
   it('includes flow diagram SVG when narrative has flow data', async () => {
-    const html = await assembleReport('example/2026-03-21-current-repo-review', {
+    const html = await assembleReport(fixtureDir, {
       viewerDir: 'src/viewer',
       fontsDir: 'vendor/fonts',
       viewerJs: null,
     });
-    // Flow diagram present for location-truthfulness
+    // Flow diagram present for shell-execution-boundary
     assert.ok(html.includes('class="flow-diagram"'));
-    assert.ok(html.includes('Index locations'));
-    assert.ok(html.includes('Alias available?'));
-    // Second narrative has no flow, so only one flow-diagram div
+    assert.ok(html.includes('Spawn shell command'));
+    assert.ok(html.includes('filter: prefix?'));
+    // Three of the five canonical narratives carry flow data
     const flowDiagramCount = html.split('class="flow-diagram"').length - 1;
-    assert.equal(flowDiagramCount, 1);
+    assert.equal(flowDiagramCount, 3);
   });
 });
 
@@ -120,13 +127,13 @@ describe('renderLedger', () => {
     const findings = parseFindings(findingsYaml);
     const html = renderLedger(findings);
     assert.ok(html.includes('<table'));
-    assert.ok(html.includes('curate-validation-suppresses'));
+    assert.ok(html.includes('hooks-stdin-write-silently-discarded'));
   });
 });
 
 describe('assembleReport', () => {
   it('produces valid HTML from example data', async () => {
-    const html = await assembleReport('example/2026-03-21-current-repo-review', {
+    const html = await assembleReport(fixtureDir, {
       viewerDir: 'src/viewer',
       fontsDir: 'vendor/fonts',
       viewerJs: null,
@@ -158,15 +165,15 @@ describe('renderAgentsFindingList', () => {
   it('groups findings under narrative titles with concern and location', () => {
     const findings = parseFindings(findingsYaml);
     const list = renderAgentsFindingList(findings);
-    // Both narrative titles present as H3s
-    assert.ok(list.includes('### The Location Truthfulness Surface'));
-    assert.ok(list.includes('### The Text Boundary Surface'));
-    // All three example finding slugs present with their concerns
-    assert.ok(list.includes('`curate-validation-suppresses-unresolved-without-suggestion` (significant)'));
-    assert.ok(list.includes('`main-file-detection-uses-substring-match` (moderate)'));
-    assert.ok(list.includes('`unicode-casefold-offsets-drift-from-source` (moderate)'));
+    // Narrative titles present as H3s
+    assert.ok(list.includes('### The Shell Execution Boundary'));
+    assert.ok(list.includes('### The Ecosystem Completeness Surface'));
+    // First narrative's finding slugs present with their concerns
+    assert.ok(list.includes('`hooks-filter-truncate-panic` (significant)'));
+    assert.ok(list.includes('`hooks-stdin-write-silently-discarded` (moderate)'));
+    assert.ok(list.includes('`git-fetch-silently-discarded` (moderate)'));
     // Location annotation uses backticked path:line format
-    assert.ok(list.includes('`crates/colophon/src/commands/curate.rs:58-66`'));
+    assert.ok(list.includes('`crates/scrat-core/src/hooks.rs:393-394`'));
   });
 });
 
@@ -174,17 +181,17 @@ describe('renderAgentsMd', () => {
   it('interpolates template placeholders from findings', () => {
     const findings = parseFindings(findingsYaml);
     const template = readFileSync('src/viewer/agents-md-template.md', 'utf8');
-    const md = renderAgentsMd(findings, template, '2026-03-21-current-repo-review');
+    const md = renderAgentsMd(findings, template, '2026-04-09-full-workspace');
     // All placeholders replaced
     assert.ok(!md.includes('{{'));
     // Audit metadata correctly interpolated
-    assert.ok(md.includes('Current Repo Review'));           // audit_title
-    assert.ok(md.includes('`2026-03-21-current-repo-review`')); // audit_slug
-    assert.ok(md.includes('2026-03-21'));                    // audit_date
-    assert.ok(md.includes('3 total'));                       // finding_count (3 findings in example)
-    assert.ok(md.includes('open: 3'));                       // finding_count in front-matter example
+    assert.ok(md.includes('Full workspace audit'));          // audit_title (from scope)
+    assert.ok(md.includes('`2026-04-09-full-workspace`'));   // audit_slug
+    assert.ok(md.includes('2026-04-09'));                    // audit_date
+    assert.ok(md.includes('18 total'));                      // finding_count (canonical example)
+    assert.ok(md.includes('open: 18'));                      // finding_count in front-matter example
     // Finding list interpolated in place
-    assert.ok(md.includes('`curate-validation-suppresses-unresolved-without-suggestion`'));
+    assert.ok(md.includes('`hooks-filter-truncate-panic`'));
     // Core guidance sections present
     assert.ok(md.includes('## The loop'));
     assert.ok(md.includes('## Dispositions'));
@@ -288,15 +295,10 @@ describe('validateAuditDir', () => {
     }
   });
 
-  it('catches drift in the old colophon example recon.yaml', () => {
-    const errors = validateAuditDir('example/2026-03-21-current-repo-review', 'src/schemas');
-    // Old example uses flat schema, so recon.yaml should report errors
-    const reconErrors = errors.filter(e => e.file === 'recon.yaml');
-    assert.ok(reconErrors.length > 0, 'expected recon.yaml validation errors from stale schema');
-    // Should surface the missing `meta` and `structure` top-level fields
-    const messages = reconErrors.map(e => e.message).join(' ');
-    assert.ok(messages.includes('meta') || messages.includes('structure'),
-      'expected errors mentioning missing meta/structure');
+  it('validates the canonical fixture dir cleanly', () => {
+    const errors = validateAuditDir(fixtureDir, 'src/schemas');
+    assert.deepEqual(errors, [],
+      `canonical examples must validate: ${JSON.stringify(errors, null, 2)}`);
   });
 });
 
