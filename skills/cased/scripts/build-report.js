@@ -39702,6 +39702,12 @@ if ((0, node_fs.realpathSync)(process.argv[1]) === (0, node_fs.realpathSync)((0,
 		(0, node_fs.writeFileSync)(agentsPath, agentsMd);
 		console.log(`wrote ${agentsPath} (${(agentsMd.length / 1024).toFixed(1)}KB)`);
 	} else console.warn(`agents-md-template.md not found at ${agentsTemplatePath}; skipping AGENTS.md`);
+	const claudePath = (0, node_path.join)(auditDir, "CLAUDE.md");
+	if ((0, node_fs.existsSync)(claudePath)) console.log(`skipped ${claudePath} (already exists)`);
+	else {
+		(0, node_fs.writeFileSync)(claudePath, "@AGENTS.md\n");
+		console.log(`wrote ${claudePath}`);
+	}
 	const readmeTemplatePath = (0, node_path.join)(viewerDir, "readme-template.md");
 	const readmePath = (0, node_path.join)(auditDir, "README.md");
 	if ((0, node_fs.existsSync)(readmeTemplatePath)) if ((0, node_fs.existsSync)(readmePath)) console.log(`skipped ${readmePath} (already exists; scaffold never overwrites authored prose)`);
