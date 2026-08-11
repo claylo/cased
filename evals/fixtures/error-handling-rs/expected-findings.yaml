@@ -1,0 +1,59 @@
+# Ground truth for the error-handling-rs fixture.
+#
+# Every entry is a seeded defect. Matching is by path + line-range overlap
+# (± tolerance_lines) — never by slug or title, which are model-authored
+# free text and vary run to run. `concern_floor` is the minimum acceptable
+# concern level; reporting a seeded defect below its floor scores as a
+# calibration miss.
+#
+# src/render.rs is deliberately clean. Any finding there is a false
+# positive — restraint is part of the score.
+
+fixture: error-handling-rs
+surface: error-handling
+tolerance_lines: 4
+clean_paths:
+  - src/render.rs
+
+expected:
+  - id: split-unwrap-user-input
+    path: src/config.rs
+    lines: [26, 26]
+    concern_floor: significant
+    note: "split_once().unwrap() panics on any config line without '='"
+
+  - id: parse-unwrap-user-input
+    path: src/config.rs
+    lines: [27, 27]
+    concern_floor: significant
+    note: "parse().unwrap() panics on non-numeric user-supplied value"
+
+  - id: error-context-destroyed
+    path: src/config.rs
+    lines: [36, 36]
+    concern_floor: advisory
+    note: "map_err(|_| ...) discards the source error; ConfigError::Parse carries no context"
+
+  - id: stringly-public-api-errors
+    path: src/lib.rs
+    lines: [11, 19]
+    concern_floor: advisory
+    note: "public merge_config returns Result<_, String>; callers cannot match on failure kind"
+
+  - id: silent-write-discard
+    path: src/store.rs
+    lines: [13, 13]
+    concern_floor: significant
+    note: "let _ = fs::write() silently loses the snapshot on any I/O failure"
+
+  - id: swallowed-load-error
+    path: src/store.rs
+    lines: [18, 22]
+    concern_floor: moderate
+    note: "Err(_) => empty map; unreadable snapshot is indistinguishable from no snapshot"
+
+  - id: args-index-panic
+    path: src/main.rs
+    lines: [7, 7]
+    concern_floor: moderate
+    note: "args[1] panics with no usage message when invoked without arguments"

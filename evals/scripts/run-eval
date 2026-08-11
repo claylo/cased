@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+#
+# Run one audit eval: copy a fixture, drive a headless audit over it,
+# record provenance, and score the resulting findings.yaml.
+#
+# The RUNNER records platform/model/effort — provenance is never
+# self-reported by the model. Results land in:
+#   evals/runs/<fixture>/<timestamp>-<platform>-<model>-<effort>/
+#
+# Usage:
+#   run-eval [--platform claude] [--model MODEL] [--effort EFFORT] <fixture>
+#
+# Each run is a full multi-agent audit: expect minutes and real token
+# spend. Run matrices deliberately, not in CI-per-push.
+
+set -euo pipefail
+
+EVALS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="$(cd "$EVALS_DIR/.." && pwd)"
+
+PLATFORM="claude"
+MODEL="default"
+EFFORT="default"
+FIXTURE=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --platform) PLATFORM="$2"; shift 2 ;;
+    --model)    MODEL="$2"; shift 2 ;;
+    --effort)   EFFORT="$2"; shift 2 ;;
+    --help|-h)
+      grep '^#' "$0" | grep -v '^#!' | sed 's/^# \{0,1\}//' >&2
+      exit 0
+      ;;
+    -*) echo "unknown option: $1" >&2; exit 1 ;;
+    *)  FIXTURE="$1"; shift ;;
+  esac
+done
+
+if [[ -z "$FIXTURE" ]]; then
+  echo "error: fixture name required (see evals/fixtures/)" >&2
+  exit 1
+fi
+
+FIXTURE_DIR="$EVALS_DIR/fixtures/$FIXTURE"
+if [[ ! -d "$FIXTURE_DIR" ]]; then
+  echo "error: no fixture at $FIXTURE_DIR" >&2
+  exit 1
+fi
+
+TS="$(TZ='America/New_York' date +%Y-%m-%d-%H%M%S)"
+RUN_DIR="$EVALS_DIR/runs/$FIXTURE/$TS-$PLATFORM-$MODEL-$EFFORT"
+WORKDIR="$RUN_DIR/workdir"
+mkdir -p "$WORKDIR"
+
+# Fresh copy of the fixture, minus ground truth — the model must never
+# see expected-findings.yaml.
+rsync -a --exclude expected-findings.yaml --exclude target "$FIXTURE_DIR/" "$WORKDIR/"
+
+# The audit expects a git repo (recon runs git log for churn data).
+git -C "$WORKDIR" init -q
+git -C "$WORKDIR" add -A
+git -C "$WORKDIR" -c user.name=eval -c user.email=eval@local commit -qm "fixture baseline"
+
+CASED_COMMIT="$(git -C "$REPO_ROOT" rev-parse --short HEAD)"
+STARTED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+PROMPT="Use the cased skill to run a full audit of this project. Scope: full repo. Do not ask for scope confirmation or tool selection — use defaults and proceed to completion, including verification and assembly."
+
+case "$PLATFORM" in
+  claude)
+    CMD=(claude -p "$PROMPT" --permission-mode bypassPermissions)
+    [[ "$MODEL" != "default" ]] && CMD+=(--model "$MODEL")
+    ;;
+  *)
+    echo "error: platform '$PLATFORM' not wired yet (add a case here)" >&2
+    exit 1
+    ;;
+esac
+
+echo "run-eval: $FIXTURE on $PLATFORM/$MODEL/$EFFORT" >&2
+echo "  workdir: $WORKDIR" >&2
+( cd "$WORKDIR" && "${CMD[@]}" ) | tee "$RUN_DIR/transcript.txt" >&2 || {
+  echo "error: audit run failed; transcript in $RUN_DIR/transcript.txt" >&2
+  exit 1
+}
+
+FINISHED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+FINDINGS="$(find "$WORKDIR/record/audits" -name findings.yaml 2>/dev/null | head -1)"
+if [[ -z "$FINDINGS" ]]; then
+  echo "error: no findings.yaml produced under $WORKDIR/record/audits/" >&2
+  exit 1
+fi
+
+cat > "$RUN_DIR/run-meta.yaml" <<EOF
+fixture: $FIXTURE
+platform: $PLATFORM
+model: $MODEL
+effort: $EFFORT
+cased_commit: $CASED_COMMIT
+started: $STARTED
+finished: $FINISHED
+findings: ${FINDINGS#"$RUN_DIR/"}
+EOF
+
+node "$EVALS_DIR/scripts/score-eval.mjs" "$FIXTURE_DIR" "$FINDINGS" --json \
+  > "$RUN_DIR/score.json"
+node "$EVALS_DIR/scripts/score-eval.mjs" "$FIXTURE_DIR" "$FINDINGS" \
+  | tee "$RUN_DIR/score.txt"
+
+echo "" >&2
+echo "run recorded: $RUN_DIR" >&2

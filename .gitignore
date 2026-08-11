@@ -5,3 +5,5 @@ build/
 dist/
 example/*/report.html
 .claude/
+evals/runs/
+evals/fixtures/*/target/

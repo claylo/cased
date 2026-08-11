@@ -1,0 +1,7 @@
+[package]
+name = "confetti"
+version = "0.1.0"
+edition = "2021"
+description = "A tiny config-file inspector. Eval fixture — do not ship."
+
+[dependencies]
