@@ -4,6 +4,7 @@ node_modules/
 build/
 dist/
 example/*/report.html
-.claude/
+.claude/*
+!.claude/CLAUDE.md
 evals/runs/
 evals/fixtures/*/target/
