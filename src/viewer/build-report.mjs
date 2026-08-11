@@ -845,6 +845,17 @@ if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url
       console.warn(`agents-md-template.md not found at ${agentsTemplatePath}; skipping AGENTS.md`);
     }
 
+    // Write CLAUDE.md importing AGENTS.md so Claude Code sessions launched
+    // in the audit directory auto-load the remediation briefing. Written
+    // only if absent — a customized CLAUDE.md belongs to the user.
+    const claudePath = join(auditDir, 'CLAUDE.md');
+    if (existsSync(claudePath)) {
+      console.log(`skipped ${claudePath} (already exists)`);
+    } else {
+      writeFileSync(claudePath, '@AGENTS.md\n');
+      console.log(`wrote ${claudePath}`);
+    }
+
     // Write README.md scaffold from template. The scaffold is only written if
     // README.md does not already exist — the agent fills it in with narrative
     // prose and subsequent build-report runs must not clobber that work.

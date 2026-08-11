@@ -29,6 +29,15 @@ available audit tools for the ecosystem:
 - Python: `pip-audit` or `safety check`
 - Go: `govulncheck`
 
+**Check for a task runner recipe first.** If the project has a
+`Justfile` (`just --list`), `Makefile`, `package.json#scripts`, or
+similar wrapping one of these tools (`just audit`, `just deny`), invoke
+the recipe instead of the bare tool — recipes carry the project's
+config files and tuned flags. A bare run skips them and reports
+findings the project has already dispatched. Only run the bare tool
+when no recipe covers it. If your dispatch context names specific
+recipes, use those.
+
 Report each advisory with its CVE/GHSA ID and severity.
 
 ### DEP-2: Deprecated or unmaintained dependencies

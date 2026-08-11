@@ -149,6 +149,19 @@ Read `${CLAUDE_SKILL_DIR}/references/recon-schema.yaml.md` for the full schema.
 
 **Running tests during the audit.** Do NOT run tests (`cargo test`, `npm test`, etc.) as part of reconnaissance, analysis, or verification. The audit is static analysis. If a finding legitimately requires dynamic verification, use `recon.yaml#testing.command` — running the wrong runner (e.g., `cargo test` against a nextest-configured project) produces false failures that look like real findings. When in doubt, note the observation and let the user decide whether to execute tests.
 
+**Task runners before bare tools.** During recon, check for a project
+task runner and record what you find: `Justfile`/`justfile` (list
+recipes with `just --list`), `Makefile`, `package.json#scripts`,
+`Taskfile.yml`, `Makefile.toml` (cargo-make), and `.cargo/config.toml`
+aliases. For the rest of the audit — yours and every subagent's — any
+tool the project wraps in a recipe MUST be invoked through that recipe.
+A bare invocation (`cargo deny check` when the project has `just deny`,
+`npm audit` when there's a `just audit`) silently skips the config
+paths, feature flags, and exclusions the project has tuned, and reports
+findings the project already dispatched. Those false positives destroy
+report credibility. "A quick bare run is faster" — it is also wrong.
+If no recipe covers the tool, a bare run is fine.
+
 ### Phase 2: Analysis
 
 Walk each attack surface / concern area and produce structured findings.
@@ -172,7 +185,9 @@ as the narrative framework and dispatch its agents for parallel review.
 3. Classify the codebase using the skill's surface selection guide to
    determine which of its subagents apply.
 4. Build one `<audit-context>` block (target repo path, commit SHA,
-   2–4 sentence recon summary, path to `findings.schema.json`) and
+   2–4 sentence recon summary, path to `findings.schema.json`, and the
+   task runner recipes recorded during recon — e.g., "run tools via
+   `just deny`, `just audit`; never bare cargo invocations") and
    reuse it for every dispatch in this audit. See
    `${CLAUDE_SKILL_DIR}/references/codex-tools.md` for the exact message
    framing — the same shape works on Claude Code.
@@ -217,7 +232,9 @@ subagent name used in the dispatch instructions below.
    - **Performance-sensitive code or large hot paths:** add `performance`
 
 2. Build one `<audit-context>` block (target repo path, commit SHA,
-   2–4 sentence recon summary, path to `findings.schema.json`) and
+   2–4 sentence recon summary, path to `findings.schema.json`, and the
+   task runner recipes recorded during recon — e.g., "run tools via
+   `just deny`, `just audit`; never bare cargo invocations") and
    reuse it for every dispatch. See `references/codex-tools.md` for
    the exact message framing.
 
@@ -491,6 +508,7 @@ record/audits/YYYY-MM-DD-HH-scope-slug/
 ├── README.md             # Authored narrative report (markdown, GitHub-rendered companion to report.html)
 ├── report.html           # Rendered interactive report (primary deliverable)
 ├── AGENTS.md             # Remediation briefing for agents picking up findings
+├── CLAUDE.md             # One-line import (`@AGENTS.md`) so Claude Code sessions auto-load the briefing
 ├── recon.yaml            # Structural model (intermediate)
 ├── findings.yaml         # Structured findings (intermediate)
 ├── actions-taken.md      # Remediation log (grows over time)
@@ -509,6 +527,11 @@ It interpolates a static template with the audit title, slug, date, finding
 count, and a pre-rendered list of finding slugs so that any agent landing
 in the directory can pick up remediation work without re-deriving that
 context from `findings.yaml`.
+
+`CLAUDE.md` is written alongside `AGENTS.md` and contains exactly one
+line — `@AGENTS.md` — so Claude Code sessions launched in the audit
+directory import the briefing automatically. It is written only if
+absent; a customized `CLAUDE.md` is never overwritten.
 
 ## Reference Files
 
