@@ -103,5 +103,6 @@ just eval error-handling-rs --platform codex --model gpt-5.4-codex --effort high
 
 - Gemini platform case in `run-eval` — removed pre-launch; returns with an
   adapter and eval verification.
-- Process-compliance scoring from `transcript.txt` (task-runner usage,
-  parallel dispatch).
+- Process-compliance scoring from structured event streams (task-runner
+  usage, parallel dispatch, per-agent hygiene attribution) — spec in
+  `record/plans/process-compliance-scoring.md`.

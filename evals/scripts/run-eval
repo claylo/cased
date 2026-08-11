@@ -83,7 +83,14 @@ case "$PLATFORM" in
     # multi_agent is forced on so dispatch never depends on local config.
     # workspace-write + network lets cargo-audit/deny fetch advisory DBs.
     CODEX_PROMPT="$PROMPT When invoking the cased skill, read its references/codex-tools.md before dispatching subagents."
+    # --ephemeral + --ignore-user-config keep the run hermetic: no user
+    # MCP servers or memory features recalling past audit sessions (a
+    # live run was observed surfacing other repos' cased audits), no
+    # session state persisted to seed future runs. Auth still works;
+    # everything the eval needs (multi_agent, model, sandbox) is forced
+    # explicitly below.
     CMD=(codex exec --skip-git-repo-check -s workspace-write
+         --ephemeral --ignore-user-config
          --enable multi_agent
          -c 'sandbox_workspace_write.network_access=true'
          "$CODEX_PROMPT")
