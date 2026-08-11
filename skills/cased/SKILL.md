@@ -8,8 +8,9 @@ description: >
   systematic evaluation of a codebase. Also trigger when the user asks to
   review a PR, evaluate code quality, or assess technical debt. The skill
   produces a structured intermediate representation (YAML) and renders it
-  to GitHub-flavored Markdown with inline SVG visualizations. Output lives
-  in the project's record/ directory as a process artifact.
+  to an interactive single-file HTML report with flow diagrams and
+  highlighted evidence, plus a GitHub-flavored Markdown companion. Output
+  lives in the project's record/ directory as a process artifact.
 ---
 
 <SUBAGENT-STOP>
@@ -176,7 +177,7 @@ as the narrative framework and dispatch its agents for parallel review.
 
 | Language | Skill | Detection | What it adds |
 |----------|-------|-----------|-------------|
-| Rust | `crustoleum` | `Cargo.toml` present | 13 surfaces, 84 criteria, 6 parallel agents. Covers unsafe soundness, ownership model, error architecture, concurrency, supply chain, and performance. |
+| Rust | `crustoleum` | `Cargo.toml` present | 14 surfaces, 89 criteria, 6 parallel agents. Covers unsafe soundness, ownership model, error architecture, concurrency, supply chain, and performance; feature completeness is covered by cased's own agent instead. |
 
 ### When a domain skill is present
 
@@ -196,7 +197,9 @@ as the narrative framework and dispatch its agents for parallel review.
    `api-type-design` (api-type-design.md), `error-robustness`
    (error-robustness.md), `concurrency-reviewer` (concurrency.md),
    `supply-chain-deps` (supply-chain-deps.md), and `performance-reviewer`
-   (performance.md) — all under `${CRUSTOLEUM_SKILL_DIR}/agents/`. The
+   (performance.md) — all under crustoleum's `agents/` directory
+   (resolve it from the base directory reported when the crustoleum
+   skill is loaded). The
    `completeness` surface is covered by cased's own subagent of the
    same name; do not dispatch it twice. **Issue every dispatch before
    the first wait.** On Codex that means every `spawn_agent` call
