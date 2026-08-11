@@ -104,9 +104,13 @@ Without this, `spawn_agent` is unavailable and Phase 2 degrades silently. Then a
 When invoking the cased skill, read its `references/codex-tools.md` before dispatching subagents.
 ```
 
-### Gemini
+### Other platforms
 
-Install cased as a Gemini extension. The shipped `gemini-extension.json` + `GEMINI.md` auto-load the skill at session start.
+Not yet. Gemini CLI and other harnesses can load the skill file, but
+without a tool-mapping adapter Phase 2 parallel dispatch degrades to
+sequential single-context analysis — a worse audit wearing the same
+name. Platform support lands when an adapter exists and the eval
+harness (`evals/`) verifies it, not before.
 
 ## Usage
 

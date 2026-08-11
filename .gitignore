@@ -8,3 +8,4 @@ example/*/report.html
 !.claude/CLAUDE.md
 evals/runs/
 evals/fixtures/*/target/
+.superpowers/
