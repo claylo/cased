@@ -279,6 +279,26 @@ describe('buildReconObject root-package layouts', () => {
   });
 });
 
+describe('audit_profile', () => {
+  const manifest = loadManifest();
+  const metadata = JSON.parse(readFileSync(join(fixtures, 'metadata.json'), 'utf8'));
+  const tokei = JSON.parse(readFileSync(join(fixtures, 'tokei.json'), 'utf8'));
+  const gitLog = readFileSync(join(fixtures, 'git-log.raw'), 'utf8');
+
+  it('emits a stub audit_profile in fresh mode when no prior audits exist', () => {
+    const recon = buildReconObject({ manifest: { ...manifest, prior_audits: [], cased_version: 'abc1234' }, metadata, tokei, gitLog });
+    assert.deepEqual(recon.meta.audit_profile, {
+      mode: 'fresh', prior_audit: null, model: 'unknown', effort: 'unknown', agent_count: 0,
+      surfaces: [], severity_floor: 'note', excluded_tools: [], skill_versions: { cased: 'abc1234' },
+    });
+  });
+  it('emits re-audit mode with the newest prior audit dir', () => {
+    const recon = buildReconObject({ manifest: { ...manifest, prior_audits: ['2026-08-01-10-full-repo', '2026-08-03-18-m10'], cased_version: 'abc1234' }, metadata, tokei, gitLog });
+    assert.equal(recon.meta.audit_profile.mode, 're-audit');
+    assert.equal(recon.meta.audit_profile.prior_audit, '2026-08-03-18-m10');
+  });
+});
+
 describe('validateRecon', () => {
   const manifest = loadManifest();
   const metadataJson = JSON.parse(readFileSync(join(fixtures, 'metadata.json'), 'utf8'));

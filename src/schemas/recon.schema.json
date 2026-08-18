@@ -9,7 +9,7 @@
   "properties": {
     "meta": {
       "type": "object",
-      "required": ["project", "commit", "timestamp", "scope"],
+      "required": ["project", "commit", "timestamp", "scope", "audit_profile"],
       "additionalProperties": false,
       "properties": {
         "project": {
@@ -29,6 +29,23 @@
         "scope": {
           "type": "string",
           "description": "What was included and excluded from this audit"
+        },
+        "audit_profile": {
+          "type": "object",
+          "required": ["mode", "prior_audit", "model", "effort", "agent_count", "surfaces", "severity_floor", "excluded_tools", "skill_versions"],
+          "additionalProperties": false,
+          "properties": {
+            "mode": { "type": "string", "enum": ["fresh", "re-audit"] },
+            "prior_audit": { "type": ["string", "null"], "description": "Basename of the newest prior audit dir under record/audits/, or null" },
+            "model": { "type": "string", "description": "Model id that ran the controller, e.g. claude-opus-4-6, gpt-5.6-sol. 'unknown' until the controller fills it." },
+            "effort": { "type": "string" },
+            "agent_count": { "type": "integer", "minimum": 0 },
+            "surfaces": { "type": "array", "items": { "type": "string" }, "description": "Frozen surface names dispatched (crustoleum surfaces + completeness for Rust)" },
+            "severity_floor": { "type": "string", "enum": ["note", "advisory", "moderate", "significant", "critical"] },
+            "excluded_tools": { "type": "array", "items": { "type": "string" }, "description": "Tools deliberately not run (e.g. cargo-geiger) and why, as 'tool: reason'" },
+            "skill_versions": { "type": "object", "required": ["cased"], "properties": { "cased": { "type": "string" }, "crustoleum": { "type": "string" } } },
+            "release_phase": { "type": "string", "enum": ["pre-publish", "published", "unspecified"], "description": "Whether the audited crate/package has been published. pre-publish means change types in place; additive-compat pairs are wrong. Filled by the controller from the user or the manifest (e.g. Cargo.toml publish = false, no version tags)." }
+          }
         }
       }
     },

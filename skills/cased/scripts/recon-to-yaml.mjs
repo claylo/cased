@@ -580,6 +580,17 @@ function buildMeta(manifest, metadata) {
     commit: manifest.commit,
     timestamp: manifest.timestamp,
     scope: manifest.scope,
+    audit_profile: {
+      mode: (manifest.prior_audits ?? []).length ? 're-audit' : 'fresh',
+      prior_audit: (manifest.prior_audits ?? []).slice().sort().at(-1) ?? null,
+      model: 'unknown',
+      effort: 'unknown',
+      agent_count: 0,
+      surfaces: [],
+      severity_floor: 'note',
+      excluded_tools: [],
+      skill_versions: { cased: manifest.cased_version ?? 'unknown' },
+    },
   };
 }
 

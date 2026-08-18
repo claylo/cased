@@ -87,6 +87,35 @@ else
 fi
 WINDOW_END="$TIMESTAMP"
 
+# Prior audits: any sibling dir under the same record/audits/ that already
+# has a findings.yaml. Drives audit_profile.mode.
+AUDITS_ROOT="$(dirname "$AUDIT_DIR")"
+PRIOR_JSON="[]"
+if [[ -d "$AUDITS_ROOT" ]]; then
+  # `true` after the `&&` list forces every loop iteration to exit 0 —
+  # without it, the while loop's own exit status is whatever the *last*
+  # processed entry's test returned, which is false on nearly every real
+  # run (the alphabetically-last sibling rarely has findings.yaml). Under
+  # `set -eo pipefail` that nonzero status would propagate through the
+  # pipe into this assignment and abort the whole recon run.
+  PRIOR_LIST="$(cd "$AUDITS_ROOT" && ls -1 2>/dev/null \
+    | while read -r d; do [[ -f "$d/findings.yaml" && "$d" != "$(basename "$AUDIT_DIR")" ]] && printf '"%s"\n' "$d"; true; done \
+    | paste -sd, -)"
+  # paste on zero matching dirs (the common first-run case) yields an
+  # empty string, not "[]" — guard explicitly rather than relying on a
+  # bare `[[ ]] && assignment` under set -e, which aborts the script
+  # when the test is false.
+  if [[ -n "$PRIOR_LIST" ]]; then
+    PRIOR_JSON="[$PRIOR_LIST]"
+  fi
+fi
+# Skill version: the cased commit if the skill is a checkout/symlink into
+# the repo, else unknown. Never trust a model to self-report this.
+# Uses SCRIPT_DIR (captured before the `cd "$TARGET"` above) rather than
+# `realpath "$0"` — by this point $0 ("src/recon/recon" as invoked) no
+# longer resolves relative to the changed cwd.
+CASED_VERSION="$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+
 echo "recon: gathering cargo metadata"
 if ! cargo metadata --no-deps --format-version 1 > "$TMP/metadata.json" 2> "$TMP/cargo.err"; then
   echo "recon: cargo metadata failed:" >&2
@@ -95,7 +124,7 @@ if ! cargo metadata --no-deps --format-version 1 > "$TMP/metadata.json" 2> "$TMP
 fi
 
 echo "recon: counting files with tokei"
-if ! tokei --output json > "$TMP/tokei.json" 2> "$TMP/tokei.err"; then
+if ! tokei --exclude 'record/audits' --exclude '*.html' --exclude 'target' --output json > "$TMP/tokei.json" 2> "$TMP/tokei.err"; then
   echo "recon: tokei failed:" >&2
   cat "$TMP/tokei.err" >&2
   exit 3
@@ -107,6 +136,7 @@ if ! git log \
   -M \
   --format='---%n%H %ai %an' \
   --name-only \
+  -- . ':(exclude)record/audits' \
   > "$TMP/git-log.raw" \
   2> "$TMP/git.err"; then
   echo "recon: git log failed in $TARGET. Is this a git repository?" >&2
@@ -125,7 +155,9 @@ cat > "$TMP/manifest.json" <<EOF
   "window_start": "$WINDOW_START",
   "window_end": "$WINDOW_END",
   "recent_cutoff": "$RECENT_CUTOFF",
-  "scope": "full working tree at $SHORT_SHA"
+  "scope": "full working tree at $SHORT_SHA",
+  "prior_audits": $PRIOR_JSON,
+  "cased_version": "$CASED_VERSION"
 }
 EOF
 
