@@ -1,0 +1,330 @@
+sha,short,author,date,subject,nfiles,insertions,deletions,crates,crate_list,test_files,only_tests,only_docs
+"1cf84ed8f45530e2e76a490b1bc8506c4011d3b6","1cf84ed","Clay Loveless","2026-08-03","feat(cli): ship YAML-native yg query engine",27,1432,172,3,"yamalgam-core;yamalgam-query;yamalgam",3,false,false
+"a3a473909b28f3d5aa5cc2f473cf1866a7e12795","a3a4739","Clay Loveless","2026-08-03","fix(query): remediate M10 audit findings",27,9051,157,3,"yamalgam-core;yamalgam-query;yamalgam",4,false,false
+"b7282b6c1d7f23199b756739d1cb18a576abba17","b7282b6","Clay Loveless","2026-08-03","fix(query): reject unsafe YAML tags",4,76,2,1,"yamalgam-query",2,false,false
+"e95ce8b19b087d84a08ba63d77d587e799600608","e95ce8b","Clay Loveless","2026-08-03","fix(query): bound alias materialization",3,147,12,1,"yamalgam-query",1,false,false
+"133bf2cb994f50558919505d1452d895554637f3","133bf2c","Clay Loveless","2026-08-03","fix(query): bound runtime value display",3,174,30,1,"yamalgam-query",1,false,false
+"f236453974b937c6fb15e7a12774ba6f209db3f8","f236453","Clay Loveless","2026-08-03","perf(query): share scalar text allocations",1,62,24,1,"yamalgam-query",0,false,false
+"26c243fcf8c045277e4dbb43c28034c8e93d96b2","26c243f","Clay Loveless","2026-08-03","fix(query): escape extended control characters",3,45,6,1,"yamalgam-query",1,false,false
+"ba9243024ad96c1d35d7a8aadf25ffedf09e728e","ba92430","Clay Loveless","2026-08-03","fix(query): quote YAML document markers",2,18,0,1,"yamalgam-query",1,false,false
+"ac28cf65681e061f5adbc672ff6fa49992b9908a","ac28cf6","Clay Loveless","2026-08-03","fix(query): enforce runtime growth limits",6,201,32,1,"yamalgam-query",1,false,false
+"9de9e1726507a664f9e5709a0f7a5bd5b618c5c0","9de9e17","Clay Loveless","2026-08-03","fix(query): propagate tostring failures",2,55,2,1,"yamalgam-query",1,false,false
+"80fe53bbc81781ec3a3f50ec84990a29b592f876","80fe53b","Clay Loveless","2026-08-03","fix(query): preserve input error classes",4,109,27,1,"yamalgam-query",2,false,false
+"288d13136722771894dace707ba6ae29eb434605","288d131","Clay Loveless","2026-08-03","fix(query): enforce resulting value depth",6,101,2,1,"yamalgam-query",2,false,false
+"b212751d5417339f308cf1ce5f747b90e3ad1cfc","b212751","Clay Loveless","2026-08-03","test(cli): expect strict value depth enforcement",1,5,8,1,"yamalgam",1,true,false
+"6be2063a16b0d4fc43354b3f58866ed4aa011005","6be2063","Clay Loveless","2026-08-03","perf(cli): buffer query output",1,26,21,1,"yamalgam",0,false,false
+"ca7c2e8f28ae20d39449974af5266479bd682984","ca7c2e8","Clay Loveless","2026-08-03","perf(query): reduce JSON emitter allocations",1,26,21,1,"yamalgam-query",0,false,false
+"4246b2821012818c593616e24d3bd40b37f3137c","4246b28","Clay Loveless","2026-08-03","perf(query): avoid uncolored YAML paint copies",1,34,23,1,"yamalgam-query",0,false,false
+"b330d75ab54e5c8105b378dc3dff77723a6be39f","b330d75","Clay Loveless","2026-08-03","refactor(query): separate YAML bool from jq truthiness",3,9,10,1,"yamalgam-query",1,false,false
+"7e9d425c13bf2cccbfa27f0e7bee575371ee2cef","7e9d425","Clay Loveless","2026-08-03","refactor(query): hide value storage internals",3,11,7,1,"yamalgam-query",1,false,false
+"3dddc26af8b0d3399d4b253a9892caa381e44b10","3dddc26","Clay Loveless","2026-08-03","refactor(cli): borrow query execution state",1,20,29,1,"yamalgam",0,false,false
+"34dd75cd5502bcdd483dd7b5472e132c47019066","34dd75c","Clay Loveless","2026-08-03","refactor(cli): type query output options",2,64,28,1,"yamalgam",0,false,false
+"57e207a2122d71b8982e6deb945d24c770033f48","57e207a","Clay Loveless","2026-08-04","build(cli): scope librebar features",2,1,3,1,"yamalgam",0,false,false
+"05587d99111d54aaa1d7940d8a7cac1a74e43d32","05587d9","Clay Loveless","2026-08-04","build(deps): bound interim config parser",3,113,2,0,"",0,false,false
+"3d6eab9be30e026275a05726147429907846961b","3d6eab9","Clay Loveless","2026-08-04","build(query): make jaq feature cost explicit",4,116,12,1,"yamalgam-query",0,false,false
+"c3f59d353bc26bf83e42232c8cbc67f12d4e8f7c","c3f59d3","Clay Loveless","2026-08-04","refactor(query): parse JSON through yamalgam",11,635,89,3,"yamalgam-core;yamalgam-query;yamalgam-scanner",4,false,false
+"94c7bb0eb645313ae1145fb2960a8e6aaf9591ca","94c7bb0","Clay Loveless","2026-08-04","test(query): pin runtime constructor limits",2,28,0,1,"yamalgam-query",1,false,false
+"5ce4cad5a95d30dfe8e6f89dbac89ed15c27414d","5ce4cad","Clay Loveless","2026-08-04","feat(cli): add no-env query mode",3,32,1,1,"yamalgam",1,false,false
+"ab1ce0ee026afdfa8377876f0e81d2876df70cbc","ab1ce0e","Clay Loveless","2026-08-04","fix(cli): prevent halt code wraparound",2,13,1,1,"yamalgam",1,false,false
+"9def9495dc887f8775b4fbbbc1f769902d79064e","9def949","Clay Loveless","2026-08-04","fix(query): type builder invariant errors",2,21,2,1,"yamalgam-query",0,false,false
+"f398ce260a9b0dc1232f129a1c6f7673c2c4374d","f398ce2","Clay Loveless","2026-08-04","fix(cli): tolerate in-place chown denial",1,44,3,1,"yamalgam",0,false,false
+"f1ee264820ff8b17a8c033153e133a163204d129","f1ee264","Clay Loveless","2026-08-04","docs(query): state unreachable invariants",2,5,0,1,"yamalgam-query",0,false,false
+"706e502a93d69f8bff93c280163a00d7da7ce1a9","706e502","Clay Loveless","2026-08-04","perf(query): borrow unsorted mapping entries",3,82,25,1,"yamalgam-query",0,false,false
+"bd1d8c7ad66d0567c97affa2f54b80e58f65d0be","bd1d8c7","Clay Loveless","2026-08-04","perf(query): reuse anchor names during emit validation",1,3,2,1,"yamalgam-query",0,false,false
+"14d48c002a0e445916b6b1692f3f94429b3310e1","14d48c0","Clay Loveless","2026-08-04","perf(query): drop shallow mappings directly",1,39,0,1,"yamalgam-query",0,false,false
+"9eed0ed9f7db566101b89354e1d17f2a14e10b11","9eed0ed","Clay Loveless","2026-08-04","perf(query): avoid duplicate substring copies",1,13,2,1,"yamalgam-query",0,false,false
+"46623d17342cd096845b0dc0bda309b6f16c55ef","46623d1","Clay Loveless","2026-08-04","perf(query): borrow string keys for map lookup",2,38,6,1,"yamalgam-query",0,false,false
+"75d86e9a3c9346563775d8468bdb95488919a14d","75d86e9","Clay Loveless","2026-08-04","feat(query): stream parsed documents",3,107,29,1,"yamalgam-query",1,false,false
+"15f232cfc6ca275ba9fd3b8fc3ebe081ca58f523","15f232c","Clay Loveless","2026-08-04","perf(query): return concrete mapping keys",3,7,6,1,"yamalgam-query",2,false,false
+"e1b50b813f2851716eb3e47232e7ec15f21918f3","e1b50b8","Clay Loveless","2026-08-04","refactor(query): dispatch emission by format",3,46,6,2,"yamalgam-query;yamalgam",1,false,false
+"9362fa058d9c7c9cb5fe4009819d58d7947df09a","9362fa0","Clay Loveless","2026-08-04","refactor(query): make public API non-exhaustive",4,29,38,2,"yamalgam-query;yamalgam",1,false,false
+"1648144f4dec416bdbc29b0fb2ad1a6e4bf75e89","1648144","Clay Loveless","2026-08-04","docs(core): define resolver string contract",1,88,1,1,"yamalgam-core",0,false,false
+"ff48ac36392d89e7f77c339c3b6c2998712dcc15","ff48ac3","Clay Loveless","2026-08-04","docs(cli): specify canonical color control",3,19,3,1,"yamalgam",1,false,false
+"6ae38cd46d55d3b1f6637793181f0a2a9aa69f37","6ae38cd","Clay Loveless","2026-08-04","docs(cli): specify no-env sandbox control",3,17,1,1,"yamalgam",1,false,false
+"4bc9c01ce259fb03c58f4abf087276269af9e8b7","4bc9c01","Clay Loveless","2026-08-04","docs(spec): surface deferred M10 features",1,16,0,0,"",0,false,true
+"c72115ebd980e1d252c81f0d41bb2e8fffa6a223","c72115e","Clay Loveless","2026-08-04","docs(query): explain resolved type alias",3,29,0,1,"yamalgam-query",1,false,false
+"d56948ccc34f135f3bf52ef643dac52b81fdbb61","d56948c","Clay Loveless","2026-08-04","docs(cli): explain in-place exclusions",3,16,2,1,"yamalgam",1,false,false
+"e5ef90079f15a25affe5db9c90bd1c194d28f0a9","e5ef900","Clay Loveless","2026-08-04","docs(cli): explain subcommand filter shadowing",2,25,0,1,"yamalgam",1,false,false
+"7abe27b359088e578587103627d277e322bef66d","7abe27b","Clay Loveless","2026-08-04","build(query): allow jaq patch updates",1,4,2,1,"yamalgam-query",0,false,false
+"b47ae9036fb85bf9336a060559b5cb120092abd9","b47ae90","Clay Loveless","2026-08-04","docs(deps): record librebar trust boundary",2,17,0,1,"yamalgam",0,false,false
+"9b93bd5df70bf5d7012f64456f62cd9f5bda76d8","9b93bd5","Clay Loveless","2026-08-04","build(security): add compiler unsafe census",3,25,0,0,"",0,false,false
+"e60427ec4b20dd21f0488817bfdb3370d5898fa2","e60427e","Clay Loveless","2026-08-04","ci(security): exercise advisory ignores with all features",2,2,1,0,"",0,false,false
+"809f867b90dac17d34f43d30309331fbafa4abb0","809f867","Clay Loveless","2026-08-06","fix(compose): bound default document loading",1,268,34,1,"yamalgam-compose",0,false,false
+"0c18a346c54ac3a001762562301ef1adfe48c0a2","0c18a34","Clay Loveless","2026-08-06","fix(serde): apply safe loader defaults",3,123,44,1,"yamalgam-serde",1,false,false
+"5a71b87c590c1fbdd72dbe233d9965959f1f0c78","5a71b87","Clay Loveless","2026-08-08","fix(cst): bound construction and remove recursion",2,296,48,2,"yamalgam-core;yamalgam-cst",0,false,false
+"549fa0e6bd50262ee1bb7ba5065a1eefb5850a44","549fa0e","Clay Loveless","2026-08-08","perf(core): index scalar mapping keys",4,342,11,1,"yamalgam-core",1,false,false
+"f064f64656937f8d4e378a7e4518c5c4a94113bb","f064f64","Clay Loveless","2026-08-08","fix(compose): bound alias materialization",1,228,17,1,"yamalgam-compose",0,false,false
+"a4de07e4b02f6522b37d3cab7a99f842d31f07a2","a4de07e","Clay Loveless","2026-08-08","fix(parser): preserve scanner errors in span probes",2,39,29,1,"yamalgam-parser",1,false,false
+"8c8e88646e5db1cf5593ae356a5d751bfe218547","8c8e886","Clay Loveless","2026-08-08","fix(cst): retain structured recovery diagnostics",1,97,7,1,"yamalgam-cst",0,false,false
+"ada1c434113bda59da03d6640145b5c9e7a10098","ada1c43","Clay Loveless","2026-08-08","fix(serde): preserve reader I/O errors",3,78,11,1,"yamalgam-serde",1,false,false
+"acd88bc19bc0cb8e332ddd4286ed39268b88362d","acd88bc","Clay Loveless","2026-08-08","fix(config): reject unknown settings",4,45,52,1,"yamalgam",1,false,false
+"f0bf38f4adcad0e8f07ce62b86e6e502a6de75dc","f0bf38f","Clay Loveless","2026-08-08","fix(parser): correct indentless sequence spans",3,81,43,2,"yamalgam-compare;yamalgam-parser",2,false,false
+"99d1983099cf6c5cf02c15fa4ddb275d27d1fdf5","99d1983","Clay Loveless","2026-08-08","feat(resolver): expose middleware across consumers",12,889,45,5,"yamalgam-compose;yamalgam-cst;yamalgam-parser;yamalgam-query;yamalgam-serde",3,false,false
+"6ffeac4ef775036eefedbec282643adb6013a105","6ffeac4","Clay Loveless","2026-08-08","perf(query): cache builder subtree heights",4,206,25,1,"yamalgam-query",1,false,false
+"fd023914d307b0e1cb2a218622afa9cb916ac7f1","fd02391","Clay Loveless","2026-08-08","perf(serde): consume peeked events without cloning",2,111,33,1,"yamalgam-serde",1,false,false
+"7097b1340e1a104dee890989ccdab6fdbff7f621","7097b13","Clay Loveless","2026-08-08","refactor(compose): accept borrowed tag resolvers",1,53,12,1,"yamalgam-compose",0,false,false
+"e24479a23bfeeb8dc04d8cba28a81ccb19f79e61","e24479a","Clay Loveless","2026-08-08","feat(core): make mappings iterable",1,76,0,1,"yamalgam-core",0,false,false
+"729f59bac3069ab88e5382675c22f16db409e21e","729f59b","Clay Loveless","2026-08-08","refactor(core): derive mapping default",1,1,7,1,"yamalgam-core",0,false,false
+"0a6a61d37af58a12b9f66c4a78f421901547a9ab","0a6a61d","Clay Loveless","2026-08-08","refactor(compare): zip stream comparisons",1,12,12,1,"yamalgam-compare",0,false,false
+"e9dc31e2248652282794d79513434806e360f5b6","e9dc31e","Clay Loveless","2026-08-08","refactor(query): specify collection targets",3,10,4,2,"yamalgam-query;yamalgam",0,false,false
+"37738175ffa35aca0ded64b83763fc1b2764d9b5","3773817","Clay Loveless","2026-08-08","fix(loader): reject unhandled resolution policy",9,232,8,6,"yamalgam-compose;yamalgam-core;yamalgam-cst;yamalgam-parser;yamalgam-query;yamalgam-serde",2,false,false
+"28af252aab5892420c63aeaacbeda267f5bbfcf0","28af252","Clay Loveless","2026-08-08","docs(serde): compile multi-document example",1,3,1,1,"yamalgam-serde",0,false,false
+"c40f99da91299b1565bea3c82f87ba47be61d494","c40f99d","Clay Loveless","2026-08-08","perf(query): defer identity path materialization",1,84,6,1,"yamalgam-query",0,false,false
+"eb575bf55a4c5619bb75f289c3d02510b55ccb56","eb575bf","Clay Loveless","2026-08-08","perf(query): slice strings without intermediate copy",1,32,4,1,"yamalgam-query",0,false,false
+"4cb060b6047530da7f2083a7500318b5b972e9e7","4cb060b","Clay Loveless","2026-08-08","perf(parser): specialize resolver upstreams",9,312,45,6,"yamalgam-bench;yamalgam-compose;yamalgam-cst;yamalgam-parser;yamalgam-query;yamalgam-serde",1,false,false
+"c44116a83f684c3ba547f1342b9aa4e64d3a5d36","c44116a","Clay Loveless","2026-08-08","perf(scanner): isolate cold diagnostics",2,70,12,1,"yamalgam-scanner",0,false,false
+"804fcd3dbc3b8bdaaceda005ec12658b97e9d723","804fcd3","Clay Loveless","2026-08-08","chore(xtask): remove unused dependencies",2,0,4,0,"",0,false,false
+"c3cc09a0be1f82f7581f8dbd378fecc68e9df755","c3cc09a","Clay Loveless","2026-08-08","chore(bench): retire yamlstar peer",9,103,161,1,"yamalgam-bench",1,false,false
+"b8c97e6752bcdbb0c525facbf4a80c3b35778ffc","b8c97e6","Clay Loveless","2026-08-08","fix(compare): reject invalid tree scalar styles",2,7,5,1,"yamalgam-compare",1,false,false
+"a2850ffebcee0dbadaa9e3be0d303792ae177af1","a2850ff","Clay Loveless","2026-08-08","fix(compare): guard explicit indent boundaries",2,10,2,1,"yamalgam-compare",1,false,false
+"9d008a116bdd59b92baaf39393b2c8c8c3e56f48","9d008a1","Clay Loveless","2026-08-08","ci(deps): enforce policy for fuzz graph",5,68,575,0,"",2,false,false
+"543b5380ced8633dbc4983b5108d4326df0b8064","543b538","Clay Loveless","2026-08-08","fix(core): preserve structured resource limit errors",30,1062,341,8,"yamalgam-compose;yamalgam-core;yamalgam-cst;yamalgam-parser;yamalgam-query;yamalgam-scanner;yamalgam-serde;yamalgam",7,false,false
+"b9d2407d0ae9c0ecd47b213be5989f880c888d1e","b9d2407","Clay Loveless","2026-08-08","fix(scanner): preserve scalar presentation metadata",17,508,51,5,"yamalgam-compose;yamalgam-parser;yamalgam-query;yamalgam-scanner;yamalgam-serde",7,false,false
+"88ab70284a75e95b5c0b0eafed4d04d7e5c205a1","88ab702","Clay Loveless","2026-08-09","fix(resolve): close URI selector dispatch gaps",5,60,10,1,"yamalgam-resolve",3,false,false
+"cf58f50f7b3500d847c015d684f5a8a35572fb44","cf58f50","Clay Loveless","2026-08-09","refactor(resolve): seal resource identities",3,101,61,2,"yamalgam-resolve;yamalgam",1,false,false
+"ac64840f59559fb6b27c102086771683f85abb01","ac64840","Clay Loveless","2026-08-09","fix(resolve): harden filesystem discovery",6,326,62,1,"yamalgam-resolve",2,false,false
+"d97476db33f07eb3bce4a7ec9f9bd7dcec2f193d","d97476d","Clay Loveless","2026-08-09","fix(resolve): isolate imported anchor namespaces",3,121,25,1,"yamalgam-resolve",1,false,false
+"714054a8e3a59772cff93e82d154b4632428b04c","714054a","Clay Loveless","2026-08-09","fix(query): preserve resolution session semantics",10,437,108,2,"yamalgam-query;yamalgam",2,false,false
+"b268c711fcc30795a75b2e925a1d3490885aacf4","b268c71","Clay Loveless","2026-08-09","fix(resolve): make reports complete and safe",8,293,51,2,"yamalgam-query;yamalgam-resolve",3,false,false
+"735fc3e605da71a719208bc23ddfbbd97eccecec","735fc3e","Clay Loveless","2026-08-09","perf(resolve): index include mapping merges",2,269,11,1,"yamalgam-resolve",0,false,false
+"cd5a64d5f7c1d4f23308f75ca2cc68f9a73081b3","cd5a64d","Clay Loveless","2026-08-09","chore(resolve): remove unused scanner dependency",2,0,2,1,"yamalgam-resolve",0,false,false
+"949ee80fce7d50ce14cd1974181cd6aca6aaedb8","949ee80","Clay Loveless","2026-08-09","fix(resolve): unify resolver policy boundaries",12,151,42,5,"yamalgam-compose;yamalgam-cst;yamalgam-query;yamalgam-resolve;yamalgam-serde",8,false,false
+"003c97c373b5737f974ebc2b26cf9192904ec0da","003c97c","Clay Loveless","2026-08-09","fix(resolve): bound cache and discovery work",17,695,109,3,"yamalgam-core;yamalgam-query;yamalgam-resolve",7,false,false
+"d40ded1b0f145718873899a01c1d7ab21931c294","d40ded1","Clay Loveless","2026-08-09","fix(resolve): preserve reports and caught errors",15,287,87,3,"yamalgam-query;yamalgam-resolve;yamalgam",2,false,false
+"3647cb1a742e19ef79d7f77d3000cd2ead12b608","3647cb1","Clay Loveless","2026-08-09","fix(query): make resolution walks stack safe",3,537,102,1,"yamalgam-query",0,false,false
+"1b3b14b726f37941c203c8847c026475aac38a12","1b3b14b","Clay Loveless","2026-08-11","fix(lsp): preserve leading document index",8,104,17,1,"yamalgam-lsp",4,false,false
+"69ea147b3c89544a8153d034c03abfb01e906fe8","69ea147","Clay Loveless","2026-08-11","fix(lsp): resolve sequence item schema context",3,148,54,1,"yamalgam-lsp",2,false,false
+"53da91348fd819edbf437d1287d35048a24db1ec","53da913","Clay Loveless","2026-08-11","fix(cst): align Ropey lines with LSP",2,17,1,1,"yamalgam-cst",1,false,false
+"ef26ca4b44d7b9515ff444c421a4aa626ee4a1a1","ef26ca4","Clay Loveless","2026-08-11","fix(lsp): render schema examples in hover",3,38,0,2,"yamalgam-lsp;yamalgam-schema",1,false,false
+"8f5e87ff44ed9d539dd5ca3f29a2fd982a06897c","8f5e87f","Clay Loveless","2026-08-11","fix(lsp): make request cancellation responsive",2,347,51,1,"yamalgam-lsp",1,false,false
+"f4d4ba7a4000c12f65b5dd5e304dfdf02557dce6","f4d4ba7","Clay Loveless","2026-08-11","fix(lsp): avoid joining stdio after failure",1,40,3,1,"yamalgam-lsp",0,false,false
+"56ff7a46da10d80e6f7c58036e5f46d81623c08c","56ff7a4","Clay Loveless","2026-08-11","fix(lsp): surface definition resource failures",5,256,58,1,"yamalgam-lsp",2,false,false
+"4911f5714c297e3d65a296356013a2e332fb9c5f","4911f57","Clay Loveless","2026-08-11","fix(lsp): preserve validator cache identity",2,69,4,1,"yamalgam-lsp",1,false,false
+"8e3425f2751b101cc9ddd9799b8669b4c47032a8","8e3425f","Clay Loveless","2026-08-11","fix(schema): bound native instance depth",5,215,65,1,"yamalgam-schema",1,false,false
+"ad9668ea3c5fb949f0b7aea4eb9b464aed9ea9e3","ad9668e","Clay Loveless","2026-08-11","fix(schema): bound diagnostic work",6,161,35,1,"yamalgam-schema",1,false,false
+"60c143d8a6df70f1720e1a173ec0263d2ee2e2d3","60c143d","Clay Loveless","2026-08-11","fix(schema): release session lock during loads",2,321,59,1,"yamalgam-schema",1,false,false
+"d07192d8a82e4f0de53dab6e5cbba32ae0c2e4e2","d07192d","Clay Loveless","2026-08-11","fix(schema): share cached schema documents",4,96,53,2,"yamalgam-lsp;yamalgam-schema",2,false,false
+"bdded7d00e8af192932a5d4ef15a0b14537a0af0","bdded7d","Clay Loveless","2026-08-11","perf(schema): precompile navigation patterns",1,88,4,1,"yamalgam-schema",0,false,false
+"fec2f80fdf4bc32d6c0ef67627dd714f39e9fa60","fec2f80","Clay Loveless","2026-08-11","perf(cst): normalize recovery spans linearly",2,51,42,1,"yamalgam-cst",1,false,false
+"660a8a4a838d0df8222dca83e16d3e28c94fe75d","660a8a4","Clay Loveless","2026-08-11","perf(lsp): batch document snapshot rebuilds",6,255,58,3,"yamalgam-cst;yamalgam-lsp;yamalgam-schema",3,false,false
+"75b67d2e87ac1745b5f365cf0ba29a228abf334c","75b67d2","Clay Loveless","2026-08-11","perf(lsp): index diagnostic positions",5,87,17,2,"yamalgam-cst;yamalgam-lsp",2,false,false
+"528edd0be8e61007163482788e4f75506cb63bf5","528edd0","Clay Loveless","2026-08-11","fix(core): enforce located value shape",10,264,107,5,"yamalgam-compose;yamalgam-core;yamalgam-lsp;yamalgam-schema;yamalgam",1,false,false
+"2a0fae5ea93ec986eb6b59936c727842eab17911","2a0fae5","Clay Loveless","2026-08-11","perf(compose): skip locations for values",1,244,66,1,"yamalgam-compose",0,false,false
+"7fb0133e285a1c0ce352ef279d63941bf112a17e","7fb0133","Clay Loveless","2026-08-11","fix(resolve): surface HTTP worker panics",2,118,23,1,"yamalgam-resolve",0,false,false
+"9be16aa1a8a27a8a9771c31a2f4f3bc5b3d339bb","9be16aa","Clay Loveless","2026-08-12","fix(cli): reject stale in-place replacements",1,210,3,1,"yamalgam",0,false,false
+"ac51f748492cd1fedb198362332c2245a33bfca7","ac51f74","Clay Loveless","2026-08-12","fix(release): package the yg executable",3,149,4,0,"",0,false,false
+"0d66fcf9aa0b3892d26e5aa6f4691c8de93765ea","0d66fcf","Clay Loveless","2026-08-12","fix(release): target installed yg executable",3,91,4,0,"",0,false,false
+"16d965f8de915b0362c7e7d46e8d2fb266ef5212","16d965f","Clay Loveless","2026-08-12","fix(release): verify installed yg wrappers",5,258,71,0,"",0,false,false
+"830b114d39ae22e8afc3b12eca96b442cb3f4d7c","830b114","Clay Loveless","2026-08-12","test(release): cover wrapper publish contracts",1,92,0,0,"",0,false,false
+"b3cbae4405079a55bc335c2f52cd89768bb076c7","b3cbae4","Clay Loveless","2026-08-12","fix(emit): bound fragment indentation writes",2,112,9,1,"yamalgam-emit",1,false,false
+"9abcce179103d3761b34fd5dc8ffbcf7b31314a0","9abcce1","Clay Loveless","2026-08-12","fix(schema): reject nested session loads",2,162,21,1,"yamalgam-schema",1,false,false
+"93d385062c4ffb3a34ea28176b24da48320683f0","93d3850","Clay Loveless","2026-08-12","fix(lsp): single-flight validator compilation",1,640,23,1,"yamalgam-lsp",0,false,false
+"6332704c4e5215c1d7041680cedd202996928a16","6332704","Clay Loveless","2026-08-12","perf(emit): preserve borrowed event payloads",1,266,6,1,"yamalgam-emit",0,false,false
+"58e9cee001ecadd5c014bece9e5df63c8fed943d","58e9cee","Clay Loveless","2026-08-12","perf(emit): stream plain scalars directly",2,284,1,1,"yamalgam-emit",0,false,false
+"e5213eb8ddd2ac8de93f34cd8e2eb198230ec3de","e5213eb","Clay Loveless","2026-08-12","perf(query): index splice origin identities",1,217,14,1,"yamalgam-query",0,false,false
+"12276521b1c9d57a8f4c75ef07f65b8af4538b12","1227652","Clay Loveless","2026-08-12","test(query): measure origin index key probes",1,80,26,1,"yamalgam-query",0,false,false
+"e563eaac1dbe21893c2d381a2ffa492e8140fe6d","e563eaa","Clay Loveless","2026-08-12","test(query): require measured origin index lookups",1,77,18,1,"yamalgam-query",0,false,false
+"48f33888660aa8cb16edef270f4413eb20ce9ebd","48f3388","Clay Loveless","2026-08-12","fix(query): bound JSON output before allocation",2,185,53,1,"yamalgam-query",1,false,false
+"c61c4183ce9c10ec249653c9d51a7b94f1e0e8c1","c61c418","Clay Loveless","2026-08-12","fix(query): bound JSON key rendering",3,178,4,1,"yamalgam-query",1,false,false
+"1bd361316c806752ad9e225e057786552fd42da1","1bd3613","Clay Loveless","2026-08-12","fix(lsp): share schema graph across diagnostic caps",5,432,126,2,"yamalgam-lsp;yamalgam-schema",2,false,false
+"999013176c9e91d1909a4fe24bde9a6c79370da0","9990131","Clay Loveless","2026-08-12","fix(schema): share compiled validators across report caps",5,202,53,2,"yamalgam-lsp;yamalgam-schema",2,false,false
+"8105a088c834f841b1987072b4ca556bfda53aff","8105a08","Clay Loveless","2026-08-12","fix(cst): merge trivia exclusion ranges",2,196,10,1,"yamalgam-cst",1,false,false
+"d183fe1","d183fe1","Clay Loveless","2026-08-12","fix(fuzz): include M13 targets in full campaigns",2,121,3,0,"",1,false,false
+"edfe4a9","edfe4a9","Clay Loveless","2026-08-12","fix(fuzz): harden full campaign contracts",2,70,9,0,"",1,false,false
+"d64cc6c","d64cc6c","Clay Loveless","2026-08-12","test(fuzz): assert exact campaign argv",1,26,7,0,"",1,true,false
+"0dbf94e89c83ed6838316f6a07a3651dd6b0edd4","0dbf94e","Clay Loveless","2026-08-12","fix(validate): bound JSON report output",1,154,4,1,"yamalgam",0,false,false
+"70661bc805969c05a72b996d57e230ea8e38216a","70661bc","Clay Loveless","2026-08-12","fix(emit): preflight transformed scalar output",4,575,79,1,"yamalgam-emit",1,false,false
+"bc5e9855beeede89bc4b460c28be0e3527080ace","bc5e985","Clay Loveless","2026-08-12","test(emit): observe transformed scalar preflight",3,118,7,1,"yamalgam-emit",1,false,false
+"613fe391a93ac5abea7bba0235557a345aa1fec5","613fe39","Clay Loveless","2026-08-12","fix(lsp): refresh live schema generations",2,623,18,1,"yamalgam-lsp",1,false,false
+"8c7a76171b66b28cbfe3738c57f2144d85ad6271","8c7a761","Clay Loveless","2026-08-12","fix(lsp): narrow live schema invalidation",4,555,51,2,"yamalgam-lsp;yamalgam-schema",1,false,false
+"00cb884b0f5718667e99cc38e14eed4a1a3bbe30","00cb884","Clay Loveless","2026-08-12","fix(lsp): retain partial schema dependency aliases",4,413,22,2,"yamalgam-lsp;yamalgam-schema",2,false,false
+"6aa46c8fa2522931c181f36e39f50bfd3c5a2691","6aa46c8","Clay Loveless","2026-08-12","fix(lsp): resolve canonical schema overlays",4,573,33,3,"yamalgam-lsp;yamalgam-resolve;yamalgam-schema",0,false,false
+"fc8988f907c76097c5c5881374b78691ccb0d479","fc8988f","Clay Loveless","2026-08-12","fix(lsp): preserve schema overlay identities",4,768,22,3,"yamalgam-lsp;yamalgam-resolve;yamalgam-schema",0,false,false
+"87a7d1f74b9b51ba2207a7433c9babd660713f77","87a7d1f","Clay Loveless","2026-08-12","fix(lsp): reject unresolved overlay mutations",2,75,28,2,"yamalgam-lsp;yamalgam-resolve",0,false,false
+"af6070dd3944a6cb9a06cc83961eaadf035539e8","af6070d","Clay Loveless","2026-08-12","fix(serde): describe streaming serializer",2,10,1,1,"yamalgam-serde",1,false,false
+"614c8e8cf31b85a0c3ccf7a39f79488e709d012b","614c8e8","Clay Loveless","2026-08-15","fix(schema): coalesce canonical alias loads",7,411,65,3,"yamalgam-lsp;yamalgam-resolve;yamalgam-schema",2,false,false
+"eea40940992551eec94ec599521ee124d0c2ce1e","eea4094","Clay Loveless","2026-08-15","fix(schema): harden canonical load flights",3,419,166,2,"yamalgam-lsp;yamalgam-schema",1,false,false
+"979966b32691cbd103e039b47406476baab11db9","979966b","Clay Loveless","2026-08-15","perf(resolve): avoid rehashing include fingerprints",1,131,3,1,"yamalgam-resolve",0,false,false
+"78e178b4a1421d9c503afd525ea00f2390083236","78e178b","Clay Loveless","2026-08-15","perf(cst): bound local edit validation",1,419,53,1,"yamalgam-cst",0,false,false
+"0a9ba8178513ff244841c8da2eeb5605634048d8","0a9ba81","Clay Loveless","2026-08-15","fix(schema): retain failed canonical dependencies",3,180,3,2,"yamalgam-lsp;yamalgam-schema",1,false,false
+"21e6d2857d4e0bfa8e6e00ca8f5dec9ccca9fab0","21e6d28","Clay Loveless","2026-08-15","fix(schema): replace stale canonical dependencies",3,199,5,2,"yamalgam-lsp;yamalgam-schema",1,false,false
+"8a3383dc38d7993f001b7da4809ace63bab724f3","8a3383d","Clay Loveless","2026-08-15","perf(cst): cache recovery node state",2,140,16,1,"yamalgam-cst",0,false,false
+"f725a43a981fae3ffa71e1c91772ff7c7e2117e0","f725a43","Clay Loveless","2026-08-15","perf(cst): locate edited documents directly",2,312,73,1,"yamalgam-cst",0,false,false
+"f6dcb47d4e40985956f75ab0dbb4acde6c5af857","f6dcb47","Clay Loveless","2026-08-15","fix(cst): restore stream document selection",2,123,257,1,"yamalgam-cst",0,false,false
+"4b1820c301b6b4b21252ecbe4f4963524d1cb24f","4b1820c","Clay Loveless","2026-08-15","perf(schema): avoid rehashing preflight identities",1,292,12,1,"yamalgam-schema",0,false,false
+"2ff093845d5020d161fe01c3d074b5b187e4a531","2ff0938","Clay Loveless","2026-08-15","test(schema): measure preflight equality work",1,84,4,1,"yamalgam-schema",0,false,false
+"1d296a658dadac34976179ae91d0708097294e59","1d296a6","Clay Loveless","2026-08-15","fix(schema): suppress stale canonical authority",3,270,18,2,"yamalgam-lsp;yamalgam-schema",1,false,false
+"4efaf7836f8a0d65e0e94a5cbe3fb3dc21ee09fb","4efaf78","Clay Loveless","2026-08-15","fix(ci): align benchmark summary dependencies",3,72,16,0,"",0,false,false
+"c4b9e69196c5745b10620506ef43d9d0eaba299d","c4b9e69","Clay Loveless","2026-08-15","fix(ci): pin benchmark workflow actions",2,26,6,0,"",0,false,false
+"d98afe149dba3129fd83645082641034fe06d4d7","d98afe1","Clay Loveless","2026-08-15","fix(ci): preserve benchmark toolchain selection",2,11,0,0,"",0,false,false
+"6035253280b19620370bd5d07a001f1a59b052be","6035253","Clay Loveless","2026-08-15","fix(schema): revalidate unresolved requested caches",1,103,2,1,"yamalgam-schema",0,false,false
+"fc3c1b2a5289ab809a47b0d376a42a36337975c6","fc3c1b2","Clay Loveless","2026-08-15","fix(schema): publish forced revalidation results",1,40,6,1,"yamalgam-schema",0,false,false
+"4805a0307e6693b401bfa86495f7f5f9b1d7341e","4805a03","Clay Loveless","2026-08-15","fix(schema): key caches by source generation",3,312,25,2,"yamalgam-lsp;yamalgam-schema",0,false,false
+"a3027ea3e5ec6af53abe0c9e94fc56527dcbc9bd","a3027ea","Clay Loveless","2026-08-15","fix(schema): make graph generations coherent",6,1004,207,3,"yamalgam-lsp;yamalgam-schema;yamalgam",1,false,false
+"47de6ca241f2226f0a1bcd9c59b2d9bf28a08a5f","47de6ca","Clay Loveless","2026-08-15","fix(schema): preserve graph publication authority",2,425,21,2,"yamalgam-lsp;yamalgam-schema",0,false,false
+"a9889da2bfd9e8091e4f0f0f1285dff86ed7fbe5","a9889da","Clay Loveless","2026-08-15","fix(schema): order load and root publication",1,358,3,1,"yamalgam-schema",0,false,false
+"ee9a6c0e2bb5c9a455ebfa74411089658012e6bc","ee9a6c0","Clay Loveless","2026-08-15","fix(schema): order canonical alias publication",1,358,93,1,"yamalgam-schema",0,false,false
+"79c2cdcfbdbae0e50d183bc785f49777cd89784a","79c2cdc","Clay Loveless","2026-08-15","fix(schema): order pending and alias publication",1,560,44,1,"yamalgam-schema",0,false,false
+"48b90d915fa87fe8485f09af02ebf5f234f4020d","48b90d9","Clay Loveless","2026-08-15","fix(schema): order dependency trace publication",1,303,20,1,"yamalgam-schema",0,false,false
+"17e4bc19d2f49d692969d1eceaf7aa58853f409d","17e4bc1","Clay Loveless","2026-08-15","fix(schema): project current dependency topology",1,116,19,1,"yamalgam-schema",0,false,false
+"79f5c427a653672aa44e28132bb38f5c4468d098","79f5c42","Clay Loveless","2026-08-15","fix(schema): replace stale dependency traces",3,172,11,2,"yamalgam-lsp;yamalgam-schema",0,false,false
+"571fa7165f4fd92b5220751a764b6ab055339c29","571fa71","Clay Loveless","2026-08-15","fix(schema): evict stale requested retarget state",3,437,12,2,"yamalgam-lsp;yamalgam-schema",0,false,false
+"a65b24f3083ec1e1d7ce59c2c2ae9c1b8d4c079b","a65b24f","Clay Loveless","2026-08-15","fix(schema): validate complete alias topology",2,631,50,2,"yamalgam-lsp;yamalgam-schema",0,false,false
+"ef2c66b2b60729e1f55b439768756e3e2cf50e28","ef2c66b","Clay Loveless","2026-08-15","fix(schema): bound alias closure materialization",2,678,68,2,"yamalgam-lsp;yamalgam-schema",0,false,false
+"2d83088600994e8ea0195e58eeb80dee0e2ba3f4","2d83088","Clay Loveless","2026-08-15","fix(schema): make alias authority fail closed",2,737,120,2,"yamalgam-lsp;yamalgam-schema",0,false,false
+"a31dafadeab8ba64f42e6bb9052bc6b1f99b7253","a31dafa","Clay Loveless","2026-08-15","fix(schema): make alias refresh authority atomic",2,893,88,2,"yamalgam-lsp;yamalgam-schema",0,false,false
+"bc6a39541528fefcf170ca8b209d60dc470fbbd5","bc6a395","Clay Loveless","2026-08-15","fix(schema): index alias publication authority",2,779,168,1,"yamalgam-schema",0,false,false
+"d06b5941290d0f66f330021bc08e1196964b0b82","d06b594","Clay Loveless","2026-08-15","fix(schema): bound alias topology accounting",2,476,77,1,"yamalgam-schema",0,false,false
+"8084c7c13b4bbf3ec51af01990ea83dc7a947df9","8084c7c","Clay Loveless","2026-08-15","fix(schema): exclude shadowed aliases from topology",1,363,86,1,"yamalgam-schema",0,false,false
+"728723ccc75b9bdd8cd1d102486bee685127e63c","728723c","Clay Loveless","2026-08-16","fix(query): enforce depth limits during path updates",8,361,36,2,"yamalgam-query;yamalgam",2,false,false
+"717f0c16771303277918314caccbcfc6980c4d50","717f0c1","Clay Loveless","2026-08-16","fix(query): make deep merge stack safe",1,194,19,1,"yamalgam-query",0,false,false
+"b0b6bf67bb1217f2545fbe951a2a41f42a32e1cc","b0b6bf6","Clay Loveless","2026-08-16","fix(query): make nested containment stack safe",1,236,10,1,"yamalgam-query",0,false,false
+"2d9dc0074ad78e42e70e198d81c441d988cd0c60","2d9dc00","Clay Loveless","2026-08-16","fix(query): make value traits stack safe",1,526,50,1,"yamalgam-query",0,false,false
+"871f4a70fd23d533cf4ccfe62b62ee54f51e1659","871f4a7","Clay Loveless","2026-08-16","fix(facade): expose complete YAML API namespaces",4,93,1,1,"yamalgam",1,false,false
+"2c4f8fb477a3662fdabef089c630d91fa4883001","2c4f8fb","Clay Loveless","2026-08-16","fix(cargo): make language server opt in",9,88,5,1,"yamalgam",1,false,false
+"49b202de265861397b916e46371ff1b9c5d2fcb9","49b202d","Clay Loveless","2026-08-16","fix(resolve): allow network-free builds",14,245,36,5,"yamalgam-lsp;yamalgam-query;yamalgam-resolve;yamalgam-schema;yamalgam",4,false,false
+"e4ac9d3c025d8dd271ea0aff740e73a544b76fb1","e4ac9d3","Clay Loveless","2026-08-16","docs: verify facade examples and crate guides",5,175,23,3,"yamalgam-lsp;yamalgam-schema;yamalgam",0,false,false
+"bb4228e64bdfecaffb0d4fecbd0404dc7fef9333","bb4228e","Clay Loveless","2026-08-16","docs: verify facade-only README examples",4,81,42,1,"yamalgam-lsp",0,false,false
+"6d4fe057faa24eb1ec492d47715cb44df2bfca54","6d4fe05","Clay Loveless","2026-08-16","perf(schema): reuse compiled selection globs",6,451,100,3,"yamalgam-lsp;yamalgam-schema;yamalgam",1,false,false
+"86529ae4dce58e71b4ba3965e00da3d8ddf07299","86529ae","Clay Loveless","2026-08-16","perf(schema): share prepared graph values",4,437,66,1,"yamalgam-schema",0,false,false
+"9790d086a529e3ed18169de2b7f3cdc168590c32","9790d08","Clay Loveless","2026-08-16","perf(resolve): reuse anchor namespace set",1,107,4,1,"yamalgam-resolve",0,false,false
+"fc3bbd707c9f7d715a24070887f0e28a5278e661","fc3bbd7","Clay Loveless","2026-08-16","perf(schema): borrow navigation type values",1,95,6,1,"yamalgam-schema",0,false,false
+"9cedc15acee799bf96c7d4c2d5ab6b9c43a7cc5d","9cedc15","Clay Loveless","2026-08-16","fix(lsp): contain request worker panics",1,244,4,1,"yamalgam-lsp",0,false,false
+"2c08806cbc395e710db223fe0710304fc7ff4e32","2c08806","Clay Loveless","2026-08-16","fix(lsp): bound cache-flight waits",3,371,16,2,"yamalgam-lsp;yamalgam-schema",0,false,false
+"225c096cd55ba5147c22925a23087a9ba7441b38","225c096","Clay Loveless","2026-08-16","perf(lsp): share immutable request snapshots",1,330,67,1,"yamalgam-lsp",0,false,false
+"013b9b94d7cc25c19c232437729c1f9d5c518558","013b9b9","Clay Loveless","2026-08-16","refactor(emit): name scalar layout parameters",1,152,70,1,"yamalgam-emit",0,false,false
+"65b5aee41a7bde99732e0ca7f4400df550e1f78b","65b5aee","Clay Loveless","2026-08-16","refactor(lsp): name diagnostic origins",2,101,19,1,"yamalgam-lsp",1,false,false
+"7bd1a553b2c1cdfa44b39437fc3dc450799ffa56","7bd1a55","Clay Loveless","2026-08-16","fix(lsp): type source authority counters",1,117,22,1,"yamalgam-lsp",0,false,false
+"9c6069aaa0704b7bc310ed73bc603dbe0dec8826","9c6069a","Clay Loveless","2026-08-16","refactor(schema): name traversal limits",4,201,60,1,"yamalgam-schema",0,false,false
+"fa4ea99a09e615a6f70988f496e7fe56442ecba3","fa4ea99","Clay Loveless","2026-08-16","refactor(lsp): borrow transient source inputs",7,70,22,2,"yamalgam-cst;yamalgam-lsp",2,false,false
+"811bbe28d234a7045aa979bd5d80846709c9ab69","811bbe2","Clay Loveless","2026-08-16","fix(api): preserve source input compatibility",4,68,15,2,"yamalgam-cst;yamalgam-lsp",2,false,false
+"6c57a8ecf8e87fae402bc266ffeb56d507b2dec9","6c57a8e","Clay Loveless","2026-08-16","fix(query): bound value remapping depth",2,20,0,1,"yamalgam-query",1,false,false
+"d13fdf537901b318af5128be6e954af323fc85fa","d13fdf5","Clay Loveless","2026-08-16","fix(lsp): bound notification schema waits",3,633,22,2,"yamalgam-lsp;yamalgam-schema",0,false,false
+"e16d504b413d1ac17669a126cf7a3b2867850ed7","e16d504","Clay Loveless","2026-08-16","fix(schema): distinguish work deadline expiry",2,267,26,2,"yamalgam-lsp;yamalgam-schema",0,false,false
+"67fcc8195d82bebf42e23c076ca41e2be3222b4e","67fcc81","Clay Loveless","2026-08-16","docs(schema): describe blocked wait identity",1,2,1,1,"yamalgam-schema",0,false,false
+"c2a97e7b729906352af8a096ae554f905b63717e","c2a97e7","Clay Loveless","2026-08-16","fix(lsp): share request dependency snapshots",1,124,38,1,"yamalgam-lsp",0,false,false
+"459a98ab1896d0fcc70f3f0d806409688a2af6cc","459a98a","Clay Loveless","2026-08-16","fix(api): preserve legacy source input signatures",7,77,35,2,"yamalgam-cst;yamalgam-lsp",2,false,false
+"5bbb4ea793c7f6aaefba0424d6979cccb4793dbb","5bbb4ea","Clay Loveless","2026-08-16","fix(lsp): validate resource IDs before text sharing",1,60,6,1,"yamalgam-lsp",0,false,false
+"04912b458ad7b446f79a15f802308c4f87377870","04912b4","Clay Loveless","2026-08-16","fix(cargo): make network access opt in",10,70,624,5,"yamalgam-lsp;yamalgam-query;yamalgam-resolve;yamalgam-schema;yamalgam",1,false,false
+"99f1529dcb0f3703b6294240827b9a6380b68807","99f1529","Clay Loveless","2026-08-16","fix(scanner): make blank-line lookahead linear",3,114,26,1,"yamalgam-scanner",1,false,false
+"bfc53f5565e0e521e98da5caba5668302a488d40","bfc53f5","Clay Loveless","2026-08-16","fix(compose): deduplicate mappings once",5,186,40,3,"yamalgam-bench;yamalgam-compose;yamalgam-core",2,false,false
+"84650306c23a79d2cc0ba940575a7ee5bcb91fe4","8465030","Clay Loveless","2026-08-17","fix(scanner): terminate after directive errors",2,18,1,1,"yamalgam-scanner",1,false,false
+"f0515177dfbf5ea22315bfe8eaf8203b1c51875f","f051517","Clay Loveless","2026-08-16","fix(scanner): derive scalar flags in one pass",1,109,14,1,"yamalgam-scanner",0,false,false
+"534ec708f4a920dc676caf7b18376f6d222f11d8","534ec70","Clay Loveless","2026-08-16","fix(scanner): materialize quoted scalars lazily",1,124,35,1,"yamalgam-scanner",0,false,false
+"57c08d5571d7436f88b2ef12605757f4ed0e7bcd","57c08d5","Clay Loveless","2026-08-16","fix(cst): compact layout lookup construction",4,144,60,1,"yamalgam-cst",1,false,false
+"be62287581f18e24977a0aa31c3bec3b0a83259b","be62287","Clay Loveless","2026-08-16","fix(cst): reserve text reconstruction buffers",1,50,2,1,"yamalgam-cst",0,false,false
+"780fe04a44b6b8e64a791a3d18d0e78ca7a80983","780fe04","Clay Loveless","2026-08-16","fix(core): defer scalar mapping indexes",2,154,19,1,"yamalgam-core",1,false,false
+"502d7355ef1fc05152448b5e32c8bac76c28fb06","502d735","Clay Loveless","2026-08-17","fix(compose): share anchored subtrees internally",2,449,105,2,"yamalgam-compose;yamalgam-core",0,false,false
+"5ea716b44150074a059bf2af87f60ea97134e61e","5ea716b","Clay Loveless","2026-08-17","fix(compose): make node traversal stack safe",1,635,176,1,"yamalgam-compose",0,false,false
+"2e47e2630f546ba75616b6d2764ae45e0a552d6c","2e47e26","Clay Loveless","2026-08-17","perf(core): make resource limits copyable",13,27,20,9,"yamalgam-compose;yamalgam-core;yamalgam-cst;yamalgam-emit;yamalgam-parser;yamalgam-query;yamalgam-scanner;yamalgam-serde;yamalgam",1,false,false
+"f6ef9d999827fdfe1df2a9271dee435b438935f3","f6ef9d9","Clay Loveless","2026-08-17","perf(core): inline small public accessors",4,24,0,2,"yamalgam-core;yamalgam-parser",0,false,false
+"a9dacba9281d3c4dceb054d83c10a56d1670d546","a9dacba","Clay Loveless","2026-08-17","perf(scanner): bound simple-key purging",1,88,21,1,"yamalgam-scanner",0,false,false
+"d27511ba407be7a72c9ff90147d992a9e6796127","d27511b","Clay Loveless","2026-08-17","refactor(resolve): make walk frames exhaustive",1,11,12,1,"yamalgam-resolve",0,false,false
+"3772991c134fa90a0a0b87da3ed0e417804cec31","3772991","Clay Loveless","2026-08-17","fix(resolve): make HTTP waits cooperative",5,369,33,2,"yamalgam-resolve;yamalgam-schema",0,false,false
+"407e7d0a322a5760368c6600eeba42b2fd0d454c","407e7d0","Clay Loveless","2026-08-17","fix(lsp): reject overlapping request IDs",1,94,8,1,"yamalgam-lsp",0,false,false
+"0a745c0ff994ba8bd52b7bc0963a4d3ca3f04425","0a745c0","Clay Loveless","2026-08-17","refactor(parser): unify resolver policy entry point",7,72,52,6,"yamalgam-compose;yamalgam-cst;yamalgam-parser;yamalgam-query;yamalgam-resolve;yamalgam-serde",4,false,false
+"0259b5b5941b2f59668b3cda0f9cc23fd7bfc997","0259b5b","Clay Loveless","2026-08-17","refactor(api): unify configurable parse entry points",33,647,594,9,"yamalgam-bench;yamalgam-compare;yamalgam-compose;yamalgam-cst;yamalgam-lsp;yamalgam-query;yamalgam-schema;yamalgam-serde;yamalgam",19,false,false
+"c82c344a03b3a5f25951ca9767da906bd2f3e5a0","c82c344","Clay Loveless","2026-08-17","refactor(resolve): make discovery counts explicit",2,31,29,1,"yamalgam-resolve",1,false,false
+"84f60263047674adf3123796616fa27e8fb0db69","84f6026","Clay Loveless","2026-08-17","refactor(lsp): expose snapshot copy boundaries",1,176,88,1,"yamalgam-lsp",0,false,false
+"4ac5792bb1dc5bfed0f8e77629b5fdbbf486be65","4ac5792","Clay Loveless","2026-08-17","feat(core): default resolution policy components",1,52,2,1,"yamalgam-core",0,false,false
+"4e8e771682b0eb4f7cebc28d894cf10823757d85","4e8e771","Clay Loveless","2026-08-17","refactor(api): make configuration surfaces extensible",26,301,333,11,"yamalgam-compare;yamalgam-compose;yamalgam-core;yamalgam-cst;yamalgam-emit;yamalgam-lsp;yamalgam-parser;yamalgam-query;yamalgam-resolve;yamalgam-serde;yamalgam",13,false,false
+"7e5c5c6ff4049703500d359ff38f5e488035f1a9","7e5c5c6","Clay Loveless","2026-08-17","feat(cargo): make schema validation opt in",22,202,39,2,"yamalgam-query;yamalgam",2,false,false
+"9ce6e232412e5c2b4fb542812b4bfe4c119dda88","9ce6e23","Clay Loveless","2026-08-17","fix(fuzz): construct extensible emit options",1,5,8,0,"",1,true,false
+"8f4b5593794cd71f0a350d9df7b9f9a2ea7e1217","8f4b559","Clay Loveless","2026-08-17","fix(resolve): replace async HTTP bridge",13,333,1502,3,"yamalgam-resolve;yamalgam-schema;yamalgam",3,false,false
+"fa7b8de2c20efeddbac1a4b00909633b6d37b67b","fa7b8de","Clay Loveless","2026-08-17","fix(config): use native YAML parser",10,471,166,1,"yamalgam",1,false,false
+"130d9e4d78b6695384d50e46c20cee68bcf94458","130d9e4","Clay Loveless","2026-08-17","fix(scanner): decode UTF-16 with core",5,54,12,1,"yamalgam-scanner",1,false,false
+"25ff3444144ab7e1c4a7645e52d43345d69f69f3","25ff344","Clay Loveless","2026-08-17","fix(fuzz): refresh scanner dependency lock",1,0,10,0,"",1,true,false
+"0ad4e103d91968abd3b5221d9fb21f3d565e049d","0ad4e10","Clay Loveless","2026-08-17","fix(schema): allow jsonschema patch updates",3,17,4,1,"yamalgam-schema",0,false,false
+"9c96df086d4784c650ed7b09294f3aaba456ecb8","9c96df0","Clay Loveless","2026-08-17","build: centralize workspace dependencies",17,163,113,14,"yamalgam-bench;yamalgam-compare;yamalgam-compose;yamalgam-core;yamalgam-cst;yamalgam-emit;yamalgam-lsp;yamalgam-parser;yamalgam-query;yamalgam-resolve;yamalgam-scanner;yamalgam-schema;yamalgam-serde;yamalgam",0,false,false
+"2392a384d68c9a08df1738e70637d03b7dca35bf","2392a38","Clay Loveless","2026-08-17","build: update direct base64 consumers",3,22,4,0,"",0,false,false
+"2c6cdb4c98b5abe665109b79d934e455bb2e496a","2c6cdb4","Clay Loveless","2026-08-17","fix(fuzz): refresh Base64 dependency lock",1,8,2,0,"",1,true,false
+"0d2c093992f97a287b22eae474a851f319d06346","0d2c093","Clay Loveless","2026-08-17","build: prune unused license allowances",2,12,6,0,"",0,false,false
+"f8b1b752d8951b0e7354ee7b99561f8a90da72ca","f8b1b75","Clay Loveless","2026-08-17","build: enforce dependency version policy",4,43,12,0,"",1,false,false
+"ba8c08501347ee085c7680b9a3ea2d612c544e70","ba8c085","Clay Loveless","2026-08-17","build: clarify libyaml safer licensing",2,18,0,0,"",0,false,false
+"2d8922b8fce2a071533f408e9a409dc2354bfcb3","2d8922b","Clay Loveless","2026-08-17","feat(facade): expose native API namespaces",2,24,0,1,"yamalgam",1,false,false
+"5a0a79a280c358994472417a878feae417bc2a7a","5a0a79a","Clay Loveless","2026-08-17","feat(facade): expose tag resolution",2,18,1,1,"yamalgam",1,false,false
+"5936e5b4cbaa5189d0fffde5ce6fb0f184ea5f74","5936e5b","Clay Loveless","2026-08-17","feat(serde): configure bounded reader input",4,103,6,2,"yamalgam-serde;yamalgam",2,false,false
+"902439e568438c095c8192c391d1aba76ad096b9","902439e","Clay Loveless","2026-08-17","fix(api): require Debug on public entry points",28,150,12,11,"yamalgam-compose;yamalgam-cst;yamalgam-emit;yamalgam-lsp;yamalgam-parser;yamalgam-query;yamalgam-resolve;yamalgam-scanner;yamalgam-schema;yamalgam-serde;yamalgam",1,false,false
+"cdf70a17945da86799f18fe73e72d92ecd5fba81","cdf70a1","Clay Loveless","2026-08-17","docs: configure complete docs.rs builds",25,72,0,12,"yamalgam-compose;yamalgam-core;yamalgam-cst;yamalgam-emit;yamalgam-lsp;yamalgam-parser;yamalgam-query;yamalgam-resolve;yamalgam-scanner;yamalgam-schema;yamalgam-serde;yamalgam",0,false,false
+"25ee479ec9251e7ae7bf38a0daa24b7fbe7d319d","25ee479","Clay Loveless","2026-08-17","fix(cli): accept yaml validation format",2,28,2,1,"yamalgam",1,false,false
+"d1b95cb1ccb68be72d2c9b331825264bba647436","d1b95cb","Clay Loveless","2026-08-17","fix(cst): own dedented boundary comments",3,68,0,2,"yamalgam-cst;yamalgam-query",2,false,false
+"0ff753fc809b49b404e942cc5315909433b252ad","0ff753f","Clay Loveless","2026-08-17","fix(emit): export scalar presentation types",2,3,3,1,"yamalgam-emit",1,false,false
+"f66f897874d80bdaceab355e54f45071293ff911","f66f897","Clay Loveless","2026-08-17","fix(lsp): align schema editor contracts",6,92,7,1,"yamalgam-lsp",1,false,false
+"a9c5dbdf898ac786da8a59dd319f71a7fad46dc7","a9c5dbd","Clay Loveless","2026-08-17","fix(cli): make network-free runtime constructor const",1,8,8,1,"yamalgam",0,false,false
+"5a3ef0918e48eac043e100b0a507faa1108b8b53","5a3ef09","Clay Loveless","2026-08-17","fix(errors): retain rejected input details",4,24,4,2,"yamalgam-resolve;yamalgam-scanner",2,false,false
+"a4aeb1289c47bed8981cb394e7d9fee78d143201","a4aeb12","Clay Loveless","2026-08-17","fix(scanner): reject invalid UTF-8 tag escapes",2,34,4,1,"yamalgam-scanner",1,false,false
+"8202a1afa51e29970daffca75ac06598d6a4359c","8202a1a","Clay Loveless","2026-08-17","fix(schema): propagate dependency alias cycles",1,41,3,1,"yamalgam-schema",0,false,false
+"2fde721a68e30ed60d5a97f60cd5df56aed5ebe4","2fde721","Clay Loveless","2026-08-17","fix(schema): preserve path resolution failures",3,54,4,1,"yamalgam-schema",1,false,false
+"afbc81fa5e2aacde716c99f417f55990e72afb0f","afbc81f","Clay Loveless","2026-08-17","fix(scanner): preserve full column indentation",1,31,20,1,"yamalgam-scanner",0,false,false
+"72cd0d034def734edc8e9ec80057282c50e33ded","72cd0d0","Clay Loveless","2026-08-17","fix(scanner): fail closed on position overflow",3,142,12,1,"yamalgam-scanner",1,false,false
+"07d19be524894435d76e35d931d31097d9fd9b71","07d19be","Clay Loveless","2026-08-17","fix(cst): make Rowan projection stack safe",1,59,10,1,"yamalgam-cst",0,false,false
+"f71a95b66e19457f4299b135687e4a6596865f92","f71a95b","Clay Loveless","2026-08-17","docs(core): define unchecked loader contract",4,30,4,4,"yamalgam-compose;yamalgam-core;yamalgam-cst;yamalgam-scanner",0,false,false
+"c96948216d92c87e585ca6a3cd6e73ac361ef9ea","c969482","Clay Loveless","2026-08-17","build: raise MSRV to Rust 1.92",4,4,4,0,"",0,false,false
+"28a61d22cd07e7f557e453d2dec60ed402fe7e64","28a61d2","Clay Loveless","2026-08-17","build: raise MSRV to Rust 1.95",6,6,6,1,"yamalgam-query",0,false,false
+"dcb7f0040bfd788c2dbd997981c52a3768767465","dcb7f00","Clay Loveless","2026-08-17","fix(config): keep default templates loadable",3,44,12,1,"yamalgam",1,false,false
+"76aad94292bfeb079087cdd5cce5d530f89b1680","76aad94","Clay Loveless","2026-08-17","fix(config): surface discovery I/O failures",2,88,27,1,"yamalgam",1,false,false
+"cce067c848d31a9432a61b737aabdf9eff3e37ae","cce067c","Clay Loveless","2026-08-17","fix(serde): retain scratch allocation failures",3,33,2,2,"yamalgam-emit;yamalgam-serde",0,false,false
+"bf08b1f8061dac64ec1f4fe1bd2bfd718c5c9daf","bf08b1f","Clay Loveless","2026-08-17","fix(lsp): bound request admission",1,126,16,1,"yamalgam-lsp",0,false,false
+"558990521c252365e3fff940c0a5465ecd4fbb64","5589905","Clay Loveless","2026-08-17","fix(resolve): bound controlled HTTP workers",2,269,21,1,"yamalgam-resolve",1,false,false
+"012b7dd29f38b69178ca32ce8863dbd50e6ede19","012b7dd","Clay Loveless","2026-08-17","fix(query): make resolution handles opaque",4,142,25,1,"yamalgam-query",1,false,false
+"c02baf3a945ddf087e36c209c1ed117531025448","c02baf3","Clay Loveless","2026-08-17","fix(lsp): update document slots selectively",2,42,5,1,"yamalgam-lsp",1,false,false
+"8b93779379def2ec0c75d71723c022d2866c6cff","8b93779","Clay Loveless","2026-08-17","fix(schema): share located navigation documents",3,84,14,1,"yamalgam-schema",0,false,false
+"e546e6d9bb0150991025e734502a7c96944e2904","e546e6d","Clay Loveless","2026-08-17","fix(lsp): share dependency graph lookups",2,210,71,1,"yamalgam-lsp",0,false,false
+"6a7e4787b65395ba2aa465ebbcbd867f879e7ea6","6a7e478","Clay Loveless","2026-08-17","fix(schema): borrow compilation options",9,36,25,3,"yamalgam-bench;yamalgam-query;yamalgam-schema",6,false,false
+"a997eee458468a8e05c064bfbdcb3d0d7789de54","a997eee","Clay Loveless","2026-08-17","fix(query): reserve sequence capacity hints",1,67,0,1,"yamalgam-query",0,false,false
+"ce0038d1aaecd87e8f7fb054a60841fbd35fb81e","ce0038d","Clay Loveless","2026-08-17","perf(query): use fast source identity hashing",4,18,3,1,"yamalgam-query",1,false,false
+"c5f1147efad3d2f5221bd261fab6fe9b4c31f720","c5f1147","Clay Loveless","2026-08-17","fix(scanner): expose the primary scanner API",1,13,0,1,"yamalgam-scanner",0,false,false
+"d5febe36c6782e2d8b05befba8e693a5b7c2527a","d5febe3","Clay Loveless","2026-08-17","docs(yg): correct remote include support",2,13,2,0,"",0,false,false
+"e6e914e72a510d157f04265ab7130ee1fb0a6591","e6e914e","Clay Loveless","2026-08-17","docs(lsp): explain panic payload containment",1,3,0,1,"yamalgam-lsp",0,false,false
+"c79f77a4ab47bf5c2367001e1160f7ce82cda4dd","c79f77a","Clay Loveless","2026-08-17","test: document deep fixture lifetimes",4,15,1,4,"yamalgam-compose;yamalgam-cst;yamalgam-query;yamalgam-resolve",2,false,false
+"88c74fd670d7547d50d28279462aea9dc947287c","88c74fd","Clay Loveless","2026-08-17","perf(cli): preallocate query bindings",1,26,2,1,"yamalgam",0,false,false
+"268b44999dd5712a493921dbb5f789c23db79dda","268b449","Clay Loveless","2026-08-17","fix(cst): type UTF-16 positions",5,107,38,2,"yamalgam-cst;yamalgam-lsp",1,false,false
+"dd17dd293f5bd3b741e6019283c92cdfe567fd97","dd17dd2","Clay Loveless","2026-08-17","perf(lsp): borrow Rope-backed source lines",5,155,59,2,"yamalgam-cst;yamalgam-lsp",2,false,false
+"3e246947d645300cb622cc7a4c15fe7b22da4353","3e24694","Clay Loveless","2026-08-17","perf(query): avoid disabled resolution ownership",1,74,10,1,"yamalgam-query",0,false,false
+"04dacde90268fd78d399385acdea2871c33b7e7c","04dacde","Clay Loveless","2026-08-17","perf(schema): share graph ancestry prefixes",1,41,6,1,"yamalgam-schema",0,false,false
+"0d8d3d2e819297d1e90c64b8ac4c196e2b118e1c","0d8d3d2","Clay Loveless","2026-08-17","perf(schema): traverse schema children in place",1,59,18,1,"yamalgam-schema",0,false,false
+"68766e7db4a816fb37db7578fc786aac786eaa05","68766e7","Clay Loveless","2026-08-17","perf(schema): share navigation cursor identity",1,117,45,1,"yamalgam-schema",0,false,false
+"4c30295630f6dcf505024ead347cd1af0a4054bc","4c30295","Clay Loveless","2026-08-17","perf(lsp): reserve completion item capacity",1,175,32,1,"yamalgam-lsp",0,false,false
+"4be2f61fa4b1cb86d122cfa28d9cb3a72ac0cae9","4be2f61","Clay Loveless","2026-08-17","perf(compose): borrow successful alias names",1,46,5,1,"yamalgam-compose",0,false,false
+"73ae2363bb203db38f40bdefd4e493227e5fd990","73ae236","Clay Loveless","2026-08-17","fix(cli): diagnose the active log target",3,188,23,1,"yamalgam",1,false,false
+"3698b619964e401d07e9388aafd59fb56601f47a","3698b61","Clay Loveless","2026-08-17","fix(query): bound identity inventory traversal",3,153,47,1,"yamalgam-query",1,false,false
+"0f392949606cba76eec4189f67c68b7bafbbd9c7","0f39294","Clay Loveless","2026-08-17","fix(schema): make semantic digest stack safe",1,90,15,1,"yamalgam-schema",0,false,false
+"7b54a02fc0a6eb1311675d62dd12bcf8441b8097","7b54a02","Clay Loveless","2026-08-17","fix(resolve): share in-memory resource payloads",7,192,12,2,"yamalgam-resolve;yamalgam-schema",1,false,false
+"9f4f74d8f1b98f28d616ade1a7c3ec6b10f068ab","9f4f74d","Clay Loveless","2026-08-17","fix(lsp): borrow incremental replacement text",3,107,32,2,"yamalgam-cst;yamalgam-lsp",0,false,false
+"6788edf4c671c563276a5d22886808a07ec596c9","6788edf","Clay Loveless","2026-08-17","fix(scanner): inspect whitespace prefixes once",2,132,64,1,"yamalgam-scanner",0,false,false
+"b9b0088e4294944c52ba63a708874fa9781dc645","b9b0088","Clay Loveless","2026-08-17","fix(emit): reuse mapping key event buffers",1,72,17,1,"yamalgam-emit",0,false,false
+"dcc61ec0c28f16cdecf385f9800faf310caca554","dcc61ec","Clay Loveless","2026-08-17","fix(lsp): build editor pointers in place",1,50,9,1,"yamalgam-lsp",0,false,false
+"a893c2878ee96ac2600ccb63287dab3acaf5c844","a893c28","Clay Loveless","2026-08-17","fix(schema): reuse navigation traversal scratch",1,106,31,1,"yamalgam-schema",0,false,false
+"e858c71bd928c5fe82422be90e1d9f32f3268ab7","e858c71","Clay Loveless","2026-08-17","fix(cst): use integer hasher for comment offsets",1,13,6,1,"yamalgam-cst",0,false,false
+"eb86d9d4aacb0f5a1d75db60450674ddb8d73df7","eb86d9d","Clay Loveless","2026-08-17","fix(cargo): trim unused TOML display support",2,16,1,1,"yamalgam",0,false,false
+"4450f2a02bd183680ec47a454d983e37e55f93f9","4450f2a","Clay Loveless","2026-08-17","docs: report verified event compliance",1,5,2,0,"",0,false,true
+"c563dfe46735923309fffb184a20ea59d0021e89","c563dfe","Clay Loveless","2026-08-17","docs: explain remote schema HTTP feature",1,9,2,0,"",0,false,true
+"949f7c87d4be0882a4047e2305d3455a3f108a6c","949f7c8","Clay Loveless","2026-08-17","docs: document environment configuration overlays",1,23,0,0,"",0,false,true
+"0861c3564d13a49c48092b14e23a3ac7737ed8fc","0861c35","Clay Loveless","2026-08-18","fix(parser): bound default constructors",3,79,10,2,"yamalgam-parser;yamalgam-scanner",1,false,false
+"8ab6ced4b3c6d50ad99809c603e7b7c3bcf606f3","8ab6ced","Clay Loveless","2026-08-18","fix(cst): shift recovery spans iteratively",2,67,9,1,"yamalgam-cst",0,false,false
+"2eeac07e3f45b90ac65a3a77fcb267c10e098047","2eeac07","Clay Loveless","2026-08-18","fix(resolve): collapse retrieved resource ownership",31,149,269,7,"yamalgam-compare;yamalgam-compose;yamalgam-cst;yamalgam-lsp;yamalgam-query;yamalgam-resolve;yamalgam-schema",19,false,false
+"4f524f90746af13565b6d849889a4194b9f9b676","4f524f9","Clay Loveless","2026-08-18","fix(api): reexport public dependency types",7,38,4,3,"yamalgam-cst;yamalgam-lsp;yamalgam-query",2,false,false
+"2f676ee1fbb07315a149beb6182107b51f01f5ea","2f676ee","Clay Loveless","2026-08-18","fix(lsp): seal document snapshot invariants",9,77,51,1,"yamalgam-lsp",3,false,false
+"660d86c7c2d85f6e72f10ee026ffc8677d04d4e4","660d86c","Clay Loveless","2026-08-18","fix(api): keep public enums extensible",15,79,0,9,"yamalgam-compose;yamalgam-core;yamalgam-cst;yamalgam-emit;yamalgam-lsp;yamalgam-query;yamalgam-resolve;yamalgam-schema;yamalgam-serde",0,false,false
+"b6053152652c112a4d23c2ea26a819351ec5afd2","b605315","Clay Loveless","2026-08-18","fix(schema): hash collection boundaries",1,23,0,1,"yamalgam-schema",0,false,false
+"61a24f15f1d25cb3ca55ca7a47d04631eef7ce79","61a24f1","Clay Loveless","2026-08-18","fix(lsp): contain notification panics",1,93,4,1,"yamalgam-lsp",0,false,false
+"a041a9d89c6c5b142d55841ef0adcb00eb153cf0","a041a9d","Clay Loveless","2026-08-18","fix(cst): return lossless construction failures",4,101,39,2,"yamalgam-cst;yamalgam-lsp",1,false,false
+"91ea7c15147d0f5ee602a536f078912f1c49308e","91ea7c1","Clay Loveless","2026-08-18","fix(scanner): saturate streaming input limits",2,23,7,1,"yamalgam-scanner",1,false,false
+"1e8cf7974f8f2082c576a284d5f0a2badfacb159","1e8cf79","Clay Loveless","2026-08-18","fix(schema): bound public session waits",2,135,14,2,"yamalgam-core;yamalgam-schema",0,false,false
+"a129d9f00e3302960057fcd63b387ebd28f130da","a129d9f","Clay Loveless","2026-08-18","fix(lsp): dispatch notification diagnostics",3,718,71,1,"yamalgam-lsp",1,false,false
+"e5d387671cdf644eb86f9f43dbad2252a3c7d25d","e5d3876","Clay Loveless","2026-08-18","fix(resolve): detach abandoned HTTP fetches",2,173,7,1,"yamalgam-resolve",1,false,false
+"513379496b6845dcf8d9a54e5a80873693f8849b","5133794","Clay Loveless","2026-08-18","fix(lsp): validate request resources incrementally",1,164,29,1,"yamalgam-lsp",0,false,false
+"ade10297103c670ce64d366492cd3a36fe1d7a0a","ade1029","Clay Loveless","2026-08-18","fix(emit): recycle buffered mapping key strings",1,286,12,1,"yamalgam-emit",0,false,false
+"7034f49b1120ed8105264306ebbaef69ebe8a16f","7034f49","Clay Loveless","2026-08-18","test(compare): enforce invalid fixture rejection",1,17,2,1,"yamalgam-compare",1,true,false
+"4d981d8e660a802c824d4d87c8af97598a4dbfb1","4d981d8","Clay Loveless","2026-08-18","fix(config): tolerate inactive schema settings",5,83,1,1,"yamalgam",1,false,false
+"2deb49f5342dc6a610fe8fd8eccc4a3f03d89955","2deb49f","Clay Loveless","2026-08-18","docs(yg): label network feature requirements",1,13,7,0,"",0,false,true
+"7c5bb4bab70efd830b751a4c2f2cc370e55f4a8f","7c5bb4b","Clay Loveless","2026-08-18","test(compare): include resolved tags in compliance",1,61,9,1,"yamalgam-compare",1,true,false
+"84c26738e70eaabcf9c518e623bb2e29542c608f","84c2673","Clay Loveless","2026-08-18","test(cst): round-trip invalid suite cases",2,4,7,1,"yamalgam-compare",1,false,false
+"901b9980b71cb64784a117eba85392ef03234864","901b998","Clay Loveless","2026-08-18","docs(roadmap): refresh compliance status",1,1,1,0,"",0,false,true
+"9fff0877748f4c9846f7091539386206022dc1c7","9fff087","Clay Loveless","2026-08-18","docs(serde): disclose mapping divergences",5,22,1,1,"yamalgam-serde",0,false,false
+"bfa98d8dd2c0d73357a5d33e6b7c0058321386b9","bfa98d8","Clay Loveless","2026-08-18","fix(input): decode BOM-marked YAML streams",14,286,49,5,"yamalgam-compose;yamalgam-query;yamalgam-scanner;yamalgam-serde;yamalgam",4,false,false
+"b1bfb6dbf248069c32ed4e80ebabcf008ffafcf8","b1bfb6d","Clay Loveless","2026-08-18","fix(lsp): remove inert SchemaStore settings",3,17,11,1,"yamalgam-lsp",1,false,false
+"d978b4ba03a98d9e8b8313f823d60f5d828c2cd7","d978b4b","Clay Loveless","2026-08-18","fix(cli): report compiled capabilities",8,155,9,1,"yamalgam",2,false,false
+"c3b4aee42eac0d43bd3e2399815dc773fe3cc230","c3b4aee","Clay Loveless","2026-08-18","fix(cli): centralize in-place conflicts",5,34,19,1,"yamalgam",2,false,false
+"b93c3843eb51c5491e44858c11a68d21e8baeadc","b93c384","Clay Loveless","2026-08-18","test(fuzz): cover incremental input surfaces",9,194,1,0,"",7,false,false
+"d6bb07c","d6bb07c","Clay Loveless","2026-08-18","docs(resolve): expose native HTTP surface",2,11,4,0,"",0,false,false
