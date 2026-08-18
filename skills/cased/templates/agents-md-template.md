@@ -22,9 +22,10 @@ up remediation work without thrashing. Read it once, then act.
 
 **Mode:** {{mode}} · **Blocking findings: {{blocking_count}}** · **Backlog: {{backlog_count}}**
 **Workspace test command:** `{{test_command}}`
-**Release phase:** {{release_phase}} — pre-publish means change types in
-place; additive-compat pairs (`FooBorrowed` beside `Foo`) are wrong until
-the API is published.
+**Release phase:** {{release_phase}}
+
+`pre-publish` means change types in place; additive-compat pairs
+(`FooBorrowed` beside `Foo`) are wrong until the API is published.
 
 ### Prior audits
 

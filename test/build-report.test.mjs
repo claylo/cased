@@ -404,6 +404,39 @@ describe('finalizeAudit', () => {
     rmSync(repo, { recursive: true, force: true });
   });
 
+  it('errors (not warns) when a re-audit has no reconciliation block', () => {
+    const repo = mkdtempSync(join(tmpdir(), 'cased-fin-recon-'));
+    const cur = join(repo, 'record', 'audits', '2026-08-18-10-cur');
+    mkdirSync(cur, { recursive: true });
+    mkdirSync(join(repo, 'src')); writeFileSync(join(repo, 'src', 'x.rs'), 'fn x() {}\n');
+    const doc = YAML.parse(findingsYaml);
+    doc.narratives = [{ slug: 'n', title: 'N', thesis: 't', verdict: 'v', findings: [{ slug: 'f1', title: 'F1', concern: 'moderate', locations: [{ path: 'src/x.rs', start_line: 1, end_line: 1 }], evidence: 'fn x() {}\n', mechanism: 'm', remediation: 'r' }] }];
+    doc.summary = { counts: { critical: 0, significant: 0, moderate: 1, advisory: 0, note: 0 } };
+    delete doc.reconciliation;
+    writeFileSync(join(cur, 'findings.yaml'), YAML.stringify(doc));
+    const recon = YAML.parse(reconYaml);
+    recon.structure.root = repo;
+    recon.meta.audit_profile.mode = 're-audit';
+    recon.meta.audit_profile.prior_audit = '2026-08-01-10-prior';
+    writeFileSync(join(cur, 'recon.yaml'), YAML.stringify(recon));
+    writeFileSync(join(cur, 'README.md'), '# Audit\n\nProse.\n');
+    writeFileSync(join(cur, 'report.html'), '<!DOCTYPE html>\n');
+    writeFileSync(join(cur, 'AGENTS.md'), '# Agent Briefing\n');
+
+    let r = finalizeAudit(cur, { repoRoot: repo });
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some(e => /reconciliation/.test(e)), `expected a reconciliation error, got ${JSON.stringify(r.errors)}`);
+    assert.ok(!r.warnings.some(e => /reconciliation/.test(e)), 'missing reconciliation must be an error, not a warning');
+
+    // adding the block clears it
+    doc.reconciliation = [{ prior_slug: 'old', status: 'still-fixed', note: 'verified at e4f5a6b' }];
+    writeFileSync(join(cur, 'findings.yaml'), YAML.stringify(doc));
+    r = finalizeAudit(cur, { repoRoot: repo });
+    assert.deepEqual(r.errors, []);
+    assert.equal(r.ok, true);
+    rmSync(repo, { recursive: true, force: true });
+  });
+
   it('reports missing build outputs before checking content', () => {
     const repo = mkdtempSync(join(tmpdir(), 'cased-fin-bare-'));
     const cur = join(repo, 'record', 'audits', '2026-08-18-10-bare');

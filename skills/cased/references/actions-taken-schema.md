@@ -101,9 +101,12 @@ that keeps it honest.
 **Dispositions:**
 
 - `fixed` — The finding is resolved by a code change. The commit field
-  is required and should point to the merge commit or PR.
+  is required and must contain the fix commit SHA(s) (a PR link may
+  accompany it, but a SHA must be present — the ledger lint extracts
+  SHAs). `Verification`, `Blast radius`, and `Diff` are also required.
 - `mitigated` — A compensating control is in place but the root cause
   remains. Explain what the mitigation is and what residual risk exists.
+  Requires **Commit:** with a SHA.
 - `accepted` — The risk is acknowledged and will not be addressed.
   Rationale is mandatory — who made the decision and why. This is not
   a euphemism for "ignored." Legitimate reasons: the attack requires
@@ -124,7 +127,8 @@ that keeps it honest.
   — a circuit breaker. (One "small + medium" pair became 17 commits and
   8,084 lines with `fixed: 2 / open: 0` on the ledger.)
 - `superseded` — a later action replaces this finding's fix or the finding
-  itself (`superseded_by:` slug or SHA in the body). Use instead of
+  itself (`superseded_by:` slug or SHA in the body). Requires **Commit:**
+  with a SHA — the SHA of the replacing change. Use instead of
   re-filing the same concern under a new heading.
 - `no-measurable-benefit` — a performance/ergonomics remediation was
   implemented or prototyped, measured, and showed no benefit; the change
@@ -194,6 +198,9 @@ entry disposition `superseded` and name the replacement with
 disposition from a prior audit live in `findings.yaml#carried_forward`,
 not in this audit's narratives. Do not re-remediate them. The ledger
 still accepts their slugs in `Addresses` if you deliberately act on one.
+Actions on carried-forward slugs do not change this audit's `status`
+counts — they are tracked in the prior audit's ledger; log them there, or
+here with the same slug but leave `status` untouched.
 
 ## Tone
 

@@ -10,7 +10,7 @@ status:
   escalated: 0
   superseded: 0
   no-measurable-benefit: 1
-  open: 1
+  open: 2
 ---
 
 # Actions Taken: tokio-relay Full Crate Audit
@@ -87,7 +87,7 @@ Current exposure is limited — the relay is behind a rate-limiting reverse prox
 **Commit:** n/a — prototype on `perf/arc-payload`, not merged
 **Author:** claude-opus-4-6
 
-Prototyped the suggested fix: `Broadcast::send` takes `Arc<[u8]>` and hands each subscriber a clone of the handle instead of a fresh `Vec<u8>` per subscriber. Benchmarked with the existing criterion harness at 1, 8, and 64 subscribers, 1 KiB and 64 KiB payloads, 20 runs each.
+Prototyped the suggested fix: `payload` becomes `Arc<[u8]>` in the message struct, and the broadcast loop at `src/relay.rs:145-152` clones the handle instead of copying a fresh `Vec<u8>` per subscriber. Benchmarked with the existing criterion harness at 1, 8, and 64 subscribers, 1 KiB and 64 KiB payloads, 20 runs each.
 
 The metric is wall-clock time per broadcast and allocations per broadcast, counted with a `dhat` heap profiler run — the quantity the finding claims to improve, not `Vec` capacity. At 64 KiB / 64 subscribers the Arc version is 2.1% faster, inside the run-to-run noise band (±3.4%); at 1 KiB it is 1.8% *slower*, because the atomic refcount traffic costs more than the small memcpy it removes. Allocation count drops from N to 1 per broadcast, but allocation was never the bottleneck at these sizes.
 

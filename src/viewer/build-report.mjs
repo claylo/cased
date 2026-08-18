@@ -678,7 +678,9 @@ export function blockingCounts(findings) {
   return { blocking, backlog: all.length - blocking };
 }
 
-const RELEASE_PHASE_UNKNOWN = 'unspecified — ask the maintainer; pre-publish means change types in place';
+// Kept short on purpose: the AGENTS.md template prints the pre-publish
+// explanation on the following line, so it must not be duplicated here.
+const RELEASE_PHASE_UNKNOWN = 'unspecified — ask the maintainer';
 
 /**
  * Render the AGENTS.md content by interpolating a template string with
@@ -817,7 +819,7 @@ export function finalizeAudit(auditDir, { repoRoot = null, allowUnledgeredPrior 
   }
 
   if (recon?.meta?.audit_profile?.mode === 're-audit') {
-    if (!findings.reconciliation) warnings.push('re-audit mode but findings.yaml has no reconciliation block');
+    if (!findings.reconciliation) errors.push('re-audit mode but findings.yaml has no reconciliation block — every ledgered prior fix needs a still-fixed/regressed/superseded/not-verified row');
     const regressed = (findings.reconciliation ?? []).filter(r => r.status === 'regressed').map(r => r.prior_slug);
     const recurrences = new Set(allFindings(findings).filter(f => f.origin?.kind === 'recurrence-of').map(f => f.origin.ref));
     for (const s of regressed) {

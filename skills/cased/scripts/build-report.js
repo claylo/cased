@@ -40600,7 +40600,7 @@ function blockingCounts(findings) {
 		backlog: all.length - blocking
 	};
 }
-const RELEASE_PHASE_UNKNOWN = "unspecified — ask the maintainer; pre-publish means change types in place";
+const RELEASE_PHASE_UNKNOWN = "unspecified — ask the maintainer";
 /**
 * Render the AGENTS.md content by interpolating a template string with
 * audit metadata and the pre-rendered finding list.
@@ -40688,7 +40688,7 @@ function finalizeAudit(auditDir, { repoRoot = null, allowUnledgeredPrior = false
 	const prior = findPriorAudits((0, node_path.join)(auditDir, ".."), (0, node_path.basename)(auditDir));
 	for (const p of prior) if (p.findingCount > 0 && !p.hasLedger) (allowUnledgeredPrior ? warnings : errors).push(`prior audit ${p.slug} has ${p.findingCount} findings and no actions-taken.md — its findings are untracked (pass --allow-unledgered-prior to override)`);
 	if (recon?.meta?.audit_profile?.mode === "re-audit") {
-		if (!findings.reconciliation) warnings.push("re-audit mode but findings.yaml has no reconciliation block");
+		if (!findings.reconciliation) errors.push("re-audit mode but findings.yaml has no reconciliation block — every ledgered prior fix needs a still-fixed/regressed/superseded/not-verified row");
 		const regressed = (findings.reconciliation ?? []).filter((r) => r.status === "regressed").map((r) => r.prior_slug);
 		const recurrences = new Set(allFindings(findings).filter((f) => f.origin?.kind === "recurrence-of").map((f) => f.origin.ref));
 		for (const s of regressed) if (!recurrences.has(s)) errors.push(`reconciliation marks ${s} regressed but no finding carries origin {kind: recurrence-of, ref: ${s}}`);

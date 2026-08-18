@@ -98,8 +98,8 @@ not the commentary.
 
 **Workspace hygiene.** The audit writes exactly the audit directory
 artifacts (File Inventory below) and tool output directories
-(e.g., `.crustoleum/`) — nothing else. Nothing the audit creates goes
-anywhere under the target repo; do not leave `review-N.md`, scratch
+(e.g., `.crustoleum/`) — nothing else. Nothing **else** the audit creates
+goes anywhere under the target repo; do not leave `review-N.md`, scratch
 notes, or temp scripts behind, and delete anything else the audit
 creates before it completes.
 
@@ -199,7 +199,7 @@ non-Rust project, apply the same exclusions.
 
 Read `${CLAUDE_SKILL_DIR}/references/recon-schema.yaml.md` for the full schema.
 
-**Running tests during the audit.** Do NOT run tests (`cargo test`, `npm test`, etc.) as part of reconnaissance, analysis, or verification. The audit is static analysis. If a finding legitimately requires dynamic verification, use `recon.yaml#testing.command` — running the wrong runner (e.g., `cargo test` against a nextest-configured project) produces false failures that look like real findings. When in doubt, note the observation and let the user decide whether to execute tests.
+**Running tests during the audit.** Do NOT run tests (`cargo test`, `npm test`, etc.) during Phases 1–3 (the audit is static analysis). Remediation verification in Phase 5 is different: `fixed` entries REQUIRE the workspace test command to have been run. If a finding legitimately requires dynamic verification, use `recon.yaml#testing.command` — running the wrong runner (e.g., `cargo test` against a nextest-configured project) produces false failures that look like real findings. When in doubt, note the observation and let the user decide whether to execute tests.
 
 **Task runners before bare tools.** During recon, check for a project
 task runner and record what you find: `Justfile`/`justfile` (list
