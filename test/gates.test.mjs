@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { checkEvidenceFidelity, checkReadmeComplete, checkAuditProfile, isBlocking } from '../src/viewer/gates.mjs';
+import { checkEvidenceFidelity, checkReadmeComplete, checkAuditProfile, isBlocking, lintLedger } from '../src/viewer/gates.mjs';
 
 function repoWith(files) {
   const root = mkdtempSync(join(tmpdir(), 'cased-gates-'));
@@ -53,6 +53,67 @@ describe('checkAuditProfile', () => {
   it('rejects re-audit without prior_audit', () => {
     const bad = structuredClone(good); bad.meta.audit_profile.mode = 're-audit';
     assert.equal(checkAuditProfile(bad).length, 1);
+  });
+});
+
+const FINDINGS = { narratives: [{ findings: [{ slug: 'a', concern: 'significant', effort: 'small' }, { slug: 'b', concern: 'note', effort: 'trivial' }] }], carried_forward: [{ slug: 'cf', prior_audit: 'x', disposition: 'deferred' }] };
+const GOOD = `---
+audit: 2026-08-18-10-x
+last_updated: 2026-08-18
+status:
+  fixed: 1
+  mitigated: 0
+  accepted: 0
+  disputed: 1
+  deferred: 0
+  open: 0
+---
+# Actions Taken
+
+## 2026-08-18 — Fix a
+
+**Disposition:** fixed
+**Addresses:** [a](README.md#a)
+**Commit:** abc1234
+**Author:** Codex
+**Verification:** \`just test\` (workspace, 41 passed), \`just check\`
+**Blast radius:** crates touched: core (named: core); reverse deps of changed symbol: cli
+**Diff:** 2 files, +40 −3, 1 commit
+
+Did the thing.
+
+## 2026-08-18 — Dispute b
+
+**Disposition:** disputed
+**Addresses:** [b](README.md#b)
+**Author:** Codex
+
+The width is bounded by the caller at cli/src/main.rs:40; the finding misread the guard.
+`;
+describe('lintLedger', () => {
+  it('accepts a compliant ledger', () => {
+    assert.deepEqual(lintLedger({ ledgerText: GOOD, findingsDoc: FINDINGS }).filter(p => p.level === 'error'), []);
+  });
+  it('errors on missing Verification/Diff for fixed, unknown slug, and bad open count', () => {
+    const bad = GOOD.replace('**Verification:** `just test` (workspace, 41 passed), `just check`\n', '').replace('**Diff:** 2 files, +40 −3, 1 commit\n', '').replace('[b](README.md#b)', '[zzz](README.md#zzz)').replace('open: 0', 'open: 3');
+    const msgs = lintLedger({ ledgerText: bad, findingsDoc: FINDINGS }).filter(p => p.level === 'error').map(p => p.message);
+    assert.ok(msgs.some(m => /Verification/.test(m)));
+    assert.ok(msgs.some(m => /Diff/.test(m)));
+    assert.ok(msgs.some(m => /zzz/.test(m)));
+    assert.ok(msgs.some(m => /open/.test(m)));
+  });
+  it('warns on diff budget blowout for a small finding', () => {
+    const blow = GOOD.replace('**Diff:** 2 files, +40 −3, 1 commit', '**Diff:** 8 files, +8084 −594, 17 commits');
+    assert.ok(lintLedger({ ledgerText: blow, findingsDoc: FINDINGS }).some(p => p.level === 'warn' && /budget/.test(p.message)));
+  });
+  it('errors when deferred has no target', () => {
+    const d = GOOD + `\n## 2026-08-18 — Defer cf\n\n**Disposition:** deferred\n**Addresses:** [cf](README.md#cf)\n**Author:** Codex\n\nLater.\n`;
+    assert.ok(lintLedger({ ledgerText: d, findingsDoc: FINDINGS }).some(p => p.level === 'error' && /target/.test(p.message)));
+  });
+  it('uses gitLog to check trailers when provided', () => {
+    const gitLog = sha => ({ exists: sha === 'abc1234', trailers: [] });
+    const out = lintLedger({ ledgerText: GOOD, findingsDoc: FINDINGS, gitLog });
+    assert.ok(out.some(p => p.level === 'warn' && /Audit-Finding/.test(p.message)));
   });
 });
 
