@@ -7,7 +7,7 @@ auditor: claude-opus-4
 findings:
   critical: 1
   significant: 2
-  moderate: 3
+  moderate: 2
   advisory: 1
   note: 1
 ---
