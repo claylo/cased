@@ -43,6 +43,37 @@ describe('parseRecon', () => {
   });
 });
 
+describe('findings contract: origin / failure_mode / carried_forward / reconciliation', () => {
+  const schemaDir = resolveSchemaDir('src/viewer');
+  const { validateFindings } = compileValidators(schemaDir);
+
+  it('accepts a finding with origin.kind caused-by-fix and a ref', () => {
+    const doc = YAML.parse(findingsYaml);
+    doc.narratives[0].findings[0].origin = { kind: 'caused-by-fix', ref: '660a8a4' };
+    doc.narratives[0].findings[0].failure_mode = 'user-visible';
+    assert.equal(validateFindings(doc), true, JSON.stringify(validateFindings.errors));
+  });
+
+  it('rejects an unknown origin.kind', () => {
+    const doc = YAML.parse(findingsYaml);
+    doc.narratives[0].findings[0].origin = { kind: 'magic' };
+    assert.equal(validateFindings(doc), false);
+  });
+
+  it('accepts carried_forward and reconciliation blocks', () => {
+    const doc = YAML.parse(findingsYaml);
+    doc.carried_forward = [{ slug: 'old-perf-nit', prior_audit: '2026-08-12-10-m13-release-candidate', disposition: 'deferred', reason: 'bounded internal optimization; milestone M15' }];
+    doc.reconciliation = [{ prior_slug: 'silent-write-discard', prior_audit: '2026-08-12-10-m13-release-candidate', status: 'still-fixed', verified_against: 'a3a4739' }];
+    assert.equal(validateFindings(doc), true, JSON.stringify(validateFindings.errors));
+  });
+
+  it('rejects reconciliation with an unknown status', () => {
+    const doc = YAML.parse(findingsYaml);
+    doc.reconciliation = [{ prior_slug: 'x', prior_audit: 'y', status: 'maybe' }];
+    assert.equal(validateFindings(doc), false);
+  });
+});
+
 describe('renderHeader', () => {
   it('generates header HTML with project info', () => {
     const findings = parseFindings(findingsYaml);
