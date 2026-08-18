@@ -29,6 +29,8 @@ status:
 **Author:** Codex
 **Verification:** \`just test\` (workspace) — 14 passed
 **Diff:** 2 files, +31 −6, 1 commit
+**Blast radius:** crates touched: core
+**Coverage lost:** none
 
 Body text.
 
@@ -59,6 +61,8 @@ describe('parseLedger', () => {
     assert.deepEqual(l.entries[0].addresses, ['silent-write-discard', 'swallowed-load-error']);
     assert.deepEqual(l.entries[0].commits, ['a1b2c3d4']);
     assert.equal(l.entries[0].fields.Verification, '`just test` (workspace) — 14 passed');
+    assert.equal(l.entries[0].fields['Blast radius'], 'crates touched: core');
+    assert.equal(l.entries[0].fields['Coverage lost'], 'none');
     assert.equal(l.entries[1].disposition, 'disputed');
   });
   it('latestDispositions: last entry wins per slug', () => {

@@ -25,7 +25,7 @@ export function parseLedger(md) {
     const rest = sec.slice(nl + 1);
     const fields = {};
     for (const m of rest.matchAll(/^\*\*([A-Za-z][A-Za-z -]*?):\*\*\s*(.*)$/gm)) fields[m[1].trim()] = m[2].trim();
-    if (!fields.Disposition) continue;
+    if (!fields.Disposition) continue; // non-entry H2s (e.g. a plain "## Notes" section) are skipped, not errors
     const disposition = fields.Disposition.toLowerCase().trim();
     const addresses = [...(fields.Addresses ?? '').matchAll(/\[([^\]]+)\]/g)].map(m => m[1]);
     const commits = [...(fields.Commit ?? '').matchAll(/\b[0-9a-f]{7,40}\b/g)].map(m => m[0]);
