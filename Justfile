@@ -65,7 +65,7 @@ build-smoke: build-viewer
 
 # Run tests
 test:
-    node --test test/build-report.test.mjs test/recon-to-yaml.test.mjs test/eval-score.test.mjs test/compare-runs.test.mjs test/prior-audits.test.mjs
+    node --test test/build-report.test.mjs test/recon-to-yaml.test.mjs test/eval-score.test.mjs test/compare-runs.test.mjs test/prior-audits.test.mjs test/gates.test.mjs
 
 # Run one audit eval against a fixture (full multi-agent audit — costs real tokens)
 eval fixture *args:
