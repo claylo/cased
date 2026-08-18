@@ -12,6 +12,8 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from 'yaml';
+import { finalizeAudit, parseFindings, parseRecon } from '../../src/viewer/build-report.mjs';
+import { checkAuditProfile, checkReadmeComplete, checkEvidenceFidelity, isBlocking, allFindings } from '../../src/viewer/gates.mjs';
 
 const CONCERN_RANK = { note: 0, advisory: 1, moderate: 2, significant: 3, critical: 4 };
 
@@ -112,11 +114,42 @@ export function score(expectedDoc, findingsDoc) {
   };
 }
 
+export function scoreArtifacts(auditDir, { repoRoot }) {
+  const findings = parseFindings(readFileSync(join(auditDir, 'findings.yaml'), 'utf8'));
+  const recon = existsSync(join(auditDir, 'recon.yaml')) ? parseRecon(readFileSync(join(auditDir, 'recon.yaml'), 'utf8')) : {};
+  const readme = existsSync(join(auditDir, 'README.md')) ? readFileSync(join(auditDir, 'README.md'), 'utf8') : '';
+  const all = allFindings(findings);
+  const frac = pred => (all.length ? +(all.filter(pred).length / all.length).toFixed(3) : null);
+  const fin = finalizeAudit(auditDir, { repoRoot });
+  return {
+    audit_profile_complete: checkAuditProfile(recon).length === 0,
+    readme_complete: checkReadmeComplete(readme).length === 0,
+    evidence_problems: checkEvidenceFidelity(findings, repoRoot).length,
+    finalize_ok: fin.ok,
+    finalize_errors: fin.errors,
+    origin_coverage: frac(f => !!f.origin?.kind),
+    failure_mode_coverage: frac(f => !!f.failure_mode),
+    blocking: all.filter(isBlocking).length,
+    backlog: all.length - all.filter(isBlocking).length,
+    class_sweep_multi_location: all.filter(f => (f.locations ?? []).length >= 2).length,
+  };
+}
+
 function main() {
-  const args = process.argv.slice(2).filter((a) => a !== '--json');
-  const asJson = process.argv.includes('--json');
+  const rawArgs = process.argv.slice(2);
+  const asJson = rawArgs.includes('--json');
+  let auditDir = null;
+  let repoRoot = null;
+  const args = [];
+  for (let i = 0; i < rawArgs.length; i++) {
+    const a = rawArgs[i];
+    if (a === '--json') continue;
+    if (a === '--audit-dir') { auditDir = rawArgs[++i]; continue; }
+    if (a === '--repo-root') { repoRoot = rawArgs[++i]; continue; }
+    args.push(a);
+  }
   if (args.length !== 2) {
-    console.error('Usage: score-eval.mjs <fixture-dir> <findings.yaml> [--json]');
+    console.error('Usage: score-eval.mjs <fixture-dir> <findings.yaml> [--json] [--audit-dir <dir> --repo-root <dir>]');
     process.exit(2);
   }
   const [fixtureDir, findingsPath] = args;
@@ -131,6 +164,10 @@ function main() {
   const expectedDoc = parse(readFileSync(expectedPath, 'utf8'));
   const findingsDoc = parse(readFileSync(findingsPath, 'utf8'));
   const result = score(expectedDoc, findingsDoc);
+
+  if (auditDir) {
+    result.artifacts = scoreArtifacts(auditDir, { repoRoot });
+  }
 
   if (asJson) {
     console.log(JSON.stringify(result, null, 2));
@@ -151,6 +188,12 @@ function main() {
   }
   for (const fp of result.false_positives) {
     console.log(`  FALSE POSITIVE ${fp.slug} @ ${fp.paths.join(', ')}`);
+  }
+  if (result.artifacts) {
+    console.log('artifacts:');
+    for (const [k, v] of Object.entries(result.artifacts)) {
+      console.log(`  ${k}: ${Array.isArray(v) ? v.length : JSON.stringify(v)}`);
+    }
   }
 }
 
