@@ -31,35 +31,42 @@ You receive:
 - The path to `findings.yaml` (the structured findings)
 - Access to the codebase at the audited commit
 
-## Process
+## What you are NOT doing
 
-For each finding in the report:
+Evidence fidelity (indentation, line ranges, verbatim text) is checked
+mechanically by `build-report.js evidence <audit-dir>` before you are
+dispatched. Do not spend verdicts on it. If you notice a fidelity problem
+anyway, mention it in `notes` in one clause and move on.
 
-1. **Evidence check** — Read the file at the cited path and line range.
-   Does the code shown in the finding actually exist there? Flag if the
-   code has changed, the line numbers are wrong, or the file doesn't exist.
+## Process — try to break each finding
 
-2. **Mechanism check** — Is the explanation of *why* this is a problem
-   accurate? Look at the surrounding code for context the auditor may
-   have missed. Flag if the mechanism is based on a misreading of the
-   code (e.g., the auditor missed a guard clause, or the function is
-   actually unreachable).
+For each finding, your job is to **falsify** it. Default to `disputed` if
+you cannot confirm the mechanism end-to-end.
 
-3. **Remediation check** — Would the suggested fix actually work? Does
-   it introduce new problems? Flag if the remediation conflicts with
-   existing code patterns or dependencies.
+1. **Trace the execution path.** Start at the nearest entry point (CLI
+   arg, request handler, public fn) and read to the cited lines. Is there
+   an earlier guard, a type-level bound, an unreachable branch, a
+   feature gate? Set `mechanism_verified: yes` only if you read the whole
+   path. `not-attempted` is an honest answer; `yes` without the trace is
+   a lie the remediator pays for.
+2. **Attack the remediation.** Would it compile? Does it change a public
+   signature (say so)? Does it move the bug instead of fixing it (a
+   limit enforced one layer up; a `Drop` that now joins threads)? Does it
+   need a change in another crate the finding didn't name?
+3. **Check the class.** If the mechanism can recur, did the finder sweep
+   siblings? A finding with one location for a workspace-wide pattern
+   is `adjusted` with a list of the sites it missed.
+4. **Check origin.** If `origin.kind` is `caused-by-fix` or
+   `recurrence-of`, confirm the ref. If it is `pre-existing` but
+   `git log -S` shows a ledgered fix introduced it, `adjusted` with the
+   corrected origin.
+5. **Severity is binding.** If you downgrade to `advisory`/`note`, set
+   `concern_override`; the controller applies it and the finding renders
+   in the backlog, not the remediation queue.
 
-4. **Chain check** — If the finding claims to enable or be enabled by
-   another finding, verify the causal link. Could finding A actually
-   lead to finding B in practice?
-
-5. **Concern level check** — Given the evidence, is the concern level
-   appropriate? Use the skill's definitions (not CVSS, not OWASP):
-   - `critical` — active exploitability or data loss path exists now
-   - `significant` — meaningful risk under realistic conditions
-   - `moderate` — defense-in-depth gap or robustness issue
-   - `advisory` — not a vulnerability, but limits future safety
-   - `note` — observation worth recording, no action required
+A review with zero disputed and zero mechanism-level adjustments across
+more than ten findings is statistically suspicious; re-read your three
+weakest confirmations before returning.
 
 ## Output
 
@@ -74,12 +81,14 @@ Each reviewer `findings` entry is:
 ```yaml
 - slug: "<slug of the original finding being reviewed>"
   verdict: confirmed | adjusted | disputed
-  notes: "<required when adjusted or disputed; explain what to change or why the finding is wrong>"
+  mechanism_verified: yes | no | not-attempted   # did you trace the whole execution path?
+  concern_override: critical | significant | moderate | advisory | note   # only when adjusted for severity
+  notes: "<required when adjusted or disputed>"
 ```
 
-- **confirmed** — evidence, mechanism, and remediation all check out
-- **adjusted** — finding is valid but a detail needs correction (cite what in `notes`)
-- **disputed** — finding is inaccurate or unreachable (cite evidence in `notes`)
+- **confirmed** — you traced the mechanism end-to-end and it holds
+- **adjusted** — finding is valid but a detail needs correction (severity, origin, missed sibling sites — cite what in `notes`; set `concern_override` if severity changed)
+- **disputed** — you could not confirm the mechanism, or traced it and it doesn't hold (cite evidence in `notes`)
 
 After the envelope, you may also emit a human-readable summary table
 for the controller to paste into the review log — but the structured

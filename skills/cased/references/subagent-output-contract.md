@@ -149,7 +149,9 @@ status: DONE | DONE_WITH_PARTIAL_COVERAGE | BLOCKED | NEEDS_CONTEXT
 findings:
   - slug: "<slug of the original finding being reviewed>"
     verdict: confirmed | adjusted | disputed
-    notes: "<required when adjusted or disputed; explain what to change or why the finding is wrong>"
+    mechanism_verified: yes | no | not-attempted   # did you trace the whole execution path?
+    concern_override: critical | significant | moderate | advisory | note   # only when adjusted for severity
+    notes: "<required when adjusted or disputed>"
 ```
 
 See `agents/reviewer.md` for the full rules — the reviewer is
