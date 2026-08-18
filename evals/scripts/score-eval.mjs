@@ -114,6 +114,41 @@ export function score(expectedDoc, findingsDoc) {
   };
 }
 
+function findAt(findings, path, lines, tol, paths) {
+  return findings.filter(f => (f.locations ?? []).some(l => normalizePath(l.path, paths) === path && overlaps(lines[0], lines[1], l.start_line, l.end_line, tol)));
+}
+const ratio = (n, total) => ({ n, total });
+
+export function scoreReaudit(expectedDoc, findingsDoc, { shaMap = {} } = {}) {
+  const r = expectedDoc.reaudit ?? {};
+  const tol = expectedDoc.tolerance_lines ?? 4;
+  const findings = (findingsDoc.narratives ?? []).flatMap(n => n.findings ?? []);
+  const cf = new Set((findingsDoc.carried_forward ?? []).map(c => c.slug));
+  const recon = findingsDoc.reconciliation ?? [];
+  const allPaths = [...new Set([...(r.carried_forward ?? []).map(c => c.path), ...(r.regressions ?? []).map(c => c.path), ...(r.caused_by ?? []).map(c => c.path), ...(r.class_sweeps ?? []).flatMap(c => c.paths)])];
+
+  const cfOk = (r.carried_forward ?? []).filter(c => cf.has(c.slug) && findAt(findings, c.path, c.lines, tol, allPaths).length === 0).length;
+  const regs = (r.regressions ?? []).map(c => ({ hits: findAt(findings, c.path, c.lines, tol, allPaths), c }));
+  const regFound = regs.filter(x => x.hits.length).length;
+  const regLabelled = regs.filter(x => x.hits.some(f => f.origin?.kind === 'recurrence-of' && f.origin.ref === x.c.prior_slug)).length;
+  const cbs = (r.caused_by ?? []).map(c => ({ hits: findAt(findings, c.path, c.lines, tol, allPaths), sha: shaMap[c.fix_placeholder] }));
+  const cbFound = cbs.filter(x => x.hits.length).length;
+  const cbLabelled = cbs.filter(x => x.hits.some(f => f.origin?.kind === 'caused-by-fix' && x.sha && f.origin.ref && (f.origin.ref.startsWith(x.sha) || x.sha.startsWith(f.origin.ref)))).length;
+  const sweeps = (r.class_sweeps ?? []).filter(c => findings.some(f => new Set((f.locations ?? []).map(l => normalizePath(l.path, allPaths)).filter(p => c.paths.includes(p))).size >= (c.min_locations ?? 2))).length;
+  const stillFixed = (r.still_fixed ?? []).filter(c => recon.some(x => x.prior_slug === c.prior_slug && x.status === 'still-fixed')).length;
+
+  return {
+    carried_forward_suppressed: ratio(cfOk, (r.carried_forward ?? []).length),
+    regressions_found: ratio(regFound, regs.length),
+    regressions_labelled: ratio(regLabelled, regs.length),
+    caused_by_found: ratio(cbFound, cbs.length),
+    caused_by_labelled: ratio(cbLabelled, cbs.length),
+    class_sweeps_grouped: ratio(sweeps, (r.class_sweeps ?? []).length),
+    still_fixed_reconciled: ratio(stillFixed, (r.still_fixed ?? []).length),
+    reconciliation_present: recon.length > 0,
+  };
+}
+
 export function scoreArtifacts(auditDir, { repoRoot }) {
   const findings = parseFindings(readFileSync(join(auditDir, 'findings.yaml'), 'utf8'));
   const recon = existsSync(join(auditDir, 'recon.yaml')) ? parseRecon(readFileSync(join(auditDir, 'recon.yaml'), 'utf8')) : {};
@@ -140,16 +175,18 @@ function main() {
   const asJson = rawArgs.includes('--json');
   let auditDir = null;
   let repoRoot = null;
+  let shaMapPath = null;
   const args = [];
   for (let i = 0; i < rawArgs.length; i++) {
     const a = rawArgs[i];
     if (a === '--json') continue;
     if (a === '--audit-dir') { auditDir = rawArgs[++i]; continue; }
     if (a === '--repo-root') { repoRoot = rawArgs[++i]; continue; }
+    if (a === '--sha-map') { shaMapPath = rawArgs[++i]; continue; }
     args.push(a);
   }
   if (args.length !== 2) {
-    console.error('Usage: score-eval.mjs <fixture-dir> <findings.yaml> [--json] [--audit-dir <dir> --repo-root <dir>]');
+    console.error('Usage: score-eval.mjs <fixture-dir> <findings.yaml> [--json] [--audit-dir <dir> --repo-root <dir>] [--sha-map <path>]');
     process.exit(2);
   }
   const [fixtureDir, findingsPath] = args;
@@ -167,6 +204,18 @@ function main() {
 
   if (auditDir) {
     result.artifacts = scoreArtifacts(auditDir, { repoRoot });
+  }
+
+  if (expectedDoc.reaudit) {
+    let shaMap = {};
+    if (shaMapPath) {
+      if (!existsSync(shaMapPath)) {
+        console.error(`error: ${shaMapPath} not found`);
+        process.exit(2);
+      }
+      shaMap = JSON.parse(readFileSync(shaMapPath, 'utf8'));
+    }
+    result.reaudit = scoreReaudit(expectedDoc, findingsDoc, { shaMap });
   }
 
   if (asJson) {
@@ -193,6 +242,12 @@ function main() {
     console.log('artifacts:');
     for (const [k, v] of Object.entries(result.artifacts)) {
       console.log(`  ${k}: ${Array.isArray(v) ? v.length : JSON.stringify(v)}`);
+    }
+  }
+  if (result.reaudit) {
+    console.log('reaudit:');
+    for (const [k, v] of Object.entries(result.reaudit)) {
+      console.log(`  ${k}: ${v && typeof v === 'object' ? `${v.n}/${v.total}` : v}`);
     }
   }
 }
