@@ -6,6 +6,10 @@ up remediation work without thrashing. Read it once, then act.
 **Audit:** `{{audit_slug}}`
 **Date:** {{audit_date}}
 **Findings:** {{finding_count}} total
+**Blocking findings: {{blocking_count}}** · **Backlog: {{backlog_count}}**
+**Mode:** {{mode}}
+**Workspace test command:** `{{test_command}}`
+**Release phase:** {{release_phase}}
 
 ## Files in this directory
 
@@ -107,6 +111,21 @@ catches up:
 - Do not invent finding slugs. Use the ones in the index below, verbatim.
 - Do not create an empty `actions-taken.md` until you have at least one
   action to log.
+
+## Prior audits
+
+Sibling audit directories. A prior audit with findings and no
+`actions-taken.md` means those findings were never dispositioned.
+
+{{prior_audits}}
+
+## Carried forward
+
+Prior findings this audit deliberately did not re-derive. They are **not** in
+the finding index below and do not count toward this audit's totals, but the
+ledger accepts these slugs in `Addresses` if you act on one.
+
+{{carried_forward_list}}
 
 ## Finding index
 
