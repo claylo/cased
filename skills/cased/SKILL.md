@@ -98,10 +98,18 @@ not the commentary.
 
 **Workspace hygiene.** The audit writes exactly the audit directory
 artifacts (File Inventory below) and tool output directories
-(e.g., `.crustoleum/`) — nothing else. Subagents return analysis in
-their final message, never as files; do not leave `review-N.md`,
-scratch notes, or temp scripts in the target repo. Anything else the
-audit creates must be deleted before the audit completes.
+(e.g., `.crustoleum/`) — nothing else. Nothing the audit creates goes
+anywhere under the target repo; do not leave `review-N.md`, scratch
+notes, or temp scripts behind, and delete anything else the audit
+creates before it completes.
+
+**Scratch policy.** A subagent's final message is the canonical result —
+the controller reads that, not files. Structured scratch is allowed only
+under `/private/tmp/cased/<audit-id>/` (large tool dumps, intermediate
+extraction), and only as a working aid: anything that matters must also
+appear in the final message, and the controller re-verifies claims
+against the source rather than trusting scratch. Never write scratch
+into the target repo or the audit directory.
 
 **Division of labor:** During Phase 2 (Analysis), you are a dispatcher,
 not an analyst. Do NOT read project source files yourself — that is
@@ -130,7 +138,8 @@ The pre-runner gathers mechanical data (cargo metadata, tokei, and a
 single-pass `git log` with 12-month sparkline computation) and writes
 a schema-validated `recon.yaml` covering:
 
-- `meta` — project, commit, timestamp, scope
+- `meta` — project, commit, timestamp, scope, and a stubbed
+  `audit_profile` (see below) you must complete
 - `structure` — file/line totals, languages, workspace modules with per-module counts
 - `dependencies` — direct dependencies with version requirements
 - `churn` — top 15 hotspots with 12-month sparklines, 30-day recent activity
@@ -143,6 +152,41 @@ hand-gathering instructions below.
 The pre-runner does not populate `boundaries` (agent-owned per the
 schema design) or `modules[].entry_points` (optional). Add those by
 editing the emitted `recon.yaml` if the audit needs them.
+
+**Prior audits and re-audit mode.** The pre-runner sets
+`meta.audit_profile.mode` to `re-audit` when `record/audits/` already
+holds an audit with `findings.yaml`. In re-audit mode you MUST, before
+dispatching any analysis agent:
+
+1. Read every prior `actions-taken.md`. Build two lists: **standing
+   dispositions** (latest disposition per slug is deferred/accepted/
+   mitigated) and **ledgered fixes** (slug → commit SHA).
+2. Write standing dispositions into `findings.yaml#carried_forward`. They
+   are excluded from counts, narratives, and the AGENTS.md index. Do not
+   re-derive them; if an agent re-files one, drop the duplicate and keep
+   the carried_forward entry.
+3. Put the ledgered-fix list (slug → SHA) into the `<audit-context>` block
+   so every agent can set `origin`.
+4. After analysis, write `findings.yaml#reconciliation` with one row per
+   ledgered fix: re-read the fix commit's diff (`git show <sha>`) and
+   decide `still-fixed` / `regressed` / `superseded` / `not-verified`. A
+   `regressed` row requires a finding with `origin.kind: recurrence-of`.
+
+If any prior audit has findings and no `actions-taken.md`, stop and tell
+the user: those findings are untracked and `finalize` will refuse
+(override: `--allow-unledgered-prior`).
+
+**Complete `audit_profile`.** The pre-runner stubs
+`meta.audit_profile` with `model: unknown`, `agent_count: 0`,
+`surfaces: []`. Fill `model` (your model id), `effort`, `agent_count`,
+`surfaces` (the frozen list you dispatch — for Rust: crustoleum's
+surfaces plus completeness; never invent ad-hoc surface names),
+`severity_floor` (default `note`), and `excluded_tools` (every tool you
+did not run, as `tool: reason`). `finalize` refuses a stub.
+
+**Recon excludes audit artifacts.** `record/audits/**` and `*.html` are
+never part of the analyzed corpus. If you hand-gather recon for a
+non-Rust project, apply the same exclusions.
 
 **For non-Rust projects**, gather the same data by hand:
 
@@ -373,7 +417,8 @@ analysis — no SVG generation is needed.
 
 ### Phase 3: Verification
 
-After writing `findings.yaml`, verification happens in two steps:
+After writing `findings.yaml`, verification happens in three steps —
+two mechanical gates, then the adversarial reviewer:
 
 **3a. Schema validation.** Before invoking the reviewer, validate both
 YAML artifacts against their JSON Schemas:
@@ -388,6 +433,14 @@ It reports each violation with a field path and a specific error, so you
 can fix the YAML in place before continuing. A passing validate is a
 prerequisite for assembly; do not proceed to 3b if validation fails.
 
+**3a′. Evidence fidelity (mechanical).**
+
+    node "${CLAUDE_SKILL_DIR}/scripts/build-report.js" evidence <audit-directory>
+
+Fix every reported problem by re-extracting the evidence from the file at
+the cited range — never by retyping. Do not dispatch the reviewer until
+this exits 0.
+
 **3b. Evidence review.** Dispatch the `audit-reviewer` subagent
 (agents/reviewer.md) to validate findings against the codebase. Reuse
 the same `<audit-context>` block from Phase 2; see
@@ -396,14 +449,20 @@ checks that evidence exists at cited locations, mechanisms are
 accurate, and remediations are sound. It produces a verdict table
 (confirmed / adjusted / disputed) for each finding.
 
-If any finding is **disputed**, revise or remove it. If any finding is
-**adjusted**, apply the correction. Findings that are **confirmed** need
-no changes.
+Run `build-report.js evidence <dir>` and fix every problem **before**
+dispatching the reviewer — the reviewer's time is for mechanisms, not for
+transcription errors a script already catches. The reviewer returns
+`mechanism_verified` and may set `concern_override`. Apply overrides
+verbatim. **Remove** disputed findings from `findings.yaml` — do not
+annotate them in place. If any finding is **adjusted**, apply the
+correction; **confirmed** findings need no changes. Record the reviewer's
+confirmed/adjusted/disputed counts in the README assessment.
 
 This phase is automatic — do not skip it or ask the user whether to run
-it. Schema validation catches type and structure drift; the reviewer
-catches evidence rot, line number drift, and misreadings. Both run before
-assembly so that disputed findings are resolved once, not rendered twice.
+it. Schema validation catches type and structure drift; the evidence gate
+catches retyped or drifted code; the reviewer catches wrong mechanisms
+and misreadings. All three run before assembly so that disputed findings
+are resolved once, not rendered twice.
 
 ### Phase 4: Assembly
 
@@ -422,6 +481,15 @@ expected to complete the narrative prose (assessment, per-narrative
 sections, attacker's-perspective blockquotes, remediation ledger) using
 the structure in `references/report-template.md`. Existing `README.md`
 files are never overwritten on rerun.
+
+**Finalize.** After authoring README.md, run
+
+    node "${CLAUDE_SKILL_DIR}/scripts/build-report.js" finalize <audit-directory>
+
+It refuses while README placeholders remain, `audit_profile` is a stub,
+evidence drifts from source, a re-audit lacks reconciliation, or a prior
+audit is unledgered. An audit is not complete until `finalize` exits 0.
+Say "finalize ok" out loud; never claim completion without it.
 
 The intermediate YAML files (`recon.yaml`, `findings.yaml`) persist
 alongside it — they are the machine-readable representation for downstream
@@ -481,6 +549,27 @@ auth layer is tight, say it's tight and move on. The reader's trust in
 your findings depends on your willingness to say "this is solid" when it
 is. An audit that invents concerns to fill space is performing theater.
 
+## When to stop auditing (termination rule)
+
+"Closed after a later fresh audit is clean" is not a stop condition — a
+fresh audit of a large tree is never clean. Declare a milestone or
+release **closed** when ONE audit satisfies all of:
+
+- `audit_profile.surfaces` is the frozen surface set with
+  `excluded_tools` empty apart from permanent, recorded waivers;
+- zero **blocking** findings (critical/significant with
+  `failure_mode: user-visible`);
+- `reconciliation` shows 0 `regressed` and no finding has
+  `origin.kind: caused-by-fix`;
+- the audited commit is at least 12 hours old and no fix commits landed
+  during the audit — you audited the tree that will ship.
+
+Moderate and below, and non-user-visible significants, go to the backlog
+and do not re-trigger the loop. If a re-audit is requested less than 12
+hours after a remediation batch, say so and recommend waiting; if the
+user insists, run in re-audit mode and label the pass a *verification*
+pass in `scope`.
+
 ## Phase 5: Remediation Tracking
 
 When remediation actions are taken against findings from an audit, record
@@ -502,12 +591,20 @@ Read `${CLAUDE_SKILL_DIR}/references/actions-taken-schema.md` for the full forma
 
 Entries are append-only. The directory reconstructs the full finding lifecycle.
 
-**Entry dispositions:**
-- `fixed` — code change deployed that resolves the finding
-- `mitigated` — compensating control added, finding not fully resolved
-- `accepted` — risk accepted with documented rationale
-- `disputed` — finding contested with evidence (not the same as ignored)
-- `deferred` — acknowledged but scheduled for later (must include a target)
+**Entry dispositions** — the full set, the required fields per
+disposition (`Commit`, `Verification`, `Blast radius`, `Diff`,
+`Coverage lost`), and the rules on workspace-scope verification, pushback,
+fixing by subsystem, and the diff budget live in
+`${CLAUDE_SKILL_DIR}/references/actions-taken-schema.md`. Read it before
+writing a ledger entry; do not work from memory of the older five-value
+list.
+
+Run
+
+    node "${CLAUDE_SKILL_DIR}/scripts/build-report.js" ledger <audit-directory>
+
+after every batch of ledger entries; fix errors before committing the
+ledger.
 
 ## File Inventory
 
