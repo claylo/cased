@@ -112,6 +112,10 @@ findings:
       related: []
     effort: trivial | small | medium | large
     effort_notes: "<brief justification>"
+    origin:                              # REQUIRED in re-audit mode, recommended always
+      kind: pre-existing | new-in-diff | caused-by-fix | recurrence-of
+      ref: "<fix SHA for caused-by-fix; prior slug for recurrence-of>"
+    failure_mode: user-visible | internal | policy | documentation
 ```
 
 **Required:** `slug`, `title`, `concern`, `locations`, `evidence`,
@@ -201,6 +205,48 @@ blocker: |
   checkout) or the current working tree state (may diverge from the
   committed history other subagents are using).
 ```
+
+## Origin and failure mode
+
+`failure_mode` answers "what does a user see if this ships?" — pick
+`user-visible` only for wrong output, wrong exit code, panic, hang, or
+data loss reachable from input. Perf, ownership, and design costs with no
+symptom yet are `internal`; supply-chain/licensing/process are `policy`;
+prose and metadata are `documentation`. Only critical/significant +
+user-visible findings gate a release; be honest, not dramatic.
+
+`origin.kind`: the audit-context tells you whether prior audits exist and
+lists their ledgered fixes (slug → SHA). Before filing, run
+`git log -S'<a distinctive line from your evidence>' --format='%h %s' -- <path>`
+in the target repo. If the introducing commit is one of the ledgered fix
+SHAs → `caused-by-fix` with that SHA. If your finding matches a prior slug
+that was ledgered `fixed` → `recurrence-of` with that slug (this is a
+regression, say so in `mechanism`). If the introducing commit is newer than
+the prior audit → `new-in-diff`. Otherwise `pre-existing`. In a first
+audit everything is `pre-existing`.
+
+## Class sweep — one mechanism, one finding
+
+When a finding is *mechanism-shaped* — a pattern that can recur anywhere
+(allocation before a limit check, `.position()`/linear scan inside a loop,
+`String` error payloads, recursion without a depth guard, rehashing a
+precomputed fingerprint, `unwrap()` on external input, a feature-gated
+symbol referenced without the gate) — you MUST grep the whole workspace for
+sibling instances before filing, and file **one finding with N `locations`
+and one evidence block per location**, not one finding per file. Say in
+`mechanism` how many sites you found and how you searched. Point findings
+that leave siblings behind are the single largest source of re-audit churn:
+the same class was drip-fed one file per audit across 3–7 audits.
+
+## Scratch files
+
+Your final message is your output, but a long evidence-heavy pass must not
+be lost to one dropped message. You MAY write your in-progress result as
+YAML to `/private/tmp/cased/<audit-id>/<surface>.yaml` (write to a `.tmp`
+name, then rename atomically). Record `target`, `commit`, `surface`,
+`model`, `status`, and your findings there. Never write under the target
+repo or the audit directory. The controller treats these files as process
+evidence — it re-verifies before importing anything into `findings.yaml`.
 
 ## Validation
 

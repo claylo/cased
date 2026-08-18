@@ -99,5 +99,11 @@ Every finding needs: slug, title, concern, locations (with start_line/end_line),
 evidence, mechanism, remediation. The temporal and chains fields are optional
 but preferred when git history is available.
 
+**Class sweep and origin.** Before returning, for each mechanism-shaped
+finding grep the workspace for sibling instances and merge them into one
+finding with multiple `locations` (see subagent-output-contract.md "Class
+sweep"). Set `failure_mode` and, when the audit-context lists prior
+ledgered fixes, set `origin.kind`/`origin.ref` per the contract.
+
 Report only confirmed findings with demonstrated concurrency hazards.
 Theoretical races without a concrete triggering sequence are not findings.
