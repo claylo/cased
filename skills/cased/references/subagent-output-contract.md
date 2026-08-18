@@ -272,7 +272,9 @@ Your final message IS your output. Never write your analysis, review
 notes, verdicts, or scratch work as files into the target repository —
 no `review-N.md`, no `notes.md`, no temp scripts. The only files an
 audit creates are the audit directory artifacts and tool output
-directories (e.g., `.crustoleum/`). If a temporary file is unavoidable,
-create it in the system temp directory and delete it before returning.
-Stray files left in the repo are a contract violation and are measured
-by the eval harness.
+directories (e.g., `.crustoleum/`). Structured scratch results belong
+under `/private/tmp/cased/<audit-id>/` (see Scratch files above) and are
+left in place for the controller. Any other temporary file goes in the
+system temp directory and is deleted before returning. Stray files left
+in the repo are a contract violation and are measured by the eval
+harness.
