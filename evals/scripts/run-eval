@@ -53,14 +53,31 @@ RUN_DIR="$EVALS_DIR/runs/$FIXTURE/$TS-$PLATFORM-$MODEL-$EFFORT"
 WORKDIR="$RUN_DIR/workdir"
 mkdir -p "$WORKDIR"
 
-# Fresh copy of the fixture, minus ground truth — the model must never
-# see expected-findings.yaml.
-rsync -a --exclude expected-findings.yaml --exclude target "$FIXTURE_DIR/" "$WORKDIR/"
+# Fresh copy of the fixture, minus ground truth — the model must never see
+# expected-findings.yaml, the history-building script (which spells out every
+# seed), or the hidden tests a remediation run is scored against.
+rsync -a --exclude expected-findings.yaml --exclude target \
+  --exclude setup.sh --exclude hidden-tests "$FIXTURE_DIR/" "$WORKDIR/"
 
 # The audit expects a git repo (recon runs git log for churn data).
 git -C "$WORKDIR" init -q
 git -C "$WORKDIR" add -A
 git -C "$WORKDIR" -c user.name=eval -c user.email=eval@local commit -qm "fixture baseline"
+
+# A fixture whose seeds live in git history (prior audit, ledgered fixes,
+# regressions) builds that history itself. setup.sh owns the workdir's repo
+# from here — it may rewrite the baseline commit — and writes sha-map.json
+# so the scorer can resolve caused-by-fix claims to real commits.
+# Tested with -f, not -x: a fixture that lost its exec bit (a fresh clone, a
+# zip round-trip) would otherwise skip history-building in silence and score
+# an audit against the wrong tree.
+if [[ -f "$FIXTURE_DIR/setup.sh" ]]; then
+  RUN_DIR="$RUN_DIR" bash "$FIXTURE_DIR/setup.sh" "$WORKDIR"
+fi
+
+# The state the audit starts from, tagged so remediation evals can diff
+# against it after the fact.
+git -C "$WORKDIR" tag eval-baseline
 
 CASED_COMMIT="$(git -C "$REPO_ROOT" rev-parse --short HEAD)"
 STARTED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -112,7 +129,11 @@ echo "  workdir: $WORKDIR" >&2
 
 FINISHED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-FINDINGS="$(find "$WORKDIR/record/audits" -name findings.yaml 2>/dev/null | head -1)"
+# A fixture that ships a prior audit leaves more than one findings.yaml under
+# record/audits/. Audit directories are date-prefixed (YYYY-MM-DD-HH-slug), so
+# the lexically last one is the audit this run produced — the same ordering
+# findPriorAudits() uses to pick the newest prior audit.
+FINDINGS="$(find "$WORKDIR/record/audits" -name findings.yaml 2>/dev/null | sort | tail -1)"
 if [[ -z "$FINDINGS" ]]; then
   echo "error: no findings.yaml produced under $WORKDIR/record/audits/" >&2
   exit 1
@@ -154,9 +175,17 @@ if [[ -n "$STRAYS" ]]; then
   echo "$STRAYS" | sed 's/^/  /' >&2
 fi
 
-node "$EVALS_DIR/scripts/score-eval.mjs" "$FIXTURE_DIR" "$FINDINGS" --json \
+# Artifact scoring reads the whole audit directory (README completeness,
+# audit_profile, evidence fidelity, the finalize gates) against the tree the
+# audit actually ran on; --sha-map lets the re-audit metrics check
+# caused-by-fix refs against the commits setup.sh created.
+AUDIT_DIR="$(dirname "$FINDINGS")"
+SCORE_ARGS=(--audit-dir "$AUDIT_DIR" --repo-root "$WORKDIR")
+[[ -f "$RUN_DIR/sha-map.json" ]] && SCORE_ARGS+=(--sha-map "$RUN_DIR/sha-map.json")
+
+node "$EVALS_DIR/scripts/score-eval.mjs" "$FIXTURE_DIR" "$FINDINGS" "${SCORE_ARGS[@]}" --json \
   > "$RUN_DIR/score.json"
-node "$EVALS_DIR/scripts/score-eval.mjs" "$FIXTURE_DIR" "$FINDINGS" \
+node "$EVALS_DIR/scripts/score-eval.mjs" "$FIXTURE_DIR" "$FINDINGS" "${SCORE_ARGS[@]}" \
   | tee "$RUN_DIR/score.txt"
 
 echo "" >&2
