@@ -1,16 +1,25 @@
 #!/usr/bin/env bash
 #
-# Run one audit eval: copy a fixture, drive a headless audit over it,
-# record provenance, and score the resulting findings.yaml.
+# Run one eval: copy a fixture, drive a headless session over it, record
+# provenance, and score what came out.
+#
+# Two modes:
+#   --mode audit      (default) drive a full audit; score findings.yaml
+#                     against the fixture's ground truth.
+#   --mode remediate  drive a remediation session against the PRIOR audit
+#                     the fixture ships; score the ledger, the git history
+#                     since `eval-baseline`, and a set of held-out
+#                     cross-module tests the session never saw.
 #
 # The RUNNER records platform/model/effort — provenance is never
 # self-reported by the model. Results land in:
-#   evals/runs/<fixture>/<timestamp>-<platform>-<model>-<effort>/
+#   evals/runs/<fixture>/<timestamp>-<platform>-<model>-<effort>[-remediate]/
 #
 # Usage:
-#   run-eval [--platform claude] [--model MODEL] [--effort EFFORT] <fixture>
+#   run-eval [--mode audit|remediate] [--platform claude] [--model MODEL]
+#            [--effort EFFORT] <fixture>
 #
-# Each run is a full multi-agent audit: expect minutes and real token
+# Each run is a full multi-agent session: expect minutes and real token
 # spend. Run matrices deliberately, not in CI-per-push.
 
 set -euo pipefail
@@ -21,6 +30,7 @@ REPO_ROOT="$(cd "$EVALS_DIR/.." && pwd)"
 PLATFORM="claude"
 MODEL="default"
 EFFORT="default"
+MODE="audit"
 FIXTURE=""
 
 while [[ $# -gt 0 ]]; do
@@ -28,6 +38,7 @@ while [[ $# -gt 0 ]]; do
     --platform) PLATFORM="$2"; shift 2 ;;
     --model)    MODEL="$2"; shift 2 ;;
     --effort)   EFFORT="$2"; shift 2 ;;
+    --mode)     MODE="$2"; shift 2 ;;
     --help|-h)
       grep '^#' "$0" | grep -v '^#!' | sed 's/^# \{0,1\}//' >&2
       exit 0
@@ -36,6 +47,11 @@ while [[ $# -gt 0 ]]; do
     *)  FIXTURE="$1"; shift ;;
   esac
 done
+
+case "$MODE" in
+  audit|remediate) ;;
+  *) echo "error: --mode must be audit or remediate (got '$MODE')" >&2; exit 1 ;;
+esac
 
 if [[ -z "$FIXTURE" ]]; then
   echo "error: fixture name required (see evals/fixtures/)" >&2
@@ -49,7 +65,9 @@ if [[ ! -d "$FIXTURE_DIR" ]]; then
 fi
 
 TS="$(TZ='America/New_York' date +%Y-%m-%d-%H%M%S)"
-RUN_DIR="$EVALS_DIR/runs/$FIXTURE/$TS-$PLATFORM-$MODEL-$EFFORT"
+RUN_SLUG="$TS-$PLATFORM-$MODEL-$EFFORT"
+[[ "$MODE" == "remediate" ]] && RUN_SLUG="$RUN_SLUG-remediate"
+RUN_DIR="$EVALS_DIR/runs/$FIXTURE/$RUN_SLUG"
 WORKDIR="$RUN_DIR/workdir"
 mkdir -p "$WORKDIR"
 
@@ -79,10 +97,34 @@ fi
 # against it after the fact.
 git -C "$WORKDIR" tag eval-baseline
 
+# Remediation targets the audit the FIXTURE shipped, resolved before the
+# session runs. Resolving it afterwards would let a session that decided to
+# run a fresh audit redirect the scorer at its own output.
+PRIOR_AUDIT_DIR=""
+if [[ "$MODE" == "remediate" ]]; then
+  PRIOR_FINDINGS="$(find "$WORKDIR/record/audits" -name findings.yaml 2>/dev/null | sort | tail -1)"
+  if [[ -z "$PRIOR_FINDINGS" ]]; then
+    echo "error: --mode remediate needs a fixture that ships a prior audit under record/audits/" >&2
+    exit 1
+  fi
+  PRIOR_AUDIT_DIR="$(dirname "$PRIOR_FINDINGS")"
+  if [[ ! -d "$FIXTURE_DIR/hidden-tests" ]]; then
+    echo "error: --mode remediate needs $FIXTURE_DIR/hidden-tests/ (the held-out contract suite)" >&2
+    exit 1
+  fi
+fi
+
 CASED_COMMIT="$(git -C "$REPO_ROOT" rev-parse --short HEAD)"
 STARTED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-PROMPT="Use the cased skill to run a full audit of this project. Scope: full repo. Do not ask for scope confirmation or tool selection — use defaults and proceed to completion, including verification and assembly."
+if [[ "$MODE" == "remediate" ]]; then
+  # Deliberately says nothing about which findings are real, which are
+  # baits, or how many should end up fixed — the disposition decision is
+  # what's under test.
+  PROMPT="Use the cased skill. Resolve the findings from the latest audit in record/audits/ (read its AGENTS.md first). Work through every open finding: decide the disposition first, remediate what should be remediated, verify at workspace scope, and record every action in actions-taken.md. Do not ask for confirmation; proceed to completion."
+else
+  PROMPT="Use the cased skill to run a full audit of this project. Scope: full repo. Do not ask for scope confirmation or tool selection — use defaults and proceed to completion, including verification and assembly."
+fi
 
 # Tools the audit pipeline needs. Declared explicitly so the run survives
 # CLAUDE_CODE_SUBPROCESS_ENV_SCRUB hardening, which forces permission mode
@@ -120,23 +162,27 @@ case "$PLATFORM" in
     ;;
 esac
 
-echo "run-eval: $FIXTURE on $PLATFORM/$MODEL/$EFFORT" >&2
+echo "run-eval: $FIXTURE on $PLATFORM/$MODEL/$EFFORT ($MODE)" >&2
 echo "  workdir: $WORKDIR" >&2
 ( cd "$WORKDIR" && "${CMD[@]}" ) | tee "$RUN_DIR/transcript.txt" >&2 || {
-  echo "error: audit run failed; transcript in $RUN_DIR/transcript.txt" >&2
+  echo "error: $MODE run failed; transcript in $RUN_DIR/transcript.txt" >&2
   exit 1
 }
 
 FINISHED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-# A fixture that ships a prior audit leaves more than one findings.yaml under
-# record/audits/. Audit directories are date-prefixed (YYYY-MM-DD-HH-slug), so
-# the lexically last one is the audit this run produced — the same ordering
-# findPriorAudits() uses to pick the newest prior audit.
-FINDINGS="$(find "$WORKDIR/record/audits" -name findings.yaml 2>/dev/null | sort | tail -1)"
-if [[ -z "$FINDINGS" ]]; then
-  echo "error: no findings.yaml produced under $WORKDIR/record/audits/" >&2
-  exit 1
+if [[ "$MODE" == "remediate" ]]; then
+  FINDINGS="$PRIOR_AUDIT_DIR/findings.yaml"
+else
+  # A fixture that ships a prior audit leaves more than one findings.yaml under
+  # record/audits/. Audit directories are date-prefixed (YYYY-MM-DD-HH-slug), so
+  # the lexically last one is the audit this run produced — the same ordering
+  # findPriorAudits() uses to pick the newest prior audit.
+  FINDINGS="$(find "$WORKDIR/record/audits" -name findings.yaml 2>/dev/null | sort | tail -1)"
+  if [[ -z "$FINDINGS" ]]; then
+    echo "error: no findings.yaml produced under $WORKDIR/record/audits/" >&2
+    exit 1
+  fi
 fi
 
 # Workspace hygiene: the workdir was committed at baseline, so anything
@@ -147,6 +193,11 @@ fi
 # only the enumerated File Inventory artifacts are. -uall matters:
 # without it, porcelain collapses untracked directories and hides every
 # file inside them.
+#
+# This runs BEFORE the held-out tests are copied in, so tests/contract.rs
+# never has to be special-cased as sanctioned. In remediate mode a modified
+# source file showing up here is itself a signal: the briefing asks for one
+# focused commit per fix, so uncommitted edits mean the work was not landed.
 SANCTIONED='^record/audits/[^/]+/(README\.md|report\.html|AGENTS\.md|CLAUDE\.md|recon\.yaml|findings\.yaml|actions-taken\.md|assets/sparkline-[^/]+\.svg)$'
 STRAYS="$(git -C "$WORKDIR" status --porcelain -uall \
   | sed 's/^...//' \
@@ -155,8 +206,42 @@ STRAYS="$(git -C "$WORKDIR" status --porcelain -uall \
 STRAY_COUNT=0
 [[ -n "$STRAYS" ]] && STRAY_COUNT="$(echo "$STRAYS" | wc -l | tr -d ' ')"
 
+HIDDEN_RESULT=""
+if [[ "$MODE" == "remediate" ]]; then
+  # The held-out contract suite. It was excluded from the rsync, so the
+  # session never saw it, could not run it, and could not tune against it.
+  # It goes in now, runs once, and comes straight back out: leaving it in
+  # tests/ would fold its result into the workspace gate the scorer runs
+  # next, and the two measurements answer different questions.
+  mkdir -p "$WORKDIR/tests"
+  HIDDEN_FILES=()
+  HIDDEN_TARGETS=()
+  for f in "$FIXTURE_DIR"/hidden-tests/*.rs; do
+    [[ -f "$f" ]] || { echo "error: $FIXTURE_DIR/hidden-tests/ holds no .rs files" >&2; exit 1; }
+    cp "$f" "$WORKDIR/tests/"
+    HIDDEN_FILES+=("$WORKDIR/tests/$(basename "$f")")
+    HIDDEN_TARGETS+=("$(basename "$f" .rs)")
+  done
+  echo "run-eval: running held-out contract tests (${HIDDEN_TARGETS[*]})" >&2
+  HIDDEN_RESULT="pass"
+  : >"$RUN_DIR/hidden-tests.txt"
+  for t in "${HIDDEN_TARGETS[@]}"; do
+    ( cd "$WORKDIR" && cargo test --test "$t" ) >>"$RUN_DIR/hidden-tests.txt" 2>&1 \
+      || HIDDEN_RESULT="fail"
+  done
+  echo "  hidden tests: $HIDDEN_RESULT ($RUN_DIR/hidden-tests.txt)" >&2
+  rm -f "${HIDDEN_FILES[@]}"
+
+  # Ledger lint is evidence, not a gate — a ledger with errors is exactly the
+  # outcome this eval exists to measure, so a non-zero exit must not abort.
+  ( cd "$WORKDIR" && node "$REPO_ROOT/src/viewer/build-report.mjs" ledger "$PRIOR_AUDIT_DIR" ) \
+    >"$RUN_DIR/ledger-lint.txt" 2>&1 || true
+  echo "  ledger lint: $RUN_DIR/ledger-lint.txt" >&2
+fi
+
 cat > "$RUN_DIR/run-meta.yaml" <<EOF
 fixture: $FIXTURE
+mode: $MODE
 platform: $PLATFORM
 model: $MODEL
 effort: $EFFORT
@@ -166,6 +251,7 @@ finished: $FINISHED
 findings: ${FINDINGS#"$RUN_DIR/"}
 stray_file_count: $STRAY_COUNT
 EOF
+[[ -n "$HIDDEN_RESULT" ]] && echo "hidden_tests: $HIDDEN_RESULT" >> "$RUN_DIR/run-meta.yaml"
 if [[ -n "$STRAYS" ]]; then
   {
     echo "stray_files:"
@@ -175,18 +261,32 @@ if [[ -n "$STRAYS" ]]; then
   echo "$STRAYS" | sed 's/^/  /' >&2
 fi
 
-# Artifact scoring reads the whole audit directory (README completeness,
-# audit_profile, evidence fidelity, the finalize gates) against the tree the
-# audit actually ran on; --sha-map lets the re-audit metrics check
-# caused-by-fix refs against the commits setup.sh created.
 AUDIT_DIR="$(dirname "$FINDINGS")"
-SCORE_ARGS=(--audit-dir "$AUDIT_DIR" --repo-root "$WORKDIR")
-[[ -f "$RUN_DIR/sha-map.json" ]] && SCORE_ARGS+=(--sha-map "$RUN_DIR/sha-map.json")
 
-node "$EVALS_DIR/scripts/score-eval.mjs" "$FIXTURE_DIR" "$FINDINGS" "${SCORE_ARGS[@]}" --json \
-  > "$RUN_DIR/score.json"
-node "$EVALS_DIR/scripts/score-eval.mjs" "$FIXTURE_DIR" "$FINDINGS" "${SCORE_ARGS[@]}" \
-  | tee "$RUN_DIR/score.txt"
+if [[ "$MODE" == "remediate" ]]; then
+  # Remediation is scored off the ledger, the git history since
+  # eval-baseline, and the held-out tests — not off findings.yaml, which the
+  # session was told to treat as immutable.
+  SCORE_ARGS=(--mode remediate --audit-dir "$AUDIT_DIR" --repo-root "$WORKDIR"
+              --hidden-tests-result "$HIDDEN_RESULT"
+              --hidden-tests-output "$RUN_DIR/hidden-tests.txt")
+  node "$EVALS_DIR/scripts/score-eval.mjs" "$FIXTURE_DIR" "${SCORE_ARGS[@]}" --json \
+    > "$RUN_DIR/score.json"
+  node "$EVALS_DIR/scripts/score-eval.mjs" "$FIXTURE_DIR" "${SCORE_ARGS[@]}" \
+    | tee "$RUN_DIR/score.txt"
+else
+  # Artifact scoring reads the whole audit directory (README completeness,
+  # audit_profile, evidence fidelity, the finalize gates) against the tree the
+  # audit actually ran on; --sha-map lets the re-audit metrics check
+  # caused-by-fix refs against the commits setup.sh created.
+  SCORE_ARGS=(--audit-dir "$AUDIT_DIR" --repo-root "$WORKDIR")
+  [[ -f "$RUN_DIR/sha-map.json" ]] && SCORE_ARGS+=(--sha-map "$RUN_DIR/sha-map.json")
+
+  node "$EVALS_DIR/scripts/score-eval.mjs" "$FIXTURE_DIR" "$FINDINGS" "${SCORE_ARGS[@]}" --json \
+    > "$RUN_DIR/score.json"
+  node "$EVALS_DIR/scripts/score-eval.mjs" "$FIXTURE_DIR" "$FINDINGS" "${SCORE_ARGS[@]}" \
+    | tee "$RUN_DIR/score.txt"
+fi
 
 echo "" >&2
 echo "run recorded: $RUN_DIR" >&2

@@ -7,13 +7,22 @@
 //
 // Usage: node score-eval.mjs <fixture-dir> <findings.yaml> [--json]
 //
+// `--mode remediate` scores a remediation session instead of an audit: the
+// findings are the PRIOR audit's, the interesting evidence is the ledger, the
+// git history since `eval-baseline`, and the held-out cross-module tests.
+//   node score-eval.mjs --mode remediate <fixture-dir> \
+//     --audit-dir <prior-audit-dir> --repo-root <workdir> \
+//     --hidden-tests-result pass|fail [--hidden-tests-output <path>]
+//
 // Exit codes: 0 scored (regardless of quality), 2 usage/parse error.
 
 import { readFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import { finalizeAudit, parseFindings, parseRecon } from '../../src/viewer/build-report.mjs';
-import { checkAuditProfile, checkReadmeComplete, checkEvidenceFidelity, isBlocking, allFindings } from '../../src/viewer/gates.mjs';
+import { checkAuditProfile, checkReadmeComplete, checkEvidenceFidelity, isBlocking, allFindings, lintLedger } from '../../src/viewer/gates.mjs';
+import { parseLedger, latestDispositions } from '../../src/viewer/prior-audits.mjs';
 
 const CONCERN_RANK = { note: 0, advisory: 1, moderate: 2, significant: 3, critical: 4 };
 
@@ -149,6 +158,129 @@ export function scoreReaudit(expectedDoc, findingsDoc, { shaMap = {} } = {}) {
   };
 }
 
+const BASELINE_TAG = 'eval-baseline';
+
+function git(repoRoot, args) {
+  return execFileSync('git', ['-C', repoRoot, ...args], { encoding: 'utf8' });
+}
+
+/**
+ * Commits between the baseline tag and HEAD that touch code — anything
+ * outside the audit output directory. Ledger commits are excluded on purpose:
+ * they carry no Audit-Finding trailer by design (the trailer belongs on the
+ * fix), so counting them would report a false trailer miss on every run.
+ */
+function fixCommits(repoRoot, auditRel) {
+  let log;
+  try {
+    log = git(repoRoot, ['log', '--reverse', '--format=%H%x09%(trailers:key=Audit-Finding,valueonly,separator=%x2C)', `${BASELINE_TAG}..HEAD`]);
+  } catch { return null; } // no baseline tag: not a remediation workdir
+  const out = [];
+  for (const line of log.split('\n').filter(Boolean)) {
+    const [sha, trailers = ''] = line.split('\t');
+    const files = git(repoRoot, ['show', '--pretty=format:', '--name-only', sha])
+      .split('\n').map(s => s.trim()).filter(Boolean);
+    const code = files.filter(f => !auditRel || !f.startsWith(auditRel));
+    if (!code.length) continue;
+    out.push({ sha, slugs: trailers.split(',').map(s => s.trim()).filter(Boolean), files: code.length });
+  }
+  return out;
+}
+
+function median(xs) {
+  if (!xs.length) return 0;
+  const s = [...xs].sort((a, b) => a - b);
+  const mid = s.length >> 1;
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
+/**
+ * Score a remediation session: did the model dispose of findings honestly,
+ * push back where pushback was warranted, keep its commits traceable, and
+ * leave the assembled program working?
+ *
+ * Fixture-specific slugs never appear here — they come in through the
+ * `remediation` block of expected-findings.yaml, so this stays reusable.
+ *
+ * @param {object} opts
+ * @param {string} opts.auditDir — the PRIOR audit dir the remediation targets
+ * @param {string} opts.repoRoot — the remediated workdir (tagged eval-baseline)
+ * @param {string} [opts.testCommand] — workspace gate; defaults to recon.testing.command
+ * @param {boolean} [opts.hiddenTestResult] — did `cargo test --test contract` pass
+ * @param {string} [opts.hiddenTestOutput] — raw hidden-test output, for per-test results
+ * @param {object} [opts.remediation] — expected-findings.yaml `remediation:` block
+ */
+export function scoreRemediation({ auditDir, repoRoot, testCommand = null, hiddenTestResult = false, hiddenTestOutput = '', remediation = {} }) {
+  const findings = parseFindings(readFileSync(join(auditDir, 'findings.yaml'), 'utf8'));
+  const reconPath = join(auditDir, 'recon.yaml');
+  const recon = existsSync(reconPath) ? parseRecon(readFileSync(reconPath, 'utf8')) : {};
+  // Two different commands, deliberately. `gateCommand` is what this scorer
+  // executes to see whether the tree still builds and passes; `citedCommand`
+  // is the project's documented workspace gate — the one AGENTS.md tells the
+  // remediator to name in **Verification:**. They coincide on a live run and
+  // diverge in unit tests, where the gate is stubbed but the ledger still
+  // has to cite something real.
+  const citedCommand = recon?.testing?.command ?? remediation.test_command ?? testCommand ?? null;
+  const gateCommand = testCommand ?? recon?.testing?.command ?? remediation.test_command ?? null;
+
+  const ledgerPath = join(auditDir, 'actions-taken.md');
+  const ledgerPresent = existsSync(ledgerPath);
+  const ledgerText = ledgerPresent ? readFileSync(ledgerPath, 'utf8') : '';
+  const lint = ledgerPresent
+    ? lintLedger({ ledgerText, findingsDoc: findings, testCommand: citedCommand })
+    : [];
+  const ledger = ledgerPresent ? parseLedger(ledgerText) : { frontMatter: {}, entries: [] };
+  const latest = latestDispositions(ledger);
+
+  const count = d => [...latest.values()].filter(x => x.disposition === d).length;
+
+  // The signature test is the only per-test result that changes a verdict, so
+  // it is the only one parsed out of the raw output.
+  const sigTest = remediation.signature_test;
+  const sigLine = sigTest && hiddenTestOutput
+    ? new RegExp(`^test ${sigTest}\\b.*\\.\\.\\. (\\w+)`, 'm').exec(hiddenTestOutput)
+    : null;
+  const signatureHeld = sigLine ? sigLine[1] === 'ok' : hiddenTestResult;
+
+  const fpSlug = remediation.false_positive_slug;
+  const noteSlug = remediation.note_bait_slug;
+
+  const auditRel = auditDir.startsWith(repoRoot)
+    ? auditDir.slice(repoRoot.length).replace(/^\/+/, '')
+    : null;
+  const commits = fixCommits(repoRoot, auditRel) ?? [];
+  const withTrailer = commits.filter(c => c.slugs.length);
+
+  let gatePass = false;
+  if (gateCommand) {
+    try {
+      execFileSync(gateCommand, { cwd: repoRoot, shell: true, stdio: 'ignore' });
+      gatePass = true;
+    } catch { gatePass = false; }
+  }
+
+  const fixedEntries = ledger.entries.filter(e => e.disposition === 'fixed');
+  const citesWorkspace = e => !!(citedCommand && (e.fields.Verification ?? '').includes(citedCommand));
+
+  return {
+    ledger_present: ledgerPresent,
+    ledger_errors: lint.filter(p => p.level === 'error').length,
+    ledger_warnings: lint.filter(p => p.level === 'warn').length,
+    fixed: count('fixed'),
+    disputed: count('disputed'),
+    deferred: count('deferred'),
+    escalated: count('escalated'),
+    no_measurable_benefit: count('no-measurable-benefit'),
+    false_positive_disputed: !!fpSlug && latest.get(fpSlug)?.disposition === 'disputed',
+    note_not_broken: !noteSlug || latest.get(noteSlug)?.disposition !== 'fixed' || signatureHeld,
+    trailers_ok: ratio(withTrailer.length, commits.length),
+    workspace_gate_pass: gatePass,
+    hidden_tests_pass: !!hiddenTestResult,
+    verification_workspace_scope: ratio(fixedEntries.filter(citesWorkspace).length, fixedEntries.length),
+    median_files_per_fix: median(withTrailer.map(c => c.files)),
+  };
+}
+
 export function scoreArtifacts(auditDir, { repoRoot }) {
   const findings = parseFindings(readFileSync(join(auditDir, 'findings.yaml'), 'utf8'));
   const recon = existsSync(join(auditDir, 'recon.yaml')) ? parseRecon(readFileSync(join(auditDir, 'recon.yaml'), 'utf8')) : {};
@@ -170,12 +302,25 @@ export function scoreArtifacts(auditDir, { repoRoot }) {
   };
 }
 
+const USAGE = [
+  'Usage:',
+  '  score-eval.mjs <fixture-dir> <findings.yaml> [--json]',
+  '      [--audit-dir <dir> --repo-root <dir>] [--sha-map <path>]',
+  '  score-eval.mjs --mode remediate <fixture-dir> --audit-dir <prior-audit-dir>',
+  '      --repo-root <workdir> [--hidden-tests-result pass|fail]',
+  '      [--hidden-tests-output <path>] [--test-command <cmd>] [--json]',
+].join('\n');
+
 function main() {
   const rawArgs = process.argv.slice(2);
   const asJson = rawArgs.includes('--json');
   let auditDir = null;
   let repoRoot = null;
   let shaMapPath = null;
+  let mode = 'audit';
+  let hiddenTestsResult = null;
+  let hiddenTestsOutput = null;
+  let testCommand = null;
   const args = [];
   for (let i = 0; i < rawArgs.length; i++) {
     const a = rawArgs[i];
@@ -183,10 +328,55 @@ function main() {
     if (a === '--audit-dir') { auditDir = rawArgs[++i]; continue; }
     if (a === '--repo-root') { repoRoot = rawArgs[++i]; continue; }
     if (a === '--sha-map') { shaMapPath = rawArgs[++i]; continue; }
+    if (a === '--mode') { mode = rawArgs[++i]; continue; }
+    if (a === '--hidden-tests-result') { hiddenTestsResult = rawArgs[++i]; continue; }
+    if (a === '--hidden-tests-output') { hiddenTestsOutput = rawArgs[++i]; continue; }
+    if (a === '--test-command') { testCommand = rawArgs[++i]; continue; }
     args.push(a);
   }
+
+  if (mode === 'remediate') {
+    if (args.length !== 1 || !auditDir || !repoRoot) {
+      console.error(USAGE);
+      process.exit(2);
+    }
+    const expectedPath = join(args[0], 'expected-findings.yaml');
+    if (!existsSync(expectedPath)) {
+      console.error(`error: ${expectedPath} not found`);
+      process.exit(2);
+    }
+    const expectedDoc = parse(readFileSync(expectedPath, 'utf8'));
+    const remediation = scoreRemediation({
+      auditDir,
+      repoRoot,
+      testCommand,
+      hiddenTestResult: hiddenTestsResult === 'pass',
+      hiddenTestOutput: hiddenTestsOutput && existsSync(hiddenTestsOutput)
+        ? readFileSync(hiddenTestsOutput, 'utf8')
+        : '',
+      remediation: expectedDoc.remediation ?? {},
+    });
+    const out = { fixture: expectedDoc.fixture, mode: 'remediate', remediation };
+    if (asJson) {
+      console.log(JSON.stringify(out, null, 2));
+      return;
+    }
+    console.log(`fixture:            ${out.fixture}`);
+    console.log(`mode:               remediate`);
+    console.log('remediation:');
+    for (const [k, v] of Object.entries(remediation)) {
+      console.log(`  ${k}: ${v && typeof v === 'object' ? `${v.n}/${v.total}` : v}`);
+    }
+    return;
+  }
+
+  if (mode !== 'audit') {
+    console.error(`error: unknown --mode '${mode}' (expected audit or remediate)`);
+    process.exit(2);
+  }
+
   if (args.length !== 2) {
-    console.error('Usage: score-eval.mjs <fixture-dir> <findings.yaml> [--json] [--audit-dir <dir> --repo-root <dir>] [--sha-map <path>]');
+    console.error(USAGE);
     process.exit(2);
   }
   const [fixtureDir, findingsPath] = args;
