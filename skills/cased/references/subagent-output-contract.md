@@ -131,7 +131,10 @@ view.
 **Evidence is verbatim.** Copy the code exactly as it appears in the
 file at the cited location. No added comments, no `// ...` elisions.
 If the relevant code spans a gap, emit two location entries with two
-evidence blocks, not one block with a gap.
+evidence blocks, not one block with a gap. For a multi-location finding,
+`evidence` is the cited ranges concatenated in `locations` order with
+nothing between them — no separators, headers, or blank lines;
+`build-report.js evidence` checks exactly that.
 
 **Redaction rule.** If evidence contains secrets, replace the literal
 value with a placeholder (`REDACTED_API_KEY`, `<token>`) but still
@@ -217,8 +220,9 @@ symptom yet are `internal`; supply-chain/licensing/process are `policy`;
 prose and metadata are `documentation`. Only critical/significant +
 user-visible findings gate a release; be honest, not dramatic.
 
-`origin.kind`: the audit-context tells you whether prior audits exist and
-lists their ledgered fixes (slug → SHA). Before filing, run
+`origin.kind`: the audit-context tells you whether prior audits exist
+(`mode:` and `prior_audit:`) and lists their ledgered fixes as
+`ledgered_fixes:` (slug → SHA; empty when `mode: fresh`). Before filing, run
 `git log -S'<a distinctive line from your evidence>' --format='%h %s' -- <path>`
 in the target repo. If the introducing commit is one of the ledgered fix
 SHAs → `caused-by-fix` with that SHA. If your finding matches a prior slug
@@ -258,7 +262,8 @@ Before returning, emit the YAML to stdout and mentally validate:
 2. Exactly one of `findings` or `blocker` is present.
 3. Every finding's `slug` is unique within your response.
 4. Every `locations[].start_line` is ≤ `end_line`.
-5. Every `evidence` block's line count matches `end_line - start_line + 1`.
+5. Every `evidence` block's line count equals the SUM over `locations` of
+   `end_line − start_line + 1`.
 6. No narrative-level fields (`thesis`, `verdict`, `title`,
    `assessment`) at the top level of the response.
 

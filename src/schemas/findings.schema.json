@@ -150,7 +150,7 @@
     },
     "carried_forward": {
       "type": "array",
-      "description": "Prior-audit findings with a standing deferred/accepted/mitigated disposition. Listed for tracking, EXCLUDED from narratives, counts, and the AGENTS.md finding index. Populated in re-audit mode from prior actions-taken.md files.",
+      "description": "Prior-audit findings with a standing deferred/accepted/mitigated/no-measurable-benefit disposition. Listed for tracking, EXCLUDED from narratives, counts, and the AGENTS.md finding index. Populated in re-audit mode from prior actions-taken.md files. `escalated` is NOT a standing disposition — it is unresolved and must be re-derived by this audit.",
       "items": {
         "type": "object",
         "required": ["slug", "prior_audit", "disposition"],
@@ -158,7 +158,7 @@
         "properties": {
           "slug": { "type": "string" },
           "prior_audit": { "type": "string", "description": "Audit directory basename, e.g. 2026-08-12-10-m13-release-candidate" },
-          "disposition": { "type": "string", "enum": ["deferred", "accepted", "mitigated"] },
+          "disposition": { "type": "string", "enum": ["deferred", "accepted", "mitigated", "no-measurable-benefit"] },
           "reason": { "type": "string" }
         }
       }

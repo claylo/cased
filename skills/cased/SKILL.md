@@ -160,13 +160,16 @@ dispatching any analysis agent:
 
 1. Read every prior `actions-taken.md`. Build two lists: **standing
    dispositions** (latest disposition per slug is deferred/accepted/
-   mitigated) and **ledgered fixes** (slug → commit SHA).
+   mitigated/no-measurable-benefit) and **ledgered fixes** (slug → commit
+   SHA). `escalated` is NOT standing — it is unresolved, so re-derive it
+   as a live finding rather than carrying it forward.
 2. Write standing dispositions into `findings.yaml#carried_forward`. They
    are excluded from counts, narratives, and the AGENTS.md index. Do not
    re-derive them; if an agent re-files one, drop the duplicate and keep
    the carried_forward entry.
 3. Put the ledgered-fix list (slug → SHA) into the `<audit-context>` block
-   so every agent can set `origin`.
+   as `ledgered_fixes:`, along with `mode: re-audit` and `prior_audit:`
+   (the prior audit directory's basename), so every agent can set `origin`.
 4. After analysis, write `findings.yaml#reconciliation` with one row per
    ledgered fix: re-read the fix commit's diff (`git show <sha>`) and
    decide `still-fixed` / `regressed` / `superseded` / `not-verified`. A
@@ -241,11 +244,15 @@ as the narrative framework and dispatch its agents for parallel review.
 2. Run the skill's tool prerequisites (e.g., `${CLAUDE_SKILL_DIR}/scripts/run-tools --full`).
 3. Classify the codebase using the skill's surface selection guide to
    determine which of its subagents apply.
-4. Build one `<audit-context>` block (target repo path, commit SHA,
-   2–4 sentence recon summary, path to `findings.schema.json`, and the
-   task runner recipes recorded during recon — e.g., "run tools via
-   `just deny`, `just audit`; never bare cargo invocations") and
-   reuse it for every dispatch in this audit. See
+4. Build one `<audit-context>` block and reuse it for every dispatch in
+   this audit. It carries: target repo path, commit SHA, audit dir,
+   `mode: fresh|re-audit`, `prior_audit:` (prior audit dir basename, or
+   `none`), `ledgered_fixes:` (the `<slug>: <sha>` list from prior
+   `actions-taken.md` files — empty in fresh mode), `release_phase:` if
+   known, a 2–4 sentence recon summary, the path to
+   `findings.schema.json`, and the task runner recipes recorded during
+   recon — e.g., "run tools via `just deny`, `just audit`; never bare
+   cargo invocations". See
    `${CLAUDE_SKILL_DIR}/references/codex-tools.md` for the exact message
    framing — the same shape works on Claude Code.
 5. Dispatch one subagent per selected surface, in parallel. For

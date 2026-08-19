@@ -986,7 +986,12 @@ if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url
     }
 
     if (subcommand === 'evidence') {
-      const findings = parseFindings(readFileSync(join(auditDir, 'findings.yaml'), 'utf8'));
+      const findingsPath = join(auditDir, 'findings.yaml');
+      if (!existsSync(findingsPath)) {
+        console.error(`error: ${findingsPath} not found`);
+        process.exit(2);
+      }
+      const findings = parseFindings(readFileSync(findingsPath, 'utf8'));
       const recon = existsSync(join(auditDir, 'recon.yaml'))
         ? parseRecon(readFileSync(join(auditDir, 'recon.yaml'), 'utf8'))
         : null;
@@ -1004,7 +1009,12 @@ if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url
         console.error(`error: ${ledgerPath} does not exist`);
         process.exit(1);
       }
-      const findings = parseFindings(readFileSync(join(auditDir, 'findings.yaml'), 'utf8'));
+      const findingsPath = join(auditDir, 'findings.yaml');
+      if (!existsSync(findingsPath)) {
+        console.error(`error: ${findingsPath} not found`);
+        process.exit(2);
+      }
+      const findings = parseFindings(readFileSync(findingsPath, 'utf8'));
       const recon = existsSync(join(auditDir, 'recon.yaml'))
         ? parseRecon(readFileSync(join(auditDir, 'recon.yaml'), 'utf8'))
         : null;

@@ -40821,7 +40821,12 @@ if ((0, node_fs.realpathSync)(process.argv[1]) === (0, node_fs.realpathSync)((0,
 		}
 	}
 	if (subcommand === "evidence") {
-		const problems = checkEvidenceFidelity(parseFindings((0, node_fs.readFileSync)((0, node_path.join)(auditDir, "findings.yaml"), "utf8")), ((0, node_fs.existsSync)((0, node_path.join)(auditDir, "recon.yaml")) ? parseRecon((0, node_fs.readFileSync)((0, node_path.join)(auditDir, "recon.yaml"), "utf8")) : null)?.structure?.root ?? (0, node_path.join)(auditDir, "..", "..", ".."));
+		const findingsPath = (0, node_path.join)(auditDir, "findings.yaml");
+		if (!(0, node_fs.existsSync)(findingsPath)) {
+			console.error(`error: ${findingsPath} not found`);
+			process.exit(2);
+		}
+		const problems = checkEvidenceFidelity(parseFindings((0, node_fs.readFileSync)(findingsPath, "utf8")), ((0, node_fs.existsSync)((0, node_path.join)(auditDir, "recon.yaml")) ? parseRecon((0, node_fs.readFileSync)((0, node_path.join)(auditDir, "recon.yaml"), "utf8")) : null)?.structure?.root ?? (0, node_path.join)(auditDir, "..", "..", ".."));
 		for (const p of problems) console.error(`${p.slug} @ ${p.path}:${p.start_line}-${p.end_line}: ${p.problem}${p.expected !== void 0 ? `\n    file:     ${JSON.stringify(p.expected)}\n    evidence: ${JSON.stringify(p.actual)}` : ""}`);
 		console.log(problems.length ? `${problems.length} evidence problem(s)` : "evidence ok");
 		process.exit(problems.length ? 1 : 0);
@@ -40832,7 +40837,12 @@ if ((0, node_fs.realpathSync)(process.argv[1]) === (0, node_fs.realpathSync)((0,
 			console.error(`error: ${ledgerPath} does not exist`);
 			process.exit(1);
 		}
-		const findings = parseFindings((0, node_fs.readFileSync)((0, node_path.join)(auditDir, "findings.yaml"), "utf8"));
+		const findingsPath = (0, node_path.join)(auditDir, "findings.yaml");
+		if (!(0, node_fs.existsSync)(findingsPath)) {
+			console.error(`error: ${findingsPath} not found`);
+			process.exit(2);
+		}
+		const findings = parseFindings((0, node_fs.readFileSync)(findingsPath, "utf8"));
 		const recon = (0, node_fs.existsSync)((0, node_path.join)(auditDir, "recon.yaml")) ? parseRecon((0, node_fs.readFileSync)((0, node_path.join)(auditDir, "recon.yaml"), "utf8")) : null;
 		const root = recon?.structure?.root ?? (0, node_path.join)(auditDir, "..", "..", "..");
 		const gitLog = (sha) => {

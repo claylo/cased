@@ -67,7 +67,7 @@ for release; triage it, don't grind it):
    `xtask/`). Crate-local passes are not evidence.
 6. **Check the budget.** `git diff --shortstat <base>..HEAD` for this
    finding. Effort `trivial`/`small` and you are past 10 files or 500
-   insertions, or on your third commit for one slug → stop, disposition
+   insertions, or on a fourth commit on one slug → stop, disposition
    `escalated`, hand it to a human.
 7. Append one ledger entry (format below), then run
    `node <cased>/scripts/build-report.js ledger <this-dir>` and fix every
@@ -135,7 +135,7 @@ why this approach — and, if the fix touched a public signature, say so.
   required. A deferred finding without a target is an accepted finding in
   disguise
 - `escalated` — the fix is out of budget (diff ≥ 5× what the effort estimate
-  implied, or a third fix commit on one slug). Stop, record what was
+  implied, or a fourth fix commit on one slug). Stop, record what was
   learned, hand the design decision to a human. A circuit breaker, not a
   failure
 - `superseded` — a later action replaces this finding's fix or the finding

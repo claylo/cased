@@ -122,7 +122,7 @@ that keeps it honest.
   a target date or a milestone/issue reference. A deferred finding
   without a target is an accepted finding in disguise.
 - `escalated` — the fix is out of budget: actual diff ≥ 5× what the effort
-  estimate implied, or a third fix commit on the same slug. Stop, record
+  estimate implied, or a fourth fix commit on the same slug. Stop, record
   what was learned, and hand the design decision to a human. Not a failure
   — a circuit breaker. (One "small + medium" pair became 17 commits and
   8,084 lines with `fixed: 2 / open: 0` on the ledger.)

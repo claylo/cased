@@ -114,6 +114,12 @@ if [[ "$MODE" == "remediate" ]]; then
   fi
 fi
 
+# Snapshot the findings.yaml files that exist BEFORE the session runs. A
+# fixture that ships a prior audit already has one; if the session writes
+# nothing, the post-session `sort | tail -1` would silently hand the scorer
+# that pre-existing audit and score it as this run's output.
+PRE_EXISTING_FINDINGS="$(find "$WORKDIR/record/audits" -name findings.yaml 2>/dev/null | sort || true)"
+
 CASED_COMMIT="$(git -C "$REPO_ROOT" rev-parse --short HEAD)"
 STARTED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
@@ -181,6 +187,14 @@ else
   FINDINGS="$(find "$WORKDIR/record/audits" -name findings.yaml 2>/dev/null | sort | tail -1)"
   if [[ -z "$FINDINGS" ]]; then
     echo "error: no findings.yaml produced under $WORKDIR/record/audits/" >&2
+    exit 1
+  fi
+  # …and if the pick is one of the files that were already there, the session
+  # produced no audit of its own. Scoring the fixture's shipped prior audit
+  # would report a passing run for a session that did nothing.
+  if [[ -n "$PRE_EXISTING_FINDINGS" ]] \
+     && grep -qxF "$FINDINGS" <<<"$PRE_EXISTING_FINDINGS"; then
+    echo "error: no new audit produced (only pre-existing: $(echo "$PRE_EXISTING_FINDINGS" | tr '\n' ' '))" >&2
     exit 1
   fi
 fi

@@ -12,7 +12,9 @@ ad-hoc names), the `severity_floor` it reported down to (default `note`),
 and `excluded_tools` — every tool it chose not to run, written as
 `tool: reason`. `release_phase` is optional and comes from the user or
 the manifest. `build-report.js finalize` refuses an audit whose profile
-is still a stub.
+is still a stub. A `recon.yaml` written before `meta.audit_profile`
+existed will fail `validate`; the requirement applies to new recon
+output — do not retrofit old audit directories.
 
 **File and line counts.** Use `find` + `wc -l`, scoped to the workspace
 member paths (`cargo metadata --no-deps --format-version 1 | jq '.workspace_members'`
