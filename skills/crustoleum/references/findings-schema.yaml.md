@@ -986,4 +986,7 @@ they are tracked but not re-derived. They are excluded from `summary.counts`,
 from narratives, and from the AGENTS.md finding index. `reconciliation`
 records, for every prior finding ledgered `fixed`, whether the fix still
 holds — verified by re-reading the fix commit's diff, not by re-auditing
-from scratch.
+from scratch. `still-fixed` is the status when the ledgered fix is present
+and effective — even if that same fix introduced a NEW defect (that new
+finding carries `origin.kind: caused-by-fix`). `superseded` is only for a
+prior finding that a new finding re-characterizes or replaces.

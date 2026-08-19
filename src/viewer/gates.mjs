@@ -115,7 +115,7 @@ export function lintLedger({ ledgerText, findingsDoc, gitLog = null, testCommand
           if ((['trivial', 'small'].includes(smallest) && (files > 10 || ins > 500)) || commits > 3) warn(e.heading, `diff budget exceeded for effort=${smallest ?? '?'} (${files} files, +${ins}, ${commits} commits); consider disposition escalated and human sign-off`);
         }
       }
-      if (!f['Blast radius']) warn(e.heading, 'fixed should state **Blast radius:** (crates touched vs named; reverse deps; co-varying docs/tests)');
+      if (!f['Blast radius']) err(e.heading, 'fixed requires **Blast radius:** (crates touched vs named; reverse deps; co-varying docs/tests)');
       if (!f['Coverage lost'] && /\btests?\b/i.test(e.body) && /\b(replace|rewrit|remov|delet)/i.test(e.body)) warn(e.heading, 'entry mentions changing tests; state **Coverage lost:** (or "none")');
     }
     if (e.disposition === 'deferred' && !/(milestone|target|issue|#\d+|\d{4}-\d{2})/i.test(e.body)) err(e.heading, 'deferred requires a target (milestone, issue, or date) in the body');

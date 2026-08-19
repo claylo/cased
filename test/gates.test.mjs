@@ -106,6 +106,10 @@ describe('lintLedger', () => {
     const blow = GOOD.replace('**Diff:** 2 files, +40 −3, 1 commit', '**Diff:** 8 files, +8084 −594, 17 commits');
     assert.ok(lintLedger({ ledgerText: blow, findingsDoc: FINDINGS }).some(p => p.level === 'warn' && /budget/.test(p.message)));
   });
+  it('errors when a fixed entry omits Blast radius', () => {
+    const noBlast = GOOD.replace('**Blast radius:** crates touched: core (named: core); reverse deps of changed symbol: cli\n', '');
+    assert.ok(lintLedger({ ledgerText: noBlast, findingsDoc: FINDINGS }).some(p => p.level === 'error' && /Blast radius/.test(p.message)));
+  });
   it('errors when deferred has no target', () => {
     const d = GOOD + `\n## 2026-08-18 — Defer cf\n\n**Disposition:** deferred\n**Addresses:** [cf](README.md#cf)\n**Author:** Codex\n\nLater.\n`;
     assert.ok(lintLedger({ ledgerText: d, findingsDoc: FINDINGS }).some(p => p.level === 'error' && /target/.test(p.message)));

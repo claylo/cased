@@ -53,6 +53,29 @@ test('compare rejects mixed fixtures', () => {
   assert.throws(() => compare([a, b]), /different fixtures/);
 });
 
+test('compare passes through artifacts/reaudit metrics when present, null when absent', () => {
+  const withMetrics = run('claude/opus/max', ['s1'], []);
+  withMetrics.score.artifacts = {
+    finalize_ok: true,
+    origin_coverage: 1,
+    failure_mode_coverage: 1,
+    class_sweep_multi_location: 4,
+  };
+  withMetrics.score.reaudit = {
+    carried_forward_suppressed: { n: 1, total: 1 },
+    regressions_found: { n: 1, total: 1 },
+    reconciliation_present: true,
+  };
+  const withoutMetrics = run('claude/sonnet/high', ['s1'], []);
+
+  const result = compare([withMetrics, withoutMetrics]);
+
+  assert.deepEqual(result.runs[0].artifacts, withMetrics.score.artifacts);
+  assert.deepEqual(result.runs[0].reaudit, withMetrics.score.reaudit);
+  assert.equal(result.runs[1].artifacts, null);
+  assert.equal(result.runs[1].reaudit, null);
+});
+
 test('loadRun rejects a remediate-mode score.json with a clear message, not a TypeError', () => {
   const dir = mkdtempSync(join(tmpdir(), 'cased-compare-'));
   writeFileSync(join(dir, 'score.json'), JSON.stringify({

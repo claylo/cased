@@ -75,10 +75,21 @@ export function compare(runs) {
 
   return {
     fixture: runs[0].score.fixture,
-    runs: runs.map((r) => ({ label: r.label, totals: r.score.totals })),
+    runs: runs.map((r) => ({
+      label: r.label,
+      totals: r.score.totals,
+      artifacts: r.score.artifacts ?? null,
+      reaudit: r.score.reaudit ?? null,
+    })),
     seeds,
     pairwise_jaccard: pairs,
   };
+}
+
+function ratioOrScalar(v) {
+  if (v === undefined || v === null) return '—';
+  if (typeof v === 'object') return `${v.n}/${v.total}`;
+  return String(v);
 }
 
 function main() {
@@ -99,12 +110,26 @@ function main() {
 
   console.log(`fixture: ${result.fixture}\n`);
   const labelWidth = Math.max(...result.runs.map((r) => r.label.length));
+  const indent = ''.padEnd(labelWidth);
   for (const r of result.runs) {
     const t = r.totals;
     console.log(
       `${r.label.padEnd(labelWidth)}  recall ${t.matched}/${t.expected}` +
         `  fp ${t.false_positives}  unexpected ${t.unexpected}  calib ${t.calibration_misses}`
     );
+    const a = r.artifacts;
+    console.log(
+      `${indent}    artifacts: finalize_ok=${a ? ratioOrScalar(a.finalize_ok) : '—'}` +
+        `  origin_coverage=${a ? ratioOrScalar(a.origin_coverage) : '—'}` +
+        `  failure_mode_coverage=${a ? ratioOrScalar(a.failure_mode_coverage) : '—'}` +
+        `  class_sweep_multi_location=${a ? ratioOrScalar(a.class_sweep_multi_location) : '—'}`
+    );
+    if (r.reaudit) {
+      const parts = Object.entries(r.reaudit).map(([k, v]) => `${k}=${ratioOrScalar(v)}`);
+      console.log(`${indent}    reaudit: ${parts.join('  ')}`);
+    } else {
+      console.log(`${indent}    reaudit: —`);
+    }
   }
   console.log('');
   const idWidth = Math.max(...result.seeds.map((s) => s.id.length), 4);

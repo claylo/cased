@@ -171,6 +171,11 @@ dispatching any analysis agent:
    ledgered fix: re-read the fix commit's diff (`git show <sha>`) and
    decide `still-fixed` / `regressed` / `superseded` / `not-verified`. A
    `regressed` row requires a finding with `origin.kind: recurrence-of`.
+   `still-fixed` is the status when the ledgered fix is present and
+   effective — even if that same fix introduced a NEW defect (file that as
+   its own finding with `origin.kind: caused-by-fix`; the reconciliation
+   row stays `still-fixed`). `superseded` is only for a prior finding that
+   a new finding re-characterizes or replaces.
 
 If any prior audit has findings and no `actions-taken.md`, stop and tell
 the user: those findings are untracked and `finalize` will refuse
