@@ -63,10 +63,16 @@ fn config_load_reports_a_malformed_value() {
     let _ = std::fs::remove_file(&path);
     let loaded = outcome
         .expect("config::load panicked on a non-numeric value; it must return an error instead");
-    assert!(
-        loaded.is_err(),
-        "config::load accepted a non-numeric value without reporting it"
-    );
+    // The audit's own remediation note allows either shape: skip the
+    // malformed line (keeping it visible via a warning) or return
+    // ConfigError::Parse. Either way, a bad value must never silently
+    // become a real entry in the loaded map.
+    if let Ok(cfg) = loaded {
+        assert!(
+            !cfg.entries.contains_key("retries"),
+            "config::load accepted a non-numeric value as a real config entry instead of reporting it"
+        );
+    }
 }
 
 /// A snapshot that cannot be written is a failure the caller has to learn

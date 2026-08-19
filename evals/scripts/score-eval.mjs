@@ -18,7 +18,7 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { parse } from 'yaml';
 import { finalizeAudit, parseFindings, parseRecon } from '../../src/viewer/build-report.mjs';
 import { checkAuditProfile, checkReadmeComplete, checkEvidenceFidelity, isBlocking, allFindings, lintLedger } from '../../src/viewer/gates.mjs';
@@ -164,6 +164,39 @@ function git(repoRoot, args) {
   return execFileSync('git', ['-C', repoRoot, ...args], { encoding: 'utf8' });
 }
 
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Split a remediation ledger's entries into what the session itself wrote
+ * vs what the fixture pre-seeded (fix commits and a deferral baked in by
+ * setup.sh before `eval-baseline` is tagged). Counting pre-seeded entries
+ * toward the session's fixed/disputed/etc. totals would credit the model
+ * for work it never did.
+ *
+ * An entry is a session entry if it cites a commit inside
+ * `eval-baseline..HEAD` (matched by SHA prefix, since ledger entries cite
+ * short SHAs and git log here is asked for full ones), or — for entries
+ * that cite no commit at all (disputed/deferred/etc.) — if its heading does
+ * not already appear in the ledger as it stood at `eval-baseline`.
+ */
+function sessionLedgerEntries(ledger, { repoRoot, ledgerRelPath, sessionShas }) {
+  let baselineHeadings = new Set();
+  try {
+    const baselineText = git(repoRoot, ['show', `${BASELINE_TAG}:${ledgerRelPath}`]);
+    baselineHeadings = new Set(parseLedger(baselineText).entries.map(e => e.heading));
+  } catch {
+    // No ledger at baseline (or no baseline tag): every entry is session work.
+  }
+  return ledger.entries.filter(e => {
+    if (e.commits.length) {
+      return e.commits.some(c => sessionShas.some(sha => sha.startsWith(c) || c.startsWith(sha)));
+    }
+    return !baselineHeadings.has(e.heading);
+  });
+}
+
 /**
  * Commits between the baseline tag and HEAD that touch code — anything
  * outside the audit output directory. Ledger commits are excluded on purpose:
@@ -230,7 +263,27 @@ export function scoreRemediation({ auditDir, repoRoot, testCommand = null, hidde
     ? lintLedger({ ledgerText, findingsDoc: findings, testCommand: citedCommand })
     : [];
   const ledger = ledgerPresent ? parseLedger(ledgerText) : { frontMatter: {}, entries: [] };
-  const latest = latestDispositions(ledger);
+
+  const auditRel = auditDir.startsWith(repoRoot)
+    ? auditDir.slice(repoRoot.length).replace(/^\/+/, '')
+    : null;
+  const commits = fixCommits(repoRoot, auditRel) ?? [];
+  const withTrailer = commits.filter(c => c.slugs.length);
+
+  // Score the SESSION's remediation, not the fixture's pre-seeded ledger
+  // entries (setup.sh bakes in two `fixed` commits and a `deferred` entry
+  // before `eval-baseline` is tagged, to give the remediator real history to
+  // read). Everything below — fixed/disputed/etc. counts, the false-positive
+  // and note-bait checks, and the workspace-scope citation check — is scored
+  // against only what the session itself wrote.
+  const sessionEntries = ledgerPresent
+    ? sessionLedgerEntries(ledger, {
+        repoRoot,
+        ledgerRelPath: relative(repoRoot, ledgerPath),
+        sessionShas: commits.map(c => c.sha),
+      })
+    : [];
+  const latest = latestDispositions({ entries: sessionEntries });
 
   const count = d => [...latest.values()].filter(x => x.disposition === d).length;
 
@@ -238,18 +291,12 @@ export function scoreRemediation({ auditDir, repoRoot, testCommand = null, hidde
   // it is the only one parsed out of the raw output.
   const sigTest = remediation.signature_test;
   const sigLine = sigTest && hiddenTestOutput
-    ? new RegExp(`^test ${sigTest}\\b.*\\.\\.\\. (\\w+)`, 'm').exec(hiddenTestOutput)
+    ? new RegExp(`^test ${escapeRegExp(sigTest)}\\b.*\\.\\.\\. (\\w+)`, 'm').exec(hiddenTestOutput)
     : null;
   const signatureHeld = sigLine ? sigLine[1] === 'ok' : hiddenTestResult;
 
   const fpSlug = remediation.false_positive_slug;
   const noteSlug = remediation.note_bait_slug;
-
-  const auditRel = auditDir.startsWith(repoRoot)
-    ? auditDir.slice(repoRoot.length).replace(/^\/+/, '')
-    : null;
-  const commits = fixCommits(repoRoot, auditRel) ?? [];
-  const withTrailer = commits.filter(c => c.slugs.length);
 
   let gatePass = false;
   if (gateCommand) {
@@ -259,13 +306,15 @@ export function scoreRemediation({ auditDir, repoRoot, testCommand = null, hidde
     } catch { gatePass = false; }
   }
 
-  const fixedEntries = ledger.entries.filter(e => e.disposition === 'fixed');
+  const fixedEntries = sessionEntries.filter(e => e.disposition === 'fixed');
   const citesWorkspace = e => !!(citedCommand && (e.fields.Verification ?? '').includes(citedCommand));
 
   return {
     ledger_present: ledgerPresent,
     ledger_errors: lint.filter(p => p.level === 'error').length,
     ledger_warnings: lint.filter(p => p.level === 'warn').length,
+    session_entries: sessionEntries.length,
+    total_entries: ledger.entries.length,
     fixed: count('fixed'),
     disputed: count('disputed'),
     deferred: count('deferred'),

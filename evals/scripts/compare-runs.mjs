@@ -16,6 +16,11 @@ export function loadRun(dir) {
     throw new Error(`${dir}: no score.json (did run-eval finish?)`);
   }
   const score = JSON.parse(readFileSync(scorePath, 'utf8'));
+  if (score.mode === 'remediate') {
+    throw new Error(
+      `${dir}: score.json is a remediate-mode result (no matched/missed); compare-runs only compares audit-mode runs`
+    );
+  }
   const metaPath = join(dir, 'run-meta.yaml');
   const meta = existsSync(metaPath) ? parse(readFileSync(metaPath, 'utf8')) : {};
   const label =

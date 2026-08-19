@@ -129,7 +129,12 @@ test('scoreArtifacts reports gate outcomes', () => {
 
 // --- remediation mode -------------------------------------------------------
 // A synthetic remediation: one fix commit carrying a trailer, a ledger that
-// fixes one finding, disputes the false-positive bait, and defers the note.
+// fixes one finding, disputes the false-positive bait, and defers the note —
+// on top of a PRE-SEEDED ledger entry (finding `b`, fixed by a commit that
+// predates `eval-baseline`), mirroring how the reaudit-rs fixture's setup.sh
+// bakes fix commits and a ledgered disposition into history before the
+// remediation session's baseline is tagged. `b` must never count toward the
+// session's totals.
 
 function remediationRepo() {
   const repo = mkdtempSync(join(tmpdir(), 'cased-rem-'));
@@ -144,31 +149,64 @@ function remediationRepo() {
 
   const findings = {
     audit_date: '2026-08-01', scope: 's', commit: 'abc1234', assessment: 'a',
-    summary: { counts: { critical: 0, significant: 1, moderate: 1, advisory: 0, note: 1 } },
+    summary: { counts: { critical: 0, significant: 2, moderate: 1, advisory: 0, note: 1 } },
     narratives: [{ slug: 'n', title: 'N', thesis: 't', verdict: 'v', findings: [
       { slug: 'a', title: 'A', concern: 'significant', effort: 'trivial', failure_mode: 'user-visible', origin: { kind: 'pre-existing' }, locations: [{ path: 'src/a.rs', start_line: 1, end_line: 1 }], evidence: 'fn a() {}', mechanism: 'm', remediation: 'r' },
+      { slug: 'b', title: 'B', concern: 'significant', effort: 'trivial', failure_mode: 'user-visible', origin: { kind: 'pre-existing' }, locations: [{ path: 'src/b.rs', start_line: 1, end_line: 1 }], evidence: 'fn b() {}', mechanism: 'm', remediation: 'r' },
       { slug: 'render-unbounded-width', title: 'FP', concern: 'moderate', effort: 'small', failure_mode: 'user-visible', origin: { kind: 'pre-existing' }, locations: [{ path: 'src/clean.rs', start_line: 1, end_line: 1 }], evidence: 'fn c() {}', mechanism: 'm', remediation: 'r' },
       { slug: 'merge-config-takes-string', title: 'Note', concern: 'note', effort: 'small', failure_mode: 'internal', origin: { kind: 'pre-existing' }, locations: [{ path: 'src/lib.rs', start_line: 1, end_line: 1 }], evidence: 'pub fn m() {}', mechanism: 'm', remediation: 'r' },
     ] }],
   };
   writeFileSync(join(dir, 'findings.yaml'), YAML.stringify(findings));
   writeFileSync(join(repo, 'src', 'a.rs'), 'fn a() {}\n');
+  writeFileSync(join(repo, 'src', 'b.rs'), 'fn b() {}\n');
   writeFileSync(join(repo, 'src', 'clean.rs'), 'fn c() {}\n');
   writeFileSync(join(repo, 'src', 'lib.rs'), 'pub fn m() {}\n');
   git('add', '-A');
   git('commit', '-qm', 'baseline');
+
+  // Pre-seeded: `b` was already fixed, and ledgered, before this session's
+  // baseline is tagged — the synthetic equivalent of the fixture's
+  // setup.sh-built history.
+  writeFileSync(join(repo, 'src', 'b.rs'), 'fn b() -> Result<(), ()> { Ok(()) }\n');
+  git('add', '-A');
+  git('commit', '-qm', 'fix(b): guard the other boundary\n\nAudit-Finding: b');
+  const preSeededSha = git('rev-parse', '--short', 'HEAD').trim();
+  writeFileSync(join(dir, 'actions-taken.md'), [
+    '---', 'audit: 2026-08-01-10-x', 'last_updated: 2026-08-01',
+    'status:', '  fixed: 1', '  mitigated: 0', '  accepted: 0', '  disputed: 0',
+    '  deferred: 0', '  escalated: 0', '  superseded: 0', '  no-measurable-benefit: 0',
+    '  open: 3', '---', '',
+    '# Actions Taken: s', '',
+    '## 2026-08-01 — Guard the other boundary', '',
+    '**Disposition:** fixed',
+    '**Addresses:** [b](README.md#b)',
+    '**Commit:** ' + preSeededSha,
+    '**Author:** eval',
+    '**Verification:** `just test` (workspace) — 6 passed',
+    '**Blast radius:** one crate; no public signatures changed',
+    '**Diff:** 1 files, +1 −1, 1 commits', '',
+    'Pre-seeded fix, landed before this remediation session started.', '',
+  ].join('\n'));
+  git('add', '-A');
+  git('commit', '-qm', 'docs(audit): record the pre-seeded ledger entry');
+
   git('tag', 'eval-baseline');
 
   writeFileSync(join(repo, 'src', 'a.rs'), 'fn a() -> Result<(), ()> { Ok(()) }\n');
   git('add', '-A');
   git('commit', '-qm', 'fix(a): guard the input boundary\n\nAudit-Finding: a');
 
-  writeFileSync(join(dir, 'actions-taken.md'), [
-    '---', 'audit: 2026-08-01-10-x', 'last_updated: 2026-08-18',
-    'status:', '  fixed: 1', '  mitigated: 0', '  accepted: 0', '  disputed: 1',
-    '  deferred: 1', '  escalated: 0', '  superseded: 0', '  no-measurable-benefit: 0',
-    '  open: 0', '---', '',
-    '# Actions Taken: s', '',
+  // Append the session's own entries — real ledgers are append-only, so the
+  // pre-seeded `b` entry above stays untouched.
+  const priorLedger = readFileSync(join(dir, 'actions-taken.md'), 'utf8');
+  writeFileSync(join(dir, 'actions-taken.md'), priorLedger
+    .replace('  fixed: 1', '  fixed: 2')
+    .replace('  disputed: 0', '  disputed: 1')
+    .replace('  deferred: 0', '  deferred: 1')
+    .replace('  open: 3', '  open: 0')
+    .replace('last_updated: 2026-08-01', 'last_updated: 2026-08-18')
+    + [
     '## 2026-08-18 — Guard the input boundary', '',
     '**Disposition:** fixed',
     '**Addresses:** [a](README.md#a)',
@@ -214,7 +252,15 @@ test('scoreRemediation reads dispositions, trailers, and verification scope', ()
   assert.equal(r.false_positive_disputed, true);
   assert.equal(r.note_not_broken, true);
   assert.deepEqual(r.trailers_ok, { n: 1, total: 1 });
+  // `b`'s pre-seeded, pre-baseline fixed entry also cites `just test` — if it
+  // leaked into this ratio it would read 2/2 instead of 1/1.
   assert.deepEqual(r.verification_workspace_scope, { n: 1, total: 1 });
+  // 3 session entries (a fixed, render-unbounded-width disputed,
+  // merge-config-takes-string deferred) out of 4 total ledger entries
+  // (those 3 plus the pre-seeded `b` fix).
+  assert.equal(r.session_entries, 3);
+  assert.equal(r.total_entries, 4);
+  // `b`'s pre-seeded `fixed` disposition must not inflate this count.
   assert.equal(r.fixed, 1);
   assert.equal(r.disputed, 1);
   assert.equal(r.deferred, 1);

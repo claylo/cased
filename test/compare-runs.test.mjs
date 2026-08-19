@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { compare, jaccard } from '../evals/scripts/compare-runs.mjs';
+import { compare, jaccard, loadRun } from '../evals/scripts/compare-runs.mjs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 function run(label, matchedIds, missedIds, totalsOverride = {}) {
   return {
@@ -48,4 +51,14 @@ test('compare rejects mixed fixtures', () => {
   const b = run('b', ['s1'], []);
   b.score.fixture = 'other-fixture';
   assert.throws(() => compare([a, b]), /different fixtures/);
+});
+
+test('loadRun rejects a remediate-mode score.json with a clear message, not a TypeError', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'cased-compare-'));
+  writeFileSync(join(dir, 'score.json'), JSON.stringify({
+    fixture: 'reaudit-rs',
+    mode: 'remediate',
+    remediation: { fixed: 1 },
+  }));
+  assert.throws(() => loadRun(dir), /remediate-mode/);
 });
