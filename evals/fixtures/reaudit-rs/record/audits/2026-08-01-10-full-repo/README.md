@@ -1,6 +1,6 @@
 ---
 audit_date: 2026-08-01
-commit: a1b2c3d
+commit: "a1b2c3d"
 scope: Full repo — error handling across the config, store, render, and CLI modules
 findings:
   critical: 0

@@ -121,6 +121,11 @@ BASE="$(commit '2026-07-28T09:14:00-04:00' 'chore: import the config inspector')
 # authored README front matter, and the rendered report (header plus its embedded
 # JSON). Substitute all four, or `git show` on the sha a reader copies out of the
 # report fails and the artifact set contradicts itself.
+#
+# The placeholder is quoted in the checked-in YAML (`commit: "a1b2c3d"`) so this
+# plain substitution cannot produce an unquoted scalar. Roughly one short sha in
+# 27 is all digits ((10/16)^7), and YAML parses that as an integer — the schema
+# wants a string, so an unquoted substitution fails `validate` on ~4% of runs.
 mkdir -p record/audits
 mv "$STASH/audit-dir" "$AUDIT_DIR"
 for f in "$RECON" "$FINDINGS" "$AUDIT_DIR/README.md" "$AUDIT_DIR/report.html"; do

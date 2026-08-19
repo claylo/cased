@@ -1,6 +1,6 @@
 meta:
   project: reaudit-rs
-  commit: a1b2c3d
+  commit: "a1b2c3d"
   timestamp: 2026-08-01T10:12:00-04:00
   scope: full working tree at a1b2c3d
   audit_profile:
