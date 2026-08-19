@@ -76,6 +76,9 @@ commit() {
 }
 
 STASH="$(mktemp -d)"
+# The stash is the only copy of the final main.rs/config.rs and the unsubstituted
+# ledger while the rewind is in flight: if this script dies mid-run the workdir is
+# unrecoverable, so re-rsync a fresh one rather than re-running setup.sh over it.
 trap 'rm -rf "$STASH"' EXIT
 cp src/main.rs src/config.rs "$STASH/"
 mv "$LEDGER" "$STASH/actions-taken.md"
@@ -114,10 +117,15 @@ edit 's|^        Err(e) => Snapshot::Unreadable(e),$|        Err(_) => Snapshot:
 BASE="$(commit '2026-07-28T09:14:00-04:00' 'chore: import the config inspector')"
 
 # --- the prior audit, recorded against BASE ---------------------------------
+# Every artifact in the dir cites the audited commit — the two YAML sources, the
+# authored README front matter, and the rendered report (header plus its embedded
+# JSON). Substitute all four, or `git show` on the sha a reader copies out of the
+# report fails and the artifact set contradicts itself.
 mkdir -p record/audits
 mv "$STASH/audit-dir" "$AUDIT_DIR"
-edit "s|a1b2c3d|$BASE|" "$RECON"
-edit "s|a1b2c3d|$BASE|" "$FINDINGS"
+for f in "$RECON" "$FINDINGS" "$AUDIT_DIR/README.md" "$AUDIT_DIR/report.html"; do
+    edit "s|a1b2c3d|$BASE|g" "$f"
+done
 AUDIT="$(commit '2026-08-01T16:40:00-04:00' 'docs(audit): record the 2026-08-01 full-repo audit')"
 
 # --- fix 1: exit-code propagation (introduces the u8 truncation) + config guard
