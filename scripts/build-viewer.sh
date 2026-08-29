@@ -21,6 +21,9 @@ cp src/viewer/readme-template.md    build/readme-template.md
 cp src/viewer/style.css             build/style.css
 cp vendor/fonts/*.woff2             build/fonts/
 
+echo "=== generating third-party license notices ==="
+node scripts/third-party-notices.mjs skills/cased/THIRD-PARTY-NOTICES.md build/build-report.js build/viewer.js
+
 echo "=== copying assets to skill directory ==="
 mkdir -p skills/cased/scripts skills/cased/templates/fonts
 

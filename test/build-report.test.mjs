@@ -401,6 +401,12 @@ describe('finalizeAudit', () => {
     r = finalizeAudit(cur, { repoRoot: repo });
     assert.deepEqual(r.errors, []);
     assert.equal(r.ok, true);
+    // Self-audit 2026-08-28 (bare-catch-erases-failure-cause): an unreadable
+    // prior findings.yaml must fail the gate, not count as zero findings.
+    writeFileSync(join(prior, 'findings.yaml'), 'narratives: [\n  - {slug: old\n');
+    r = finalizeAudit(cur, { repoRoot: repo, allowUnledgeredPrior: true });
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some(e => /2026-08-01-10-prior/.test(e) && /unreadable/.test(e)));
     rmSync(repo, { recursive: true, force: true });
   });
 

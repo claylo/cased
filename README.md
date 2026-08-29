@@ -227,4 +227,6 @@ This bundles the viewer JS and copies the built assets into `skills/cased/`.
 
 ## License
 
-MIT
+MIT. The shipped skill bundles inline source from third-party packages; their
+licenses are reproduced in [`skills/cased/THIRD-PARTY-NOTICES.md`](skills/cased/THIRD-PARTY-NOTICES.md),
+regenerated on every `just build-viewer`.

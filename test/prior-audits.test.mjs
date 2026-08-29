@@ -94,3 +94,15 @@ describe('findPriorAudits', () => {
     assert.equal(prior[1].findingCount, 0);
   });
 });
+
+// Self-audit 2026-08-28: bare-catch-erases-failure-cause
+describe('countFindings failure is not zero', () => {
+  it('reports null for an unparseable findings.yaml', () => {
+    const root = mkdtempSync(join(tmpdir(), 'cased-prior-bad-'));
+    mkdirSync(join(root, '2026-08-01-10-a'));
+    writeFileSync(join(root, '2026-08-01-10-a', 'findings.yaml'), 'narratives: [\n  - {slug: x\n');
+    const prior = findPriorAudits(root, 'current');
+    assert.equal(prior.length, 1);
+    assert.equal(prior[0].findingCount, null);
+  });
+});

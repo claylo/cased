@@ -24,7 +24,7 @@ jobs:
           cache: npm
       - uses: taiki-e/install-action@3d7d7cd5ac7f994c1892ae0c06165095b9139094 # v2.85.1
         with:
-          tool: just
+          tool: just,yaml-schema
       - run: npm ci
       - run: just test
       - run: just check-bundle

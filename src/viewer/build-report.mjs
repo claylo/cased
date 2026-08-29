@@ -813,6 +813,10 @@ export function finalizeAudit(auditDir, { repoRoot = null, allowUnledgeredPrior 
 
   const prior = findPriorAudits(join(auditDir, '..'), basename(auditDir));
   for (const p of prior) {
+    if (p.findingCount === null) {
+      errors.push(`prior audit ${p.slug} has an unreadable findings.yaml — cannot tell whether its findings were dispositioned`);
+      continue;
+    }
     if (p.findingCount > 0 && !p.hasLedger) {
       (allowUnledgeredPrior ? warnings : errors).push(`prior audit ${p.slug} has ${p.findingCount} findings and no actions-taken.md — its findings are untracked (pass --allow-unledgered-prior to override)`);
     }
@@ -1077,7 +1081,12 @@ if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url
         try {
           const out = execFileSync('git', ['-C', root, 'log', '-1', '--format=%(trailers:key=Audit-Finding,valueonly)', sha], { encoding: 'utf8' });
           return { exists: true, trailers: out.split('\n').map(s => s.trim()).filter(Boolean) };
-        } catch { return { exists: false, trailers: [] }; }
+        } catch (e) {
+          // git exits 128 for an unknown object; anything else means git
+          // itself could not run and must not read as "commit not found".
+          if (e.status === 128) return { exists: false, trailers: [] };
+          throw new Error(`git log failed for ${sha} in ${root}: ${e.message}`);
+        }
       };
       const out = lintLedger({
         ledgerText: readFileSync(ledgerPath, 'utf8'),

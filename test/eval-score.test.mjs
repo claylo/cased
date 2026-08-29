@@ -320,3 +320,13 @@ test('scoreRemediation never executes recon.testing.command', () => {
   assert.equal(existsSync(canary), false, 'model-authored command was executed');
   assert.equal(r.workspace_gate_pass, false);
 });
+
+test('scoreRemediation distinguishes a missing gate binary from a failing gate', () => {
+  const { repo, dir } = remediationRepo();
+  const r = scoreRemediation({ auditDir: dir, repoRoot: repo, testCommand: 'no-such-gate-binary-xyz', remediation: {} });
+  assert.equal(r.workspace_gate_pass, false);
+  assert.match(r.workspace_gate_error, /not found/);
+  const r2 = scoreRemediation({ auditDir: dir, repoRoot: repo, testCommand: 'false', remediation: {} });
+  assert.equal(r2.workspace_gate_pass, false);
+  assert.equal(r2.workspace_gate_error, null);
+});

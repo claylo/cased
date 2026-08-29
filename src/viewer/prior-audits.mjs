@@ -43,11 +43,20 @@ export function latestDispositions(ledger) {
   return map;
 }
 
+/**
+ * Number of findings in a prior audit, or `null` when findings.yaml cannot
+ * be read or parsed. Never zero on failure: finalize's "prior findings with
+ * no ledger" gate compares against this count, and an unreadable file
+ * reported as 0 would pass the gate precisely when its input is broken.
+ */
 function countFindings(findingsPath) {
   try {
     const doc = parseYaml(readFileSync(findingsPath, 'utf8')) ?? {};
     return (doc.narratives ?? []).reduce((n, nar) => n + (nar.findings ?? []).length, 0);
-  } catch { return 0; }
+  } catch (e) {
+    console.warn(`warn: prior audit findings unreadable at ${findingsPath}: ${e.message}`);
+    return null;
+  }
 }
 
 export function findPriorAudits(auditsRoot, currentSlug) {

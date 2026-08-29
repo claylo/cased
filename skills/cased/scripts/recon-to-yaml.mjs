@@ -414,7 +414,8 @@ function detectScratTest(targetPath) {
     let raw;
     try {
       raw = readFileSync(full, 'utf8');
-    } catch {
+    } catch (e) {
+      console.error(`warn: ${path} exists but could not be read (${e.message}); skipping`);
       continue;
     }
     let command;
@@ -422,7 +423,8 @@ function detectScratTest(targetPath) {
       try {
         const parsed = YAML.parse(raw);
         command = parsed?.commands?.test;
-      } catch {
+      } catch (e) {
+        console.error(`warn: ${path} is not valid YAML (${e.message}); skipping`);
         continue;
       }
     } else {
@@ -459,7 +461,8 @@ function detectJustTest(targetPath) {
     let raw;
     try {
       raw = readFileSync(full, 'utf8');
-    } catch {
+    } catch (e) {
+      console.error(`warn: ${name} exists but could not be read (${e.message}); skipping`);
       continue;
     }
     // Match a top-level recipe header `test:` (optionally with deps after).
@@ -481,9 +484,8 @@ function detectNpmTest(targetPath) {
     if (pkg?.scripts?.test && typeof pkg.scripts.test === 'string') {
       return { command: pkg.scripts.test };
     }
-  } catch {
-    // Malformed package.json — silent skip; higher-priority detection
-    // already returned null.
+  } catch (e) {
+    console.error(`warn: package.json could not be read or parsed (${e.message}); skipping`);
   }
   return null;
 }

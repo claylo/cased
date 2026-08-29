@@ -39855,11 +39855,18 @@ function parseLedger(md) {
 		entries
 	};
 }
+/**
+* Number of findings in a prior audit, or `null` when findings.yaml cannot
+* be read or parsed. Never zero on failure: finalize's "prior findings with
+* no ledger" gate compares against this count, and an unreadable file
+* reported as 0 would pass the gate precisely when its input is broken.
+*/
 function countFindings(findingsPath) {
 	try {
 		return (((0, import_dist$1.parse)((0, node_fs.readFileSync)(findingsPath, "utf8")) ?? {}).narratives ?? []).reduce((n, nar) => n + (nar.findings ?? []).length, 0);
-	} catch {
-		return 0;
+	} catch (e) {
+		console.warn(`warn: prior audit findings unreadable at ${findingsPath}: ${e.message}`);
+		return null;
 	}
 }
 function findPriorAudits(auditsRoot, currentSlug) {
@@ -40686,7 +40693,13 @@ function finalizeAudit(auditDir, { repoRoot = null, allowUnledgeredPrior = false
 	for (const p of checkEvidenceFidelity(findings, root)) errors.push(`evidence ${p.problem} for ${p.slug} @ ${p.path}:${p.start_line}-${p.end_line}${p.expected !== void 0 ? ` (file: ${JSON.stringify(p.expected)} vs evidence: ${JSON.stringify(p.actual)})` : ""}`);
 	for (const f of allFindings(findings)) if (f.origin && ["caused-by-fix", "recurrence-of"].includes(f.origin.kind) && !f.origin.ref) errors.push(`${f.slug}: origin.kind ${f.origin.kind} requires origin.ref`);
 	const prior = findPriorAudits((0, node_path.join)(auditDir, ".."), (0, node_path.basename)(auditDir));
-	for (const p of prior) if (p.findingCount > 0 && !p.hasLedger) (allowUnledgeredPrior ? warnings : errors).push(`prior audit ${p.slug} has ${p.findingCount} findings and no actions-taken.md — its findings are untracked (pass --allow-unledgered-prior to override)`);
+	for (const p of prior) {
+		if (p.findingCount === null) {
+			errors.push(`prior audit ${p.slug} has an unreadable findings.yaml — cannot tell whether its findings were dispositioned`);
+			continue;
+		}
+		if (p.findingCount > 0 && !p.hasLedger) (allowUnledgeredPrior ? warnings : errors).push(`prior audit ${p.slug} has ${p.findingCount} findings and no actions-taken.md — its findings are untracked (pass --allow-unledgered-prior to override)`);
+	}
 	if (recon?.meta?.audit_profile?.mode === "re-audit") {
 		if (!findings.reconciliation) errors.push("re-audit mode but findings.yaml has no reconciliation block — every ledgered prior fix needs a still-fixed/regressed/superseded/not-verified row");
 		const regressed = (findings.reconciliation ?? []).filter((r) => r.status === "regressed").map((r) => r.prior_slug);
@@ -40911,11 +40924,12 @@ if ((0, node_fs.realpathSync)(process.argv[1]) === (0, node_fs.realpathSync)((0,
 						sha
 					], { encoding: "utf8" }).split("\n").map((s) => s.trim()).filter(Boolean)
 				};
-			} catch {
-				return {
+			} catch (e) {
+				if (e.status === 128) return {
 					exists: false,
 					trailers: []
 				};
+				throw new Error(`git log failed for ${sha} in ${root}: ${e.message}`);
 			}
 		};
 		const out = lintLedger({
