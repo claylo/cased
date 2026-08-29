@@ -1,0 +1,420 @@
+---
+meta:
+  project: cased
+  commit: 2365a3f79e49d64a8b47d0de4445a80d206a04b0
+  timestamp: 2026-08-28T21:11:46-04:00
+  scope: Full-repo self-audit at 2365a3f — src/ (viewer, recon, schemas), evals/
+    (runner, scorer, fixtures), skills/ (cased + crustoleum prose and shipped
+    bundle), scripts/, test/. Excludes vendor/, node_modules/, record/audits/**,
+    *.html, fixture prior-audit artifacts.
+  audit_profile:
+    mode: fresh
+    prior_audit: null
+    model: claude-fable-5
+    effort: default
+    agent_count: 6
+    surfaces:
+      - security
+      - error-handling
+      - code-quality
+      - completeness
+      - dependencies
+      - api-design
+    severity_floor: note
+    excluded_tools:
+      - "performance agent: no hot paths — build-time tooling, one-shot CLI"
+      - "npm audit: devDependencies only; no runtime deps shipped (skill is
+        pre-bundled)"
+    skill_versions:
+      cased: 2365a3f
+      crustoleum: 2365a3f
+    release_phase: pre-publish
+structure:
+  root: /Users/clay/source/claylo/cased
+  total_files: 157
+  total_lines: 20402
+  languages:
+    - language: Markdown
+      files: 85
+      lines: 10800
+      percentage: 52.9
+    - language: JavaScript
+      files: 24
+      lines: 6800
+      percentage: 33.3
+    - language: YAML
+      files: 12
+      lines: 1500
+      percentage: 7.4
+    - language: Shell
+      files: 6
+      lines: 700
+      percentage: 3.4
+    - language: Rust
+      files: 13
+      lines: 500
+      percentage: 2.5
+    - language: JSON
+      files: 10
+      lines: 102
+      percentage: 0.5
+  modules:
+    - name: viewer
+      path: src/viewer
+      files: 13
+      lines: 2903
+      entry_points:
+        - name: build-report CLI (validate|build|evidence|ledger|finalize)
+          path: src/viewer/build-report.mjs
+          line: 941
+          kind: cli_main
+        - name: finalizeAudit
+          path: src/viewer/build-report.mjs
+          line: 787
+          kind: public_fn
+        - name: lintLedger
+          path: src/viewer/gates.mjs
+          line: 76
+          kind: public_fn
+        - name: checkEvidenceFidelity
+          path: src/viewer/gates.mjs
+          line: 25
+          kind: public_fn
+      dependencies:
+        - target: schemas
+          weight: 2
+    - name: recon
+      path: src/recon
+      files: 2
+      lines: 872
+      entry_points:
+        - name: recon pre-runner (bash)
+          path: src/recon/recon
+          line: 1
+          kind: cli_main
+        - name: buildReconObject
+          path: src/recon/recon-to-yaml.mjs
+          line: 505
+          kind: public_fn
+      dependencies:
+        - target: schemas
+          weight: 1
+    - name: schemas
+      path: src/schemas
+      files: 9
+      lines: 2120
+      entry_points:
+        - name: build-schemas.sh (stamps contract into skills/*/references)
+          path: src/schemas/build-schemas.sh
+          line: 1
+          kind: cli_main
+    - name: evals
+      path: evals/scripts
+      files: 3
+      lines: 953
+      entry_points:
+        - name: run-eval (bash; --mode audit|remediate; drives headless claude/codex)
+          path: evals/scripts/run-eval
+          line: 1
+          kind: cli_main
+        - name: score-eval CLI
+          path: evals/scripts/score-eval.mjs
+          line: 333
+          kind: cli_main
+      dependencies:
+        - target: viewer
+          weight: 2
+    - name: eval-fixtures
+      path: evals/fixtures
+      files: 21
+      lines: 840
+      entry_points:
+        - name: reaudit-rs setup.sh (rebuilds git history in a workdir)
+          path: evals/fixtures/reaudit-rs/setup.sh
+          line: 1
+          kind: cli_main
+    - name: build-scripts
+      path: scripts
+      files: 1
+      lines: 39
+      entry_points:
+        - name: build-viewer.sh (rolldown bundle + copy into skills/cased)
+          path: scripts/build-viewer.sh
+          line: 1
+          kind: cli_main
+      dependencies:
+        - target: viewer
+          weight: 1
+        - target: schemas
+          weight: 1
+    - name: skill-cased
+      path: skills/cased
+      files: 21
+      lines: 5230
+      entry_points:
+        - name: SKILL.md (agent-facing workflow)
+          path: skills/cased/SKILL.md
+          line: 1
+          kind: exported_symbol
+    - name: skill-crustoleum
+      path: skills/crustoleum
+      files: 23
+      lines: 4517
+      entry_points:
+        - name: SKILL.md
+          path: skills/crustoleum/SKILL.md
+          line: 1
+          kind: exported_symbol
+    - name: tests
+      path: test
+      files: 12
+      lines: 2107
+dependencies:
+  manifest: package.json
+  items:
+    - name: ajv
+      version: ^8.18.0
+      kind: direct
+    - name: ajv-formats
+      version: ^3.0.1
+      kind: direct
+    - name: yaml
+      version: ^2.8.3
+      kind: direct
+    - name: rolldown
+      version: ^1.0.0-rc.14
+      kind: direct
+    - name: "@expressive-code/core"
+      version: ^0.44.1
+      kind: direct
+    - name: "@expressive-code/plugin-frames"
+      version: ^0.44.1
+      kind: direct
+    - name: "@expressive-code/plugin-line-numbers"
+      version: ^0.44.1
+      kind: direct
+    - name: "@expressive-code/plugin-text-markers"
+      version: ^0.44.1
+      kind: direct
+    - name: "@shikijs/core"
+      version: ^4.0.2
+      kind: direct
+    - name: "@shikijs/engine-javascript"
+      version: ^4.0.2
+      kind: direct
+    - name: "@shikijs/langs"
+      version: ^4.0.2
+      kind: direct
+    - name: "@shikijs/themes"
+      version: ^4.0.2
+      kind: direct
+    - name: rough-notation
+      version: ^0.5.1
+      kind: direct
+churn:
+  period: "last 12 months (project age: ~5 months, started 2026-03-21); active
+    months April and August 2026"
+  hotspots:
+    - path: skills/cased/SKILL.md
+      commits: 21
+      authors: 1
+      last_touched: 2026-08-28
+      monthly_commits:
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 17
+        - 0
+        - 0
+        - 0
+        - 4
+    - path: Justfile
+      commits: 12
+      authors: 1
+      last_touched: 2026-08-28
+      monthly_commits:
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 1
+        - 5
+        - 0
+        - 0
+        - 0
+        - 6
+    - path: src/viewer/build-report.mjs
+      commits: 11
+      authors: 1
+      last_touched: 2026-08-28
+      monthly_commits:
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 9
+        - 0
+        - 0
+        - 0
+        - 2
+    - path: src/viewer/flow-to-svg.js
+      commits: 9
+      authors: 1
+      last_touched: 2026-04-12
+      monthly_commits:
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 9
+        - 0
+        - 0
+        - 0
+        - 0
+    - path: test/build-report.test.mjs
+      commits: 8
+      authors: 1
+      last_touched: 2026-08-28
+      monthly_commits:
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 6
+        - 0
+        - 0
+        - 0
+        - 2
+    - path: skills/crustoleum/SKILL.md
+      commits: 8
+      authors: 1
+      last_touched: 2026-08-28
+      monthly_commits:
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 4
+        - 0
+        - 0
+        - 0
+        - 4
+    - path: evals/scripts/run-eval
+      commits: 8
+      authors: 1
+      last_touched: 2026-08-28
+      monthly_commits:
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 8
+    - path: scripts/build-viewer.sh
+      commits: 6
+      authors: 1
+      last_touched: 2026-04-12
+      monthly_commits:
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 6
+        - 0
+        - 0
+        - 0
+        - 0
+  recent_activity:
+    total_commits: 20
+    active_authors: 1
+    files_changed: 84
+testing:
+  runner: just
+  command: just test
+  sources:
+    - Justfile
+  notes: >
+    `just test` runs `node --test` over an explicit file list in the Justfile.
+    Also gates: `just check-contract` (schema stamp drift), `just check-bundle`
+    (rolldown bundle drift), `just build-smoke`. Evals (`just eval …`) spend
+    real tokens and are not part of `just test`. Never run bare `node --test`
+    for the suite — the Justfile list is the canonical set (and is known to omit
+    test/flow-to-svg.test.mjs).
+boundaries:
+  - name: shell_execution
+    description: Bash scripts that spawn git, tokei, cargo, node, rsync, and
+      headless LLM CLIs (claude -p, codex exec) with paths and prompts
+      interpolated
+    modules:
+      - recon
+      - evals
+      - eval-fixtures
+      - build-scripts
+      - schemas
+    notes: "Primary injection surface: fixture names, audit dir paths, model/effort
+      flags flow into command lines; run-eval executes a model with acceptEdits
+      permissions inside a workdir"
+  - name: untrusted_yaml_ingest
+    description: Model-authored findings.yaml / recon.yaml / actions-taken.md parsed
+      and rendered into HTML, and used to drive git commands
+    modules:
+      - viewer
+      - evals
+    notes: Slugs, paths, evidence, and SHAs come from LLM output; rendered into
+      report.html and passed to execFileSync git; XSS/escaping and
+      path-traversal are the concerns
+  - name: filesystem_writes
+    description: build-report writes report.html/AGENTS.md/CLAUDE.md/README scaffold
+      into the audit dir; build-viewer copies into skills/; setup.sh rm -rf .git
+      and rewrites a workdir
+    modules:
+      - viewer
+      - build-scripts
+      - eval-fixtures
+    notes: Destructive operations (rm -rf .git in setup.sh) gated by preflight;
+      scaffold overwrite rules (README never overwritten; CLAUDE.md only if
+      absent)
+  - name: contract_stamping
+    description: src/schemas is canonical; copies stamped into skills/*/references;
+      bundle copied into skills/cased/scripts
+    modules:
+      - schemas
+      - build-scripts
+    notes: Drift is a correctness risk for every downstream audit; CI gates
+      check-contract/check-bundle
+  - name: skill_prose_contract
+    description: SKILL.md, agent prompts, references, and templates form a
+      behavioural contract that models follow; contradictions between prose and
+      gates are defects
+    modules:
+      - skill-cased
+      - skill-crustoleum
+    notes: Docs win over code by project rule; gates in src/viewer must match what
+      prose promises
