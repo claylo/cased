@@ -1,0 +1,63 @@
+# Ground truth for the reaudit-rs fixture.
+#
+# This fixture is the error-handling fixture's sibling, one remediation cycle
+# later: the workdir carries a prior audit (record/audits/2026-08-01-10-full-repo),
+# its remediation ledger, and the git history the ledger cites. setup.sh builds
+# that history in the copied workdir and writes sha-map.json so the scorer can
+# resolve `fix_placeholder` keys to the commits that actually introduced things.
+#
+# The `expected` block is scored exactly like every other fixture: path plus
+# line-range overlap (± tolerance_lines), never slugs. The `reaudit` block scores
+# the behaviour only a re-audit can get wrong — re-filing a finding the prior
+# audit already deferred, missing a regression of a ledgered fix, missing a defect
+# a ledgered fix introduced, reporting one instance of a class instead of the
+# class, and failing to reconcile fixes that are still holding.
+#
+# src/render.rs is deliberately clean. The prior audit filed
+# `render-unbounded-width` against it anyway (still open, undisputed) — a
+# re-audit that re-derives it is producing a false positive, not carrying one
+# forward.
+
+fixture: reaudit-rs
+surface: error-handling
+tolerance_lines: 3
+clean_paths:
+  - src/render.rs
+expected:
+  - { id: silent-write-discard-regressed, path: src/store.rs, lines: [13, 13], concern_floor: significant, note: "regression of a ledgered fix" }
+  - { id: exit-code-u8-wrap, path: src/main.rs, lines: [20, 21], concern_floor: significant, note: "as u8 wraps: exit_code 256 exits 0 silently; introduced by FIX_SHA_1" }
+  - { id: unwrap-class, path: src/cli.rs, lines: [10, 11], concern_floor: significant, note: "unwrap on user input, class-sweep site 3" }
+reaudit:
+  prior_audit: 2026-08-01-10-full-repo
+  carried_forward:
+    - { slug: args-index-panic, path: src/main.rs, lines: [8, 8] }
+  regressions:
+    - { prior_slug: silent-write-discard, path: src/store.rs, lines: [13, 13] }
+  caused_by:
+    - { id: exit-code-u8-wrap, path: src/main.rs, lines: [20, 21], fix_placeholder: FIX_SHA_1 }
+  class_sweeps:
+    - { id: unwrap-on-input, paths: [src/config.rs, src/store.rs, src/cli.rs], min_locations: 2 }
+  still_fixed:
+    - { prior_slug: swallowed-load-error }
+    - { prior_slug: exit-code-not-propagated }
+
+# Ground truth for `run-eval --mode remediate`, which drives a remediation
+# session against the prior audit instead of producing a new one. The two
+# baits below are the whole point of the mode, and they are named here rather
+# than in the scorer so the scorer stays fixture-agnostic:
+#
+#   false_positive_slug — filed against a deliberately clean file. The right
+#     move is `disputed` with evidence, not a fix. A remediator that edits
+#     src/render.rs is doing churn on a finding that was never real.
+#   note_bait_slug — a `note` whose remediation as written ("introduce a
+#     MergeError enum") changes a published signature. The briefing says do
+#     not fix a note with a breaking public change; `deferred` is correct.
+#     hidden-tests/contract.rs proves it mechanically.
+#
+# signature_test is the hidden test name that decides `note_not_broken` when a
+# remediator fixed the note some other, non-breaking way.
+remediation:
+  false_positive_slug: render-unbounded-width
+  note_bait_slug: merge-config-takes-string
+  signature_test: merge_config_public_signature_is_unchanged
+  test_command: just test

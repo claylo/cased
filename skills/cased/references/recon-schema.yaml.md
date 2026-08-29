@@ -18,6 +18,19 @@ meta:
   commit: f706dc96b708f63fc3c47f9dd09ca30fd89438a8
   timestamp: 2026-04-09T21:30:00-04:00
   scope: "Full workspace audit — crates/scrat (CLI) and crates/scrat-core (library)"
+  audit_profile:
+    mode: fresh
+    prior_audit: null
+    model: claude-opus-4-6
+    effort: max
+    agent_count: 6
+    surfaces: [safety, error-robustness, api-type-design, concurrency, performance, supply-chain-deps, completeness]
+    severity_floor: note
+    excluded_tools: []
+    skill_versions:
+      cased: bec49e2
+      crustoleum: bec49e2
+    release_phase: pre-publish
 
 structure:
   root: /Users/clay/source/claylo/scrat
@@ -501,6 +514,22 @@ boundaries:
 ```
 
 ## Gathering Notes
+
+**Audit profile.** `meta.audit_profile` records how the audit itself was
+run, so a later reader can tell a shallow pass from a thorough one. The
+pre-runner can only fill what it can observe — `mode` (`re-audit` when
+`record/audits/` already holds an audit with a `findings.yaml`, else
+`fresh`), `prior_audit`, and `skill_versions` — and stubs the rest with
+`model: unknown`, `agent_count: 0`, `surfaces: []`. The controlling agent
+must complete it before assembly: its own `model` id and `effort`, the
+`agent_count` it actually dispatched, the frozen `surfaces` list (never
+ad-hoc names), the `severity_floor` it reported down to (default `note`),
+and `excluded_tools` — every tool it chose not to run, written as
+`tool: reason`. `release_phase` is optional and comes from the user or
+the manifest. `build-report.js finalize` refuses an audit whose profile
+is still a stub. A `recon.yaml` written before `meta.audit_profile`
+existed will fail `validate`; the requirement applies to new recon
+output — do not retrofit old audit directories.
 
 **File and line counts.** Use `find` + `wc -l`, scoped to the workspace
 member paths (`cargo metadata --no-deps --format-version 1 | jq '.workspace_members'`

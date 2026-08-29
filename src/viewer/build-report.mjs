@@ -13,6 +13,16 @@ import { pluginPrebuiltShiki } from './shiki-plugin.js'
 import { getHighlighter, inferLangFromPath } from './highlighter.js'
 import { flowToSvg } from './flow-to-svg.js'
 import githubLightTheme from '@shikijs/themes/github-light'
+import { findPriorAudits } from './prior-audits.mjs'
+import {
+  checkEvidenceFidelity,
+  checkReadmeComplete,
+  checkAuditProfile,
+  isBlocking,
+  lintLedger,
+  allFindings,
+} from './gates.mjs'
+import { execFileSync } from 'node:child_process'
 
 // Re-export for tests
 export { inferLangFromPath } from './highlighter.js'
@@ -319,7 +329,7 @@ async function renderEvidence(ec, finding) {
 /**
  * Build a glossary sidenote from concern levels present in this report.
  */
-function buildGlossary(counts) {
+function buildGlossary(counts, blocking, backlog) {
   const defs = {
     critical: 'active exploitability or data loss path',
     significant: 'meaningful risk under realistic conditions',
@@ -332,14 +342,15 @@ function buildGlossary(counts) {
     .map(([level]) => `<strong>${level}</strong> \u2014 ${defs[level] || level}`)
     .join('<br>');
   if (!lines) return '';
-  return `<span class="sidenote glossary"><strong>Concern levels</strong><br>${lines}<br><br>Each <strong>surface</strong> groups findings into a coherent concern area, not a category.</span>`;
+  return `<span class="sidenote glossary"><strong>Concern levels</strong><br>${lines}<br><br>Blocking: ${blocking} &middot; Backlog: ${backlog}<br><br>Each <strong>surface</strong> groups findings into a coherent concern area, not a category.</span>`;
 }
 
 export function renderHeader(findings) {
   const counts = findings.summary?.counts || {};
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   const assessment = findings.assessment || '';
-  const glossary = buildGlossary(counts);
+  const { blocking, backlog } = blockingCounts(findings);
+  const glossary = buildGlossary(counts, blocking, backlog);
 
   return `    <header>
       <h1>${escHtml(findings.scope || 'Audit')} Audit</h1>
@@ -444,16 +455,18 @@ function renderFinding(finding, slugToTitle, evidenceHtml, auditDir) {
 }
 
 /**
- * Generate the remediation ledger <section> with a summary table.
- * One row per finding, grouped by narrative. Columns: slug, concern, location, effort, chains.
+ * Build the <tr> rows for the findings matching a predicate, in narrative order.
  * @param {object} findings — parsed findings object
- * @returns {string}
+ * @param {object} slugToTitle — slug-to-title map for chain references
+ * @param {(finding: object) => boolean} predicate
+ * @returns {string[]}
  */
-export function renderLedger(findings, slugToTitle) {
+function ledgerRows(findings, slugToTitle, predicate) {
   const rows = [];
 
   for (const narrative of (findings.narratives || [])) {
     for (const finding of (narrative.findings || [])) {
+      if (!predicate(finding)) continue;
       const locations = finding.locations || [];
       const locationCell = locations.map(loc =>
         `<code>${escHtml(loc.path)}:${loc.start_line}</code>`
@@ -480,9 +493,17 @@ export function renderLedger(findings, slugToTitle) {
     }
   }
 
-  return `    <section id="remediation-ledger" class="ledger">
-      <h2>Remediation Ledger</h2>
-      <table class="ledger-table">
+  return rows;
+}
+
+/**
+ * Wrap ledger rows in a table, or emit an explicit empty marker.
+ * @param {string[]} rows
+ * @returns {string}
+ */
+function ledgerTable(rows) {
+  if (rows.length === 0) return '      <p><em>none</em></p>';
+  return `      <table class="ledger-table">
         <thead>
           <tr>
             <th>Finding</th>
@@ -495,7 +516,30 @@ export function renderLedger(findings, slugToTitle) {
         <tbody>
 ${rows.join('\n')}
         </tbody>
-      </table>
+      </table>`;
+}
+
+/**
+ * Generate the remediation ledger <section>, split into a release-gating
+ * Blocking table and a Backlog table. One row per finding, grouped by
+ * narrative within each section. Columns: slug, concern, location, effort,
+ * chains.
+ * @param {object} findings — parsed findings object
+ * @param {object} slugToTitle — slug-to-title map for chain references
+ * @returns {string}
+ */
+export function renderLedger(findings, slugToTitle) {
+  const blocking = ledgerRows(findings, slugToTitle, f => isBlocking(f));
+  const backlog = ledgerRows(findings, slugToTitle, f => !isBlocking(f));
+
+  return `    <section id="remediation-ledger" class="ledger">
+      <h2>Remediation Ledger</h2>
+      <h3>Blocking</h3>
+      <p>critical/significant with a user-visible failure mode — release-gating</p>
+${ledgerTable(blocking)}
+      <h3>Backlog</h3>
+      <p>everything else — triage to the next milestone by default</p>
+${ledgerTable(backlog)}
     </section>`;
 }
 
@@ -595,14 +639,61 @@ export function renderAgentsFindingList(findings) {
 }
 
 /**
+ * Render the carried-forward list: prior findings this audit deliberately did
+ * not re-derive. Markdown bullet list; each slug is backticked so it can never
+ * be mistaken for a finding-index entry.
+ * @param {object} findings — parsed findings YAML
+ * @returns {string}
+ */
+export function renderCarriedForward(findings) {
+  const cf = findings.carried_forward ?? [];
+  if (!cf.length) return '_None._';
+  return cf.map(c => `- \`${c.slug}\` — ${c.disposition} in \`${c.prior_audit}\`${c.reason ? ` — ${c.reason}` : ''}`).join('\n');
+}
+
+/**
+ * Render the reconciliation table: what happened to prior audits' fixed
+ * findings when this audit re-checked them.
+ * @param {object} findings — parsed findings YAML
+ * @returns {string}
+ */
+export function renderReconciliation(findings) {
+  const rows = findings.reconciliation ?? [];
+  if (!rows.length) return '_No prior fixed findings to reconcile._';
+  const lines = ['| prior finding | audit | status | verified against |', '|---|---|---|---|'];
+  for (const r of rows) {
+    lines.push(`| \`${r.prior_slug}\` | \`${r.prior_audit}\` | ${r.status}${r.superseded_by ? ` → \`${r.superseded_by}\`` : ''} | ${r.verified_against ? `\`${r.verified_against}\`` : '—'} |`);
+  }
+  return lines.join('\n');
+}
+
+/**
+ * Split this audit's findings into release-gating and backlog counts.
+ * @param {object} findings — parsed findings YAML
+ * @returns {{blocking: number, backlog: number}}
+ */
+export function blockingCounts(findings) {
+  const all = allFindings(findings);
+  const blocking = all.filter(isBlocking).length;
+  return { blocking, backlog: all.length - blocking };
+}
+
+// Kept short on purpose: the AGENTS.md template prints the pre-publish
+// explanation on the following line, so it must not be duplicated here.
+const RELEASE_PHASE_UNKNOWN = 'unspecified — ask the maintainer';
+
+/**
  * Render the AGENTS.md content by interpolating a template string with
  * audit metadata and the pre-rendered finding list.
  * @param {object} findings — parsed findings YAML
  * @param {string} templateStr — raw template markdown
  * @param {string} auditSlug — directory basename (e.g. "2026-04-12-14-full-crate")
+ * @param {object} [opts]
+ * @param {object|null} [opts.recon] — parsed recon YAML, for test command / mode / release phase
+ * @param {Array} [opts.priorAudits] — findPriorAudits() records for sibling audits
  * @returns {string}
  */
-export function renderAgentsMd(findings, templateStr, auditSlug) {
+export function renderAgentsMd(findings, templateStr, auditSlug, { recon = null, priorAudits = [] } = {}) {
   const auditTitle = titleFromScope(findings.scope);
   let findingCount = 0;
   for (const n of findings.narratives || []) {
@@ -610,13 +701,29 @@ export function renderAgentsMd(findings, templateStr, auditSlug) {
   }
   const findingList = renderAgentsFindingList(findings);
 
+  const { blocking, backlog } = blockingCounts(findings);
+  const testCommand = recon?.testing?.command || '<recon.yaml#testing.command not detected — use the project task runner>';
+  const mode = recon?.meta?.audit_profile?.mode ?? 'fresh';
+  const phase = recon?.meta?.audit_profile?.release_phase;
+  const releasePhase = (!phase || phase === 'unspecified') ? RELEASE_PHASE_UNKNOWN : phase;
+  const priorList = priorAudits.length
+    ? priorAudits.map(p => `- \`${p.slug}\`${p.hasLedger ? '' : ' — **no actions-taken.md** (findings there are untracked)'}`).join('\n')
+    : '_none_';
+
   return templateStr
     .replaceAll('{{audit_title}}', auditTitle)
     .replaceAll('{{audit_slug}}', auditSlug)
     .replaceAll('{{audit_scope}}', findings.scope || '')
     .replaceAll('{{audit_date}}', findings.audit_date || '')
     .replaceAll('{{finding_count}}', String(findingCount))
-    .replaceAll('{{finding_list}}', findingList);
+    .replaceAll('{{finding_list}}', findingList)
+    .replaceAll('{{blocking_count}}', String(blocking))
+    .replaceAll('{{backlog_count}}', String(backlog))
+    .replaceAll('{{test_command}}', testCommand)
+    .replaceAll('{{mode}}', mode)
+    .replaceAll('{{release_phase}}', releasePhase)
+    .replaceAll('{{prior_audits}}', priorList)
+    .replaceAll('{{carried_forward_list}}', renderCarriedForward(findings));
 }
 
 /**
@@ -627,9 +734,11 @@ export function renderAgentsMd(findings, templateStr, auditSlug) {
  * pre-fills structural metadata so the agent knows the scope.
  * @param {object} findings — parsed findings YAML
  * @param {string} templateStr — raw template markdown
+ * @param {object} [opts]
+ * @param {Array} [opts.priorAudits] — findPriorAudits() records for sibling audits
  * @returns {string}
  */
-export function renderReadmeMd(findings, templateStr) {
+export function renderReadmeMd(findings, templateStr, { priorAudits = [] } = {}) {
   const auditTitle = titleFromScope(findings.scope);
   const narratives = findings.narratives || [];
   let findingCount = 0;
@@ -638,6 +747,10 @@ export function renderReadmeMd(findings, templateStr) {
   }
   const counts = findings.summary?.counts || {};
   const findingList = renderAgentsFindingList(findings);
+  const { blocking, backlog } = blockingCounts(findings);
+  const priorList = priorAudits.length
+    ? priorAudits.map(p => `- \`${p.slug}\`${p.hasLedger ? '' : ' — **no actions-taken.md** (findings there are untracked)'}`).join('\n')
+    : '_none_';
 
   return templateStr
     .replaceAll('{{audit_title}}', auditTitle)
@@ -651,7 +764,82 @@ export function renderReadmeMd(findings, templateStr) {
     .replaceAll('{{count_significant}}', String(counts.significant ?? 0))
     .replaceAll('{{count_moderate}}', String(counts.moderate ?? 0))
     .replaceAll('{{count_advisory}}', String(counts.advisory ?? 0))
-    .replaceAll('{{count_note}}', String(counts.note ?? 0));
+    .replaceAll('{{count_note}}', String(counts.note ?? 0))
+    .replaceAll('{{blocking_count}}', String(blocking))
+    .replaceAll('{{backlog_count}}', String(backlog))
+    .replaceAll('{{prior_audits}}', priorList)
+    .replaceAll('{{reconciliation_table}}', renderReconciliation(findings))
+    .replaceAll('{{carried_forward_list}}', renderCarriedForward(findings));
+}
+
+/**
+ * Mechanical completeness gate for an audit directory. Returns every reason
+ * the audit is not finishable: missing build outputs, an unfilled README
+ * scaffold, a stub audit_profile, evidence that does not match the source
+ * tree, prior audits whose findings were never dispositioned, and (in
+ * re-audit mode) a reconciliation block that contradicts the findings.
+ * @param {string} auditDir
+ * @param {object} [opts]
+ * @param {string|null} [opts.repoRoot] — target repo root; falls back to recon.structure.root
+ * @param {boolean} [opts.allowUnledgeredPrior] — downgrade unledgered-prior errors to warnings
+ * @returns {{ok: boolean, errors: string[], warnings: string[]}}
+ */
+export function finalizeAudit(auditDir, { repoRoot = null, allowUnledgeredPrior = false } = {}) {
+  const errors = [];
+  const warnings = [];
+  const findingsPath = join(auditDir, 'findings.yaml');
+  const reconPath = join(auditDir, 'recon.yaml');
+  const readmePath = join(auditDir, 'README.md');
+  for (const p of [findingsPath, reconPath, readmePath, join(auditDir, 'report.html'), join(auditDir, 'AGENTS.md')]) {
+    if (!existsSync(p)) errors.push(`missing ${basename(p)}`);
+  }
+  if (errors.length) return { ok: false, errors, warnings };
+
+  const findings = parseFindings(readFileSync(findingsPath, 'utf8'));
+  const recon = parseRecon(readFileSync(reconPath, 'utf8'));
+  const root = repoRoot ?? recon?.structure?.root ?? join(auditDir, '..', '..', '..');
+
+  errors.push(...checkReadmeComplete(readFileSync(readmePath, 'utf8')));
+  errors.push(...checkAuditProfile(recon));
+  for (const p of checkEvidenceFidelity(findings, root)) {
+    errors.push(`evidence ${p.problem} for ${p.slug} @ ${p.path}:${p.start_line}-${p.end_line}${p.expected !== undefined ? ` (file: ${JSON.stringify(p.expected)} vs evidence: ${JSON.stringify(p.actual)})` : ''}`);
+  }
+  // origin refs required for causal kinds (belt-and-braces if the schema's if/then was dropped)
+  for (const f of allFindings(findings)) {
+    if (f.origin && ['caused-by-fix', 'recurrence-of'].includes(f.origin.kind) && !f.origin.ref) {
+      errors.push(`${f.slug}: origin.kind ${f.origin.kind} requires origin.ref`);
+    }
+  }
+
+  const prior = findPriorAudits(join(auditDir, '..'), basename(auditDir));
+  for (const p of prior) {
+    if (p.findingCount > 0 && !p.hasLedger) {
+      (allowUnledgeredPrior ? warnings : errors).push(`prior audit ${p.slug} has ${p.findingCount} findings and no actions-taken.md — its findings are untracked (pass --allow-unledgered-prior to override)`);
+    }
+  }
+
+  if (recon?.meta?.audit_profile?.mode === 're-audit') {
+    if (!findings.reconciliation) errors.push('re-audit mode but findings.yaml has no reconciliation block — every ledgered prior fix needs a still-fixed/regressed/superseded/not-verified row');
+    const regressed = (findings.reconciliation ?? []).filter(r => r.status === 'regressed').map(r => r.prior_slug);
+    const recurrences = new Set(allFindings(findings).filter(f => f.origin?.kind === 'recurrence-of').map(f => f.origin.ref));
+    for (const s of regressed) {
+      if (!recurrences.has(s)) errors.push(`reconciliation marks ${s} regressed but no finding carries origin {kind: recurrence-of, ref: ${s}}`);
+    }
+  }
+
+  const ledgerPath = join(auditDir, 'actions-taken.md');
+  if (existsSync(ledgerPath)) {
+    const problems = lintLedger({
+      ledgerText: readFileSync(ledgerPath, 'utf8'),
+      findingsDoc: findings,
+      testCommand: recon?.testing?.command || null,
+    });
+    for (const p of problems) {
+      (p.level === 'error' ? errors : warnings).push(`ledger${p.entry ? ` [${p.entry}]` : ''}: ${p.message}`);
+    }
+  }
+
+  return { ok: errors.length === 0, errors, warnings };
 }
 
 /**
@@ -755,17 +943,23 @@ if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url
     // Parse subcommand: `validate <dir>` or `build <dir>`; bare `<dir>` is
     // treated as `build` for backward compatibility.
     const rawArgs = process.argv.slice(2);
+    const SUBCOMMANDS = ['build', 'validate', 'evidence', 'ledger', 'finalize'];
+    const positional = rawArgs.filter(a => !a.startsWith('--'));
     let subcommand = 'build';
-    let auditDir = rawArgs[0];
-    if (rawArgs[0] === 'validate' || rawArgs[0] === 'build') {
-      subcommand = rawArgs[0];
-      auditDir = rawArgs[1];
+    let auditDir = positional[0];
+    if (SUBCOMMANDS.includes(positional[0])) {
+      subcommand = positional[0];
+      auditDir = positional[1];
     }
 
     if (!auditDir) {
-      console.error('Usage: node build-report.mjs [build|validate] <audit-directory>');
-      console.error('  build     (default) assemble report.html and AGENTS.md');
+      console.error('Usage: node build-report.mjs [build|validate|evidence|ledger|finalize] <audit-directory>');
+      console.error('  build     (default) assemble report.html, AGENTS.md, and the README scaffold');
       console.error('  validate  check recon.yaml and findings.yaml against their schemas');
+      console.error('  evidence  check every finding\'s evidence block against the source tree');
+      console.error('  ledger    lint actions-taken.md against findings.yaml and git');
+      console.error('  finalize  run every gate; refuse to call the audit finished until they pass');
+      console.error('            [--allow-unledgered-prior]  downgrade unledgered prior audits to warnings');
       process.exit(1);
     }
 
@@ -789,6 +983,66 @@ if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url
         console.error(`\n${errors.length} validation error${errors.length === 1 ? '' : 's'}`);
         process.exit(1);
       }
+    }
+
+    if (subcommand === 'evidence') {
+      const findingsPath = join(auditDir, 'findings.yaml');
+      if (!existsSync(findingsPath)) {
+        console.error(`error: ${findingsPath} not found`);
+        process.exit(2);
+      }
+      const findings = parseFindings(readFileSync(findingsPath, 'utf8'));
+      const recon = existsSync(join(auditDir, 'recon.yaml'))
+        ? parseRecon(readFileSync(join(auditDir, 'recon.yaml'), 'utf8'))
+        : null;
+      const problems = checkEvidenceFidelity(findings, recon?.structure?.root ?? join(auditDir, '..', '..', '..'));
+      for (const p of problems) {
+        console.error(`${p.slug} @ ${p.path}:${p.start_line}-${p.end_line}: ${p.problem}${p.expected !== undefined ? `\n    file:     ${JSON.stringify(p.expected)}\n    evidence: ${JSON.stringify(p.actual)}` : ''}`);
+      }
+      console.log(problems.length ? `${problems.length} evidence problem(s)` : 'evidence ok');
+      process.exit(problems.length ? 1 : 0);
+    }
+
+    if (subcommand === 'ledger') {
+      const ledgerPath = join(auditDir, 'actions-taken.md');
+      if (!existsSync(ledgerPath)) {
+        console.error(`error: ${ledgerPath} does not exist`);
+        process.exit(1);
+      }
+      const findingsPath = join(auditDir, 'findings.yaml');
+      if (!existsSync(findingsPath)) {
+        console.error(`error: ${findingsPath} not found`);
+        process.exit(2);
+      }
+      const findings = parseFindings(readFileSync(findingsPath, 'utf8'));
+      const recon = existsSync(join(auditDir, 'recon.yaml'))
+        ? parseRecon(readFileSync(join(auditDir, 'recon.yaml'), 'utf8'))
+        : null;
+      const root = recon?.structure?.root ?? join(auditDir, '..', '..', '..');
+      const gitLog = sha => {
+        try {
+          const out = execFileSync('git', ['-C', root, 'log', '-1', '--format=%(trailers:key=Audit-Finding,valueonly)', sha], { encoding: 'utf8' });
+          return { exists: true, trailers: out.split('\n').map(s => s.trim()).filter(Boolean) };
+        } catch { return { exists: false, trailers: [] }; }
+      };
+      const out = lintLedger({
+        ledgerText: readFileSync(ledgerPath, 'utf8'),
+        findingsDoc: findings,
+        gitLog,
+        testCommand: recon?.testing?.command || null,
+      });
+      for (const p of out) console[p.level === 'error' ? 'error' : 'warn'](`${p.level}${p.entry ? ` [${p.entry}]` : ''}: ${p.message}`);
+      const errs = out.filter(p => p.level === 'error').length;
+      console.log(errs ? `${errs} ledger error(s)` : 'ledger ok');
+      process.exit(errs ? 1 : 0);
+    }
+
+    if (subcommand === 'finalize') {
+      const r = finalizeAudit(auditDir, { allowUnledgeredPrior: rawArgs.includes('--allow-unledgered-prior') });
+      for (const w of r.warnings) console.warn(`warn: ${w}`);
+      for (const e of r.errors) console.error(`error: ${e}`);
+      console.log(r.ok ? `finalize ok: ${auditDir}` : `${r.errors.length} finalize error(s)`);
+      process.exit(r.ok ? 0 : 1);
     }
 
     // build subcommand (default)
@@ -834,10 +1088,12 @@ if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url
     // both source and skill layouts, so the same viewerDir candidate resolution
     // that found template.html will find this too.
     const findings = parseFindings(readFileSync(join(auditDir, 'findings.yaml'), 'utf8'));
+    const buildRecon = parseRecon(readFileSync(join(auditDir, 'recon.yaml'), 'utf8'));
+    const priorAudits = findPriorAudits(join(auditDir, '..'), basename(auditDir));
     const agentsTemplatePath = join(viewerDir, 'agents-md-template.md');
     if (existsSync(agentsTemplatePath)) {
       const template = readFileSync(agentsTemplatePath, 'utf8');
-      const agentsMd = renderAgentsMd(findings, template, basename(auditDir));
+      const agentsMd = renderAgentsMd(findings, template, basename(auditDir), { recon: buildRecon, priorAudits });
       const agentsPath = join(auditDir, 'AGENTS.md');
       writeFileSync(agentsPath, agentsMd);
       console.log(`wrote ${agentsPath} (${(agentsMd.length / 1024).toFixed(1)}KB)`);
@@ -866,7 +1122,7 @@ if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url
         console.log(`skipped ${readmePath} (already exists; scaffold never overwrites authored prose)`);
       } else {
         const template = readFileSync(readmeTemplatePath, 'utf8');
-        const readmeMd = renderReadmeMd(findings, template);
+        const readmeMd = renderReadmeMd(findings, template, { priorAudits });
         writeFileSync(readmePath, readmeMd);
         console.log(`wrote ${readmePath} (${(readmeMd.length / 1024).toFixed(1)}KB) — scaffold, agent must fill in`);
       }

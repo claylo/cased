@@ -97,6 +97,12 @@ fields for this rubric:
 - `findings[].surface:` — always `"Code Quality"` (maps to the narrative title).
 - `findings[].evidence_lang:` — the language of the evidence file.
 
+**Class sweep and origin.** Before returning, for each mechanism-shaped
+finding grep the workspace for sibling instances and merge them into one
+finding with multiple `locations` (see subagent-output-contract.md "Class
+sweep"). Set `failure_mode` and, when the audit-context lists prior
+ledgered fixes, set `origin.kind`/`origin.ref` per the contract.
+
 Report only findings that affect maintainability. Style preferences,
 formatting disagreements, and "I would have done it differently" are not
 findings. Use `status: DONE` with `findings: []` for a clean surface.

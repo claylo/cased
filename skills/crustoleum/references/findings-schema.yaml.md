@@ -118,6 +118,9 @@ narratives:
           related: [hooks-stdin-write-silently-discarded]
         effort: trivial
         effort_notes: "One-line change, floor_char_boundary is in MSRV"
+        origin:
+          kind: pre-existing
+        failure_mode: user-visible
 
       - slug: hooks-stdin-write-silently-discarded
         title: "stdin write error silently discarded in filter hook"
@@ -265,6 +268,10 @@ narratives:
           related: [ruby-bump-silently-skipped]
         effort: small
         effort_notes: "Package.json version update is straightforward serde_json"
+        origin:
+          kind: caused-by-fix
+          ref: 8f4b559
+        failure_mode: internal
 
       - slug: node-deps-parser-stub
         title: "Node dependency diff parser is a no-op stub"
@@ -892,6 +899,21 @@ summary:
     moderate: 3
     advisory: 8
     note: 5
+
+carried_forward:
+  - slug: hooks-timeout-not-configurable
+    prior_audit: 2026-03-30-14-full-workspace
+    disposition: deferred
+    reason: "Targeted at the 0.4 milestone; no user report yet"
+
+reconciliation:
+  - prior_slug: truncation-panic-on-multibyte
+    prior_audit: 2026-03-30-14-full-workspace
+    status: still-fixed
+    verified_against: 3f9c2b1
+  - prior_slug: shell-error-swallowed
+    prior_audit: 2026-03-30-14-full-workspace
+    status: regressed
 ```
 
 ## Field Notes
@@ -942,3 +964,32 @@ node "${CLAUDE_SKILL_DIR}/scripts/build-report.js" validate <audit-directory>
 
 The validator reports field paths and type violations so they can be
 fixed in place before assembly.
+
+## Origin, failure mode, and re-audit blocks
+
+Every finding SHOULD carry `origin.kind`. In a first audit of a repo every
+finding is `pre-existing`. In a re-audit (a prior `record/audits/*/` exists)
+you must decide per finding: was this here before and missed
+(`pre-existing`), introduced by ordinary commits since the last audit
+(`new-in-diff`), introduced by a ledgered fix (`caused-by-fix`, `ref` = the
+fix SHA — `git log -S'<evidence fragment>' --format=%h` finds it), or a
+prior slug that was ledgered `fixed` and is back (`recurrence-of`, `ref` =
+prior slug). A recurrence is a regression, never a fresh finding.
+
+`failure_mode` decides release gating. Only `critical`/`significant`
+findings with `failure_mode: user-visible` are **blocking**; everything
+else renders in the backlog section. A note-level finding must never be
+able to drive a breaking change.
+
+`carried_forward` lists prior deferred/accepted/mitigated/no-measurable-benefit
+findings so they are tracked but not re-derived. They are excluded from
+`summary.counts`, from narratives, and from the AGENTS.md finding index.
+`escalated` is deliberately not in that set: an escalated finding is
+unresolved — it was handed to a human, not settled — so a re-audit must
+re-derive it as a live finding rather than carry it forward. `reconciliation`
+records, for every prior finding ledgered `fixed`, whether the fix still
+holds — verified by re-reading the fix commit's diff, not by re-auditing
+from scratch. `still-fixed` is the status when the ledgered fix is present
+and effective — even if that same fix introduced a NEW defect (that new
+finding carries `origin.kind: caused-by-fix`). `superseded` is only for a
+prior finding that a new finding re-characterizes or replaces.

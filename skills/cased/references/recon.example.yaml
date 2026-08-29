@@ -4,6 +4,19 @@ meta:
   commit: f706dc96b708f63fc3c47f9dd09ca30fd89438a8
   timestamp: 2026-04-09T21:30:00-04:00
   scope: "Full workspace audit — crates/scrat (CLI) and crates/scrat-core (library)"
+  audit_profile:
+    mode: fresh
+    prior_audit: null
+    model: claude-opus-4-6
+    effort: max
+    agent_count: 6
+    surfaces: [safety, error-robustness, api-type-design, concurrency, performance, supply-chain-deps, completeness]
+    severity_floor: note
+    excluded_tools: []
+    skill_versions:
+      cased: bec49e2
+      crustoleum: bec49e2
+    release_phase: pre-publish
 
 structure:
   root: /Users/clay/source/claylo/scrat

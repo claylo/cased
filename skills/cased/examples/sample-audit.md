@@ -216,6 +216,34 @@ tx.send(msg.payload.clone()).await.ok();
 
 ---
 
+## The Message Routing Surface
+
+*Routing is well-structured and the channel registry is sound; the fan-out path pays for that clarity with one payload copy per subscriber.*
+
+### Broadcast clones the payload once per subscriber
+
+**moderate** · `src/relay.rs:145-152` · effort: small · <img src="2026-03-15-full-crate/assets/sparkline-per-message-payload-clone.svg" height="14" alt="12-month commit activity" />
+
+The broadcast loop clones `msg.payload` for every subscriber on the channel. For a 64 KiB frame on a channel with 64 subscribers, that is 4 MiB of copying per message, all of it discarded as soon as each subscriber's socket drains. The payload is never mutated after receipt, so every copy is identical to the original.
+
+```rust src/relay.rs:145-152
+let subs = channels.read().await;
+let Some(targets) = subs.get(&msg.channel_id) else {
+    return;
+};
+for tx in targets.iter() {
+    tx.send(msg.payload.clone()).await.ok();
+}
+```
+
+This is a cost, not a correctness problem — the relay is currently deployed with single-digit subscriber counts per channel, where the copy is unmeasurable. It is filed as `moderate` because the fan-out is unbounded by design: nothing in the channel registry caps subscribers, so the cost scales with a number the operator controls and the code does not.
+
+**Remediation:** Make the payload shared rather than copied — `Arc<[u8]>` in the message struct, with the broadcast loop cloning the handle. Measure before keeping it: at small payloads the atomic refcount traffic can cost more than the memcpy it removes.
+
+*Verdict: Sound routing with one avoidable copy on the hot path. Worth measuring before changing — the remediation is only a win at payload and subscriber sizes this deployment does not yet see.*
+
+---
+
 ## The Dependency Surface
 
 *Dependencies are current and minimal. No known advisories. One observation on transitive dependency volume.*
@@ -243,6 +271,8 @@ No dependencies have known advisories per `cargo audit` as of the audit date. Al
 | | | **Error Handling** | | |
 | [malformed-continue](#malformed-message-triggers-continue-not-disconnect) | significant | `src/relay.rs:94-108` | medium | — |
 | [channel-unwrap](#panic-in-channel-lookup-unwrap) | moderate | `src/relay.rs:132-135` | trivial | — |
+| | | **Message Routing** | | |
+| [per-message-payload-clone](#broadcast-clones-the-payload-once-per-subscriber) | moderate | `src/relay.rs:145-152` | small | — |
 | | | **Dependencies** | | |
 | [transitive-deps](#transitive-dependency-count) | note | `Cargo.toml` | n/a | — |
 

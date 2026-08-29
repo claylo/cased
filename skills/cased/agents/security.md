@@ -100,6 +100,12 @@ fields for this rubric:
 - `findings[].surface:` — always `"Security"` (maps to the narrative title).
 - `findings[].evidence_lang:` — the language of the evidence file (e.g. `rust`, `python`, `typescript`, `go`).
 
+**Class sweep and origin.** Before returning, for each mechanism-shaped
+finding grep the workspace for sibling instances and merge them into one
+finding with multiple `locations` (see subagent-output-contract.md "Class
+sweep"). Set `failure_mode` and, when the audit-context lists prior
+ledgered fixes, set `origin.kind`/`origin.ref` per the contract.
+
 Report only confirmed findings with demonstrated reachability. Theoretical
 vulnerabilities without a concrete path from input to impact are not findings.
 Use `status: DONE` with `findings: []` for a clean surface.

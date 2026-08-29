@@ -1,12 +1,15 @@
 ---
 audit: 2026-03-15-full-crate
-last_updated: 2026-03-28
+last_updated: 2026-04-02
 status:
   fixed: 2
   mitigated: 0
   accepted: 1
   disputed: 0
   deferred: 1
+  escalated: 0
+  superseded: 0
+  no-measurable-benefit: 1
   open: 2
 ---
 
@@ -22,6 +25,10 @@ Summary of remediation status for the [2026-03-15 full crate audit](2026-03-15-f
 **Addresses:** [token-no-sig-check](2026-03-15-full-crate/README.md#token-verification-skips-signature-check), [session-id-in-claims](2026-03-15-full-crate/README.md#session-id-extracted-from-unverified-claims)
 **Commit:** e4f5a6b (PR #42)
 **Author:** @maintainer
+**Verification:** `cargo nextest run --workspace` (312 passed, 0 failed), `just check` (clippy + fmt clean), `just deny` (no new advisories). Sibling workspace `fuzz/` builds: `cargo +nightly fuzz build`.
+**Blast radius:** Touches `relay-auth` only — the crate the finding names. `cargo tree --invert -p relay-auth` lists `relay-server` and `relay-cli`; both call `verify_token` through the unchanged signature, so no downstream edits. Grepped for `extract_session` and the "claims are trusted" note in `docs/auth.md` — the doc paragraph was stale and is updated in the same commit.
+**Diff:** 3 files, +48 −12, 1 commit
+**Coverage lost:** none — `token_roundtrip` gained a tampered-signature case; no existing assertion was weakened.
 
 Added HMAC-SHA256 signature verification to `verify_token` before parsing claims. The existing `hmac` and `sha2` crates were already in the dependency tree, so no new dependencies. The signature is recomputed over the header and payload segments and compared with constant-time equality via `hmac::Mac::verify_slice`.
 
@@ -70,3 +77,18 @@ The hardcoded fallback only activates in debug builds, which is the intended beh
 The per-connection bad-message counter requires restructuring the connection handler's state, which touches the hot loop. Deferring to the v0.4 milestone (target: 2026-05-01) where we're already refactoring the connection lifecycle for graceful shutdown support. The fix will land as part of that broader change rather than a standalone patch.
 
 Current exposure is limited — the relay is behind a rate-limiting reverse proxy that caps connections per IP, which bounds the abuse surface even without application-level protection.
+
+---
+
+## 2026-04-02 — Payload sharing prototyped and dropped: no measurable benefit
+
+**Disposition:** no-measurable-benefit
+**Addresses:** [per-message-payload-clone](2026-03-15-full-crate/README.md#broadcast-clones-the-payload-once-per-subscriber)
+**Commit:** n/a — prototype on `perf/arc-payload`, not merged
+**Author:** claude-opus-4-6
+
+Prototyped the suggested fix: `payload` becomes `Arc<[u8]>` in the message struct, and the broadcast loop at `src/relay.rs:145-152` clones the handle instead of copying a fresh `Vec<u8>` per subscriber. Benchmarked with the existing criterion harness at 1, 8, and 64 subscribers, 1 KiB and 64 KiB payloads, 20 runs each.
+
+The metric is wall-clock time per broadcast and allocations per broadcast, counted with a `dhat` heap profiler run — the quantity the finding claims to improve, not `Vec` capacity. At 64 KiB / 64 subscribers the Arc version is 2.1% faster, inside the run-to-run noise band (±3.4%); at 1 KiB it is 1.8% *slower*, because the atomic refcount traffic costs more than the small memcpy it removes. Allocation count drops from N to 1 per broadcast, but allocation was never the bottleneck at these sizes.
+
+Not kept. The branch is discarded and the original `Vec<u8>` path stands. If the deployment profile ever shifts to many subscribers on large payloads, the measurement above is the thing to re-run — not the reasoning.

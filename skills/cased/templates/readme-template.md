@@ -60,6 +60,16 @@ Anchor links target the slugs below — match them exactly when you author the H
 
 {{finding_list}}
 
+Blocking (release-gating): {{blocking_count}} · Backlog: {{backlog_count}}
+
+## Reconciliation with prior audits
+
+{{reconciliation_table}}
+
+## Carried forward (not re-derived)
+
+{{carried_forward_list}}
+
 <!-- AGENT: replace everything below this line with the authored narrative
      sections (H2 per narrative, H3 per finding) and the Remediation
      Ledger table. Do not leave this placeholder in the committed file. -->

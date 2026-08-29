@@ -10,7 +10,13 @@ import {
   validateAuditDir,
   formatValidationErrors,
 } from '../src/viewer/build-report.mjs';
-import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import {
+  finalizeAudit,
+  renderCarriedForward,
+  renderReconciliation,
+  blockingCounts,
+} from '../src/viewer/build-report.mjs';
+import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import YAML from 'yaml';
@@ -40,6 +46,37 @@ describe('parseRecon', () => {
     assert.ok(data.structure.total_files > 0);
     assert.ok(data.dependencies.items.length > 0);
     assert.ok(data.churn.hotspots.length > 0);
+  });
+});
+
+describe('findings contract: origin / failure_mode / carried_forward / reconciliation', () => {
+  const schemaDir = resolveSchemaDir('src/viewer');
+  const { validateFindings } = compileValidators(schemaDir);
+
+  it('accepts a finding with origin.kind caused-by-fix and a ref', () => {
+    const doc = YAML.parse(findingsYaml);
+    doc.narratives[0].findings[0].origin = { kind: 'caused-by-fix', ref: '660a8a4' };
+    doc.narratives[0].findings[0].failure_mode = 'user-visible';
+    assert.equal(validateFindings(doc), true, JSON.stringify(validateFindings.errors));
+  });
+
+  it('rejects an unknown origin.kind', () => {
+    const doc = YAML.parse(findingsYaml);
+    doc.narratives[0].findings[0].origin = { kind: 'magic' };
+    assert.equal(validateFindings(doc), false);
+  });
+
+  it('accepts carried_forward and reconciliation blocks', () => {
+    const doc = YAML.parse(findingsYaml);
+    doc.carried_forward = [{ slug: 'old-perf-nit', prior_audit: '2026-08-12-10-m13-release-candidate', disposition: 'deferred', reason: 'bounded internal optimization; milestone M15' }];
+    doc.reconciliation = [{ prior_slug: 'silent-write-discard', prior_audit: '2026-08-12-10-m13-release-candidate', status: 'still-fixed', verified_against: 'a3a4739' }];
+    assert.equal(validateFindings(doc), true, JSON.stringify(validateFindings.errors));
+  });
+
+  it('rejects reconciliation with an unknown status', () => {
+    const doc = YAML.parse(findingsYaml);
+    doc.reconciliation = [{ prior_slug: 'x', prior_audit: 'y', status: 'maybe' }];
+    assert.equal(validateFindings(doc), false);
   });
 });
 
@@ -299,6 +336,119 @@ describe('validateAuditDir', () => {
     const errors = validateAuditDir(fixtureDir, 'src/schemas');
     assert.deepEqual(errors, [],
       `canonical examples must validate: ${JSON.stringify(errors, null, 2)}`);
+  });
+});
+
+describe('re-audit rendering', () => {
+  const doc = YAML.parse(findingsYaml);
+  it('renderCarriedForward lists prior slugs with disposition and audit', () => {
+    const md = renderCarriedForward(doc);
+    assert.match(md, /hooks-timeout-not-configurable/);
+    assert.match(md, /deferred/);
+    assert.match(md, /2026-03-30-14-full-workspace/);
+  });
+  it('renderReconciliation emits a table with status per prior slug', () => {
+    const md = renderReconciliation(doc);
+    assert.match(md, /\| prior finding \| audit \| status \|/);
+    assert.match(md, /regressed/);
+  });
+  it('renderLedger splits blocking from backlog', () => {
+    const slugToTitle = new Map();
+    for (const n of doc.narratives) for (const f of n.findings) slugToTitle.set(f.slug, f.title);
+    const html = renderLedger(doc, slugToTitle);
+    assert.match(html, /Blocking/);
+    assert.match(html, /Backlog/);
+  });
+  it('AGENTS.md excludes carried_forward from the finding index and shows counts', () => {
+    const tpl = readFileSync('src/viewer/agents-md-template.md', 'utf8');
+    const md = renderAgentsMd(doc, tpl, '2026-08-18-10-x', { recon: YAML.parse(reconYaml) });
+    assert.doesNotMatch(md, /- \[?hooks-timeout-not-configurable/);
+    assert.match(md, /Blocking findings:\s*\d+/);
+    assert.match(md, /just test|cargo/); // test command interpolated from recon.testing.command
+  });
+});
+
+describe('finalizeAudit', () => {
+  it('fails on scaffold README, stub audit_profile, and unledgered prior audit; passes when complete', () => {
+    const repo = mkdtempSync(join(tmpdir(), 'cased-fin-'));
+    const audits = join(repo, 'record', 'audits');
+    const prior = join(audits, '2026-08-01-10-prior'); mkdirSync(prior, { recursive: true });
+    writeFileSync(join(prior, 'findings.yaml'), 'narratives:\n  - findings:\n      - slug: old\n');
+    const cur = join(audits, '2026-08-18-10-cur'); mkdirSync(cur);
+    const doc = YAML.parse(findingsYaml);
+    // make evidence trivially verifiable: one finding, file we control
+    doc.narratives = [{ slug: 'n', title: 'N', thesis: 't', verdict: 'v', findings: [{ slug: 'f1', title: 'F1', concern: 'moderate', locations: [{ path: 'src/x.rs', start_line: 1, end_line: 1 }], evidence: 'fn x() {}\n', mechanism: 'm', remediation: 'r' }] }];
+    doc.summary = { counts: { critical: 0, significant: 0, moderate: 1, advisory: 0, note: 0 } };
+    mkdirSync(join(repo, 'src')); writeFileSync(join(repo, 'src', 'x.rs'), 'fn x() {}\n');
+    writeFileSync(join(cur, 'findings.yaml'), YAML.stringify(doc));
+    const recon = YAML.parse(reconYaml); recon.structure.root = repo; recon.meta.audit_profile.model = 'unknown';
+    writeFileSync(join(cur, 'recon.yaml'), YAML.stringify(recon));
+    writeFileSync(join(cur, 'README.md'), '# Audit\n<!-- AGENT: fill -->\n');
+    // report.html and AGENTS.md are build outputs finalize requires; write stubs
+    // so the test exercises the content gates rather than the existence gate.
+    writeFileSync(join(cur, 'report.html'), '<!DOCTYPE html>\n');
+    writeFileSync(join(cur, 'AGENTS.md'), '# Agent Briefing\n');
+    let r = finalizeAudit(cur, { repoRoot: repo });
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some(e => /AGENT:/.test(e)));
+    assert.ok(r.errors.some(e => /model/.test(e)));
+    assert.ok(r.errors.some(e => /2026-08-01-10-prior/.test(e) && /actions-taken/.test(e)));
+    // fix everything
+    recon.meta.audit_profile.model = 'claude-opus-4-6';
+    writeFileSync(join(cur, 'recon.yaml'), YAML.stringify(recon));
+    writeFileSync(join(cur, 'README.md'), '# Audit\n\nProse.\n');
+    writeFileSync(join(prior, 'actions-taken.md'), '---\naudit: 2026-08-01-10-prior\nlast_updated: 2026-08-02\nstatus:\n  fixed: 0\n  mitigated: 0\n  accepted: 0\n  disputed: 0\n  deferred: 1\n  open: 0\n---\n## 2026-08-02 — defer\n\n**Disposition:** deferred\n**Addresses:** [old](README.md#old)\n**Author:** me\n\nTarget: 0.2 milestone.\n');
+    r = finalizeAudit(cur, { repoRoot: repo });
+    assert.deepEqual(r.errors, []);
+    assert.equal(r.ok, true);
+    rmSync(repo, { recursive: true, force: true });
+  });
+
+  it('errors (not warns) when a re-audit has no reconciliation block', () => {
+    const repo = mkdtempSync(join(tmpdir(), 'cased-fin-recon-'));
+    const cur = join(repo, 'record', 'audits', '2026-08-18-10-cur');
+    mkdirSync(cur, { recursive: true });
+    mkdirSync(join(repo, 'src')); writeFileSync(join(repo, 'src', 'x.rs'), 'fn x() {}\n');
+    const doc = YAML.parse(findingsYaml);
+    doc.narratives = [{ slug: 'n', title: 'N', thesis: 't', verdict: 'v', findings: [{ slug: 'f1', title: 'F1', concern: 'moderate', locations: [{ path: 'src/x.rs', start_line: 1, end_line: 1 }], evidence: 'fn x() {}\n', mechanism: 'm', remediation: 'r' }] }];
+    doc.summary = { counts: { critical: 0, significant: 0, moderate: 1, advisory: 0, note: 0 } };
+    delete doc.reconciliation;
+    writeFileSync(join(cur, 'findings.yaml'), YAML.stringify(doc));
+    const recon = YAML.parse(reconYaml);
+    recon.structure.root = repo;
+    recon.meta.audit_profile.mode = 're-audit';
+    recon.meta.audit_profile.prior_audit = '2026-08-01-10-prior';
+    writeFileSync(join(cur, 'recon.yaml'), YAML.stringify(recon));
+    writeFileSync(join(cur, 'README.md'), '# Audit\n\nProse.\n');
+    writeFileSync(join(cur, 'report.html'), '<!DOCTYPE html>\n');
+    writeFileSync(join(cur, 'AGENTS.md'), '# Agent Briefing\n');
+
+    let r = finalizeAudit(cur, { repoRoot: repo });
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some(e => /reconciliation/.test(e)), `expected a reconciliation error, got ${JSON.stringify(r.errors)}`);
+    assert.ok(!r.warnings.some(e => /reconciliation/.test(e)), 'missing reconciliation must be an error, not a warning');
+
+    // adding the block clears it
+    doc.reconciliation = [{ prior_slug: 'old', status: 'still-fixed', note: 'verified at e4f5a6b' }];
+    writeFileSync(join(cur, 'findings.yaml'), YAML.stringify(doc));
+    r = finalizeAudit(cur, { repoRoot: repo });
+    assert.deepEqual(r.errors, []);
+    assert.equal(r.ok, true);
+    rmSync(repo, { recursive: true, force: true });
+  });
+
+  it('reports missing build outputs before checking content', () => {
+    const repo = mkdtempSync(join(tmpdir(), 'cased-fin-bare-'));
+    const cur = join(repo, 'record', 'audits', '2026-08-18-10-bare');
+    mkdirSync(cur, { recursive: true });
+    writeFileSync(join(cur, 'findings.yaml'), findingsYaml);
+    writeFileSync(join(cur, 'recon.yaml'), reconYaml);
+    const r = finalizeAudit(cur, { repoRoot: repo });
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some(e => /missing README\.md/.test(e)));
+    assert.ok(r.errors.some(e => /missing report\.html/.test(e)));
+    assert.ok(r.errors.some(e => /missing AGENTS\.md/.test(e)));
+    rmSync(repo, { recursive: true, force: true });
   });
 });
 

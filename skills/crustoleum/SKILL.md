@@ -159,6 +159,12 @@ nothing else into the target repo. Agents return findings in their
 final message, never as files — no `review-N.md`, scratch notes, or
 temp scripts. Anything else created must be deleted before finishing.
 
+**Findings contract additions.** Agent findings also carry `origin`
+(`kind`, `ref`) and `failure_mode` — see the stamped
+`${CLAUDE_SKILL_DIR}/references/findings-schema.yaml.md` for the field
+definitions. Agents set these before returning; the dispatcher does not
+compute them.
+
 **Division of labor:** During agent dispatch, you are a dispatcher,
 not an analyst. Do NOT read project source files yourself — that is
 what the agents do. Your job is to run tools, classify the codebase

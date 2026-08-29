@@ -65,9 +65,12 @@ build-smoke: build-viewer
 
 # Run tests
 test:
-    node --test test/build-report.test.mjs test/recon-to-yaml.test.mjs test/eval-score.test.mjs test/compare-runs.test.mjs
+    node --test test/build-report.test.mjs test/recon-to-yaml.test.mjs test/eval-score.test.mjs test/eval-score-reaudit.test.mjs test/compare-runs.test.mjs test/prior-audits.test.mjs test/gates.test.mjs
 
-# Run one audit eval against a fixture (full multi-agent audit — costs real tokens)
+# Run one eval against a fixture (full multi-agent session — costs real tokens).
+#   just eval reaudit-rs                      # audit mode (default)
+#   just eval reaudit-rs --mode remediate     # remediate the fixture's prior audit
+#   just eval reaudit-rs --model opus         # matrix axis: model
 eval fixture *args:
     bash evals/scripts/run-eval {{args}} {{fixture}}
 

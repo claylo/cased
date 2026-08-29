@@ -1,0 +1,99 @@
+meta:
+  project: reaudit-rs
+  commit: "a1b2c3d"
+  timestamp: 2026-08-01T10:12:00-04:00
+  scope: full working tree at a1b2c3d
+  audit_profile:
+    mode: fresh
+    prior_audit: null
+    model: claude-opus-4-6
+    effort: max
+    agent_count: 6
+    surfaces:
+      - error-handling
+    severity_floor: note
+    excluded_tools: []
+    skill_versions:
+      cased: 4d34654
+structure:
+  root: .
+  total_files: 9
+  total_lines: 253
+  languages:
+    - language: Just
+      files: 1
+      lines: 13
+      percentage: 5.14
+    - language: Rust
+      files: 7
+      lines: 233
+      percentage: 92.09
+    - language: TOML
+      files: 1
+      lines: 7
+      percentage: 2.77
+  modules:
+    - name: reaudit-rs
+      path: .
+      files: 9
+      lines: 253
+dependencies:
+  manifest: Cargo.toml
+  items: []
+churn:
+  period: last 12 months
+  hotspots:
+    - path: src/store.rs
+      commits: 1
+      authors: 1
+      last_touched: 2026-07-28
+      monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+    - path: src/render.rs
+      commits: 1
+      authors: 1
+      last_touched: 2026-07-28
+      monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+    - path: src/main.rs
+      commits: 1
+      authors: 1
+      last_touched: 2026-07-28
+      monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+    - path: src/lib.rs
+      commits: 1
+      authors: 1
+      last_touched: 2026-07-28
+      monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+    - path: src/config.rs
+      commits: 1
+      authors: 1
+      last_touched: 2026-07-28
+      monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+    - path: src/cli.rs
+      commits: 1
+      authors: 1
+      last_touched: 2026-07-28
+      monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+    - path: tests/basics.rs
+      commits: 1
+      authors: 1
+      last_touched: 2026-07-28
+      monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+    - path: Cargo.toml
+      commits: 1
+      authors: 1
+      last_touched: 2026-07-28
+      monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+    - path: justfile
+      commits: 1
+      authors: 1
+      last_touched: 2026-07-28
+      monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+  recent_activity:
+    total_commits: 1
+    active_authors: 1
+    files_changed: 11
+testing:
+  runner: just
+  command: just test
+  sources:
+    - justfile

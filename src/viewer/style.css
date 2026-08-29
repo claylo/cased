@@ -309,6 +309,18 @@ section.ledger h2 {
   max-width: 40rem;
 }
 
+section.ledger h3 {
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 1.25rem 0 0.25rem;
+}
+
+section.ledger h3 + p {
+  color: var(--c-mid);
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+}
+
 .ledger-table {
   width: 100%;
   border-collapse: collapse;

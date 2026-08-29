@@ -91,5 +91,11 @@ fields for this rubric:
 - `findings[].surface:` — always `"API Design"` (maps to the narrative title).
 - `findings[].evidence_lang:` — the language of the evidence file.
 
+**Class sweep and origin.** Before returning, for each mechanism-shaped
+finding grep the workspace for sibling instances and merge them into one
+finding with multiple `locations` (see subagent-output-contract.md "Class
+sweep"). Set `failure_mode` and, when the audit-context lists prior
+ledgered fixes, set `origin.kind`/`origin.ref` per the contract.
+
 Report only confirmed findings. If the API is well-designed and
 consistent, say so briefly via `status: DONE` with `findings: []`.

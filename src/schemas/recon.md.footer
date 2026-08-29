@@ -1,5 +1,21 @@
 ## Gathering Notes
 
+**Audit profile.** `meta.audit_profile` records how the audit itself was
+run, so a later reader can tell a shallow pass from a thorough one. The
+pre-runner can only fill what it can observe — `mode` (`re-audit` when
+`record/audits/` already holds an audit with a `findings.yaml`, else
+`fresh`), `prior_audit`, and `skill_versions` — and stubs the rest with
+`model: unknown`, `agent_count: 0`, `surfaces: []`. The controlling agent
+must complete it before assembly: its own `model` id and `effort`, the
+`agent_count` it actually dispatched, the frozen `surfaces` list (never
+ad-hoc names), the `severity_floor` it reported down to (default `note`),
+and `excluded_tools` — every tool it chose not to run, written as
+`tool: reason`. `release_phase` is optional and comes from the user or
+the manifest. `build-report.js finalize` refuses an audit whose profile
+is still a stub. A `recon.yaml` written before `meta.audit_profile`
+existed will fail `validate`; the requirement applies to new recon
+output — do not retrofit old audit directories.
+
 **File and line counts.** Use `find` + `wc -l`, scoped to the workspace
 member paths (`cargo metadata --no-deps --format-version 1 | jq '.workspace_members'`
 for Rust; top-level source directories otherwise). Exclude build artifacts,

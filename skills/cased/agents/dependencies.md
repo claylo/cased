@@ -107,6 +107,12 @@ fields for this rubric:
 - `findings[].surface:` — always `"Dependencies"` (maps to the narrative title).
 - `findings[].evidence_lang:` — default `toml` for Cargo.toml / package.json-adjacent manifests; otherwise the relevant manifest language.
 
+**Class sweep and origin.** Before returning, for each mechanism-shaped
+finding grep the workspace for sibling instances and merge them into one
+finding with multiple `locations` (see subagent-output-contract.md "Class
+sweep"). Set `failure_mode` and, when the audit-context lists prior
+ledgered fixes, set `origin.kind`/`origin.ref` per the contract.
+
 Do NOT include a `flow` array in dependency findings. Dependency audits
 are item-by-item evaluations (advisory, version, license), not process
 flows. There is no sequential or branching structure to diagram.

@@ -18,25 +18,70 @@ up remediation work without thrashing. Read it once, then act.
   create it the first time you log an action.
 - `AGENTS.md`        — this file.
 
+## Context you need before touching code
+
+**Mode:** {{mode}} · **Blocking findings: {{blocking_count}}** · **Backlog: {{backlog_count}}**
+**Workspace test command:** `{{test_command}}`
+**Release phase:** {{release_phase}}
+
+`pre-publish` means change types in place; additive-compat pairs
+(`FooBorrowed` beside `Foo`) are wrong until the API is published.
+
+### Prior audits
+
+Sibling audit directories. A prior audit with findings and no
+`actions-taken.md` means those findings were never dispositioned.
+
+{{prior_audits}}
+
+### Carried forward (already dispositioned — do NOT re-remediate)
+
+Prior findings this audit deliberately did not re-derive. They are **not** in
+the finding index below and do not count toward this audit's totals, but the
+ledger accepts these slugs in `Addresses` if you deliberately act on one.
+
+{{carried_forward_list}}
+
 ## The loop
 
-For each finding you address:
+For each finding — **blocking first, then backlog** (backlog is optional
+for release; triage it, don't grind it):
 
-1. Find it in `README.md` or `report.html` by its slug. Anchors match the slug
-   exactly; every finding is pre-listed in the index below so you don't need
-   to grep.
-2. Read the concern, location, and remediation text.
-3. Make the code change in the target repository.
-4. Append one entry to `actions-taken.md`. **One entry per action**, even
-   when a single action resolves multiple findings — put every slug it
-   addresses in the `Addresses` field.
+1. Find it by slug in `README.md` / `report.html`. Read concern, location,
+   mechanism, remediation, `failure_mode`, `origin`.
+2. **Decide the disposition before writing code.** Is the mechanism
+   right? (Trace the path — the reviewer may have missed a guard.)
+   Reachable? Worth it now? If not: `disputed` / `deferred` /
+   `no-measurable-benefit`, with rationale. Zero pushback across a ledger
+   is a smell.
+3. **Scope the blast radius before the change.** Which crates does the
+   fix touch vs which the finding names? `cargo tree --invert -p <crate>`
+   for consumers of any changed symbol. Grep for co-varying text (docs,
+   README numbers, config templates, tests asserting the old behaviour).
+   If ≥ 2 findings share a file, fix them together.
+4. Make the change. One focused commit per logical fix, trailer
+   `Audit-Finding: <slug>` per slug. If you edit an existing test's inputs
+   or expectations, note what coverage is lost.
+5. **Verify at workspace scope**: `{{test_command}}` and the project's
+   check/deny/feature gates — including sibling workspaces (`fuzz/`,
+   `xtask/`). Crate-local passes are not evidence.
+6. **Check the budget.** `git diff --shortstat <base>..HEAD` for this
+   finding. Effort `trivial`/`small` and you are past 10 files or 500
+   insertions, or on a fourth commit on one slug → stop, disposition
+   `escalated`, hand it to a human.
+7. Append one ledger entry (format below), then run
+   `node <cased>/scripts/build-report.js ledger <this-dir>` and fix every
+   error before committing the ledger.
+
+**One entry per action**, even when a single action resolves multiple
+findings — put every slug it addresses in the `Addresses` field.
 
 ## `actions-taken.md` format
 
 YAML front matter plus chronological markdown entries. Front matter is
 mandatory; update `last_updated` and the `status` counts every time you
-add an entry. The `open` count is `{{finding_count}} - (fixed + mitigated +
-accepted + disputed + deferred)`.
+add an entry. The `open` count is `{{finding_count}}` minus the findings
+carrying any disposition.
 
 ```markdown
 ---
@@ -48,6 +93,9 @@ status:
   accepted: 0
   disputed: 0
   deferred: 0
+  escalated: 0
+  superseded: 0
+  no-measurable-benefit: 0
   open: {{finding_count}}
 ---
 
@@ -61,19 +109,24 @@ Summary of remediation status for the [{{audit_date}} {{audit_scope}} audit](REA
 
 **Disposition:** fixed
 **Addresses:** [finding-slug](README.md#finding-slug)
-**Commit:** {SHA or PR link}
-**Author:** {who did the work}
+**Commit:** {SHA(s)}                       ← required for fixed / mitigated / superseded
+**Author:** {who did the work — model id or person}
+**Verification:** {exact workspace-scope commands and results}   ← required for fixed
+**Blast radius:** {crates touched vs crates named in the finding; reverse deps of changed symbols; co-varying docs/tests/config grepped and updated or listed}   ← required for fixed
+**Diff:** {N files, +I −D, C commits}      ← required for fixed
+**Coverage lost:** {none | what an edited/removed test no longer asserts}   ← required when a fix edits an existing test's inputs or expectations
 
-One to three paragraphs describing what changed, in which files, and why
-this approach. If the disposition is `accepted` or `disputed`, the rationale
-must be here. If `deferred`, include the target date or milestone.
+Rationale paragraphs. For disputed/accepted: the evidence. For deferred/
+escalated: the target or the decision needed. For fixed: what changed and
+why this approach — and, if the fix touched a public signature, say so.
 ```
 
 ## Dispositions
 
-- `fixed` — code change deployed; commit SHA or PR link required
+- `fixed` — code change deployed; commit SHA required, plus `Verification`,
+  `Blast radius`, and `Diff`
 - `mitigated` — compensating control in place; root cause remains; explain
-  the residual risk
+  the residual risk. Commit SHA required
 - `accepted` — risk acknowledged; rationale mandatory (who decided, why).
   This is not a euphemism for "ignored"
 - `disputed` — finding contested with evidence; not a dismissal. The
@@ -81,6 +134,16 @@ must be here. If `deferred`, include the target date or milestone.
 - `deferred` — scheduled for later; target date or milestone reference
   required. A deferred finding without a target is an accepted finding in
   disguise
+- `escalated` — the fix is out of budget (diff ≥ 5× what the effort estimate
+  implied, or a fourth fix commit on one slug). Stop, record what was
+  learned, hand the design decision to a human. A circuit breaker, not a
+  failure
+- `superseded` — a later action replaces this finding's fix or the finding
+  itself; name it with `superseded_by:` in the body. Commit SHA required.
+  Use this instead of re-filing the same concern under a new heading
+- `no-measurable-benefit` — a performance or ergonomics remediation was
+  implemented, measured, and showed no benefit; the change was not kept.
+  Record the measurement. Do not ship a null result as `fixed`
 
 ## Recording fixes in git
 
@@ -107,6 +170,11 @@ catches up:
 - Do not invent finding slugs. Use the ones in the index below, verbatim.
 - Do not create an empty `actions-taken.md` until you have at least one
   action to log.
+- Do not remediate carried-forward findings. They already carry a standing
+  disposition from a prior audit.
+- Do not fix a `note` with a breaking public change. Defer it.
+- Do not claim `fixed` on crate-local test evidence. Verification is
+  workspace-scope or it is not verification.
 
 ## Finding index
 

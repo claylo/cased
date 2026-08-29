@@ -112,6 +112,10 @@ findings:
       related: []
     effort: trivial | small | medium | large
     effort_notes: "<brief justification>"
+    origin:                              # REQUIRED in re-audit mode, recommended always
+      kind: pre-existing | new-in-diff | caused-by-fix | recurrence-of
+      ref: "<fix SHA for caused-by-fix; prior slug for recurrence-of>"
+    failure_mode: user-visible | internal | policy | documentation
 ```
 
 **Required:** `slug`, `title`, `concern`, `locations`, `evidence`,
@@ -127,7 +131,10 @@ view.
 **Evidence is verbatim.** Copy the code exactly as it appears in the
 file at the cited location. No added comments, no `// ...` elisions.
 If the relevant code spans a gap, emit two location entries with two
-evidence blocks, not one block with a gap.
+evidence blocks, not one block with a gap. For a multi-location finding,
+`evidence` is the cited ranges concatenated in `locations` order with
+nothing between them — no separators, headers, or blank lines;
+`build-report.js evidence` checks exactly that.
 
 **Redaction rule.** If evidence contains secrets, replace the literal
 value with a placeholder (`REDACTED_API_KEY`, `<token>`) but still
@@ -145,7 +152,9 @@ status: DONE | DONE_WITH_PARTIAL_COVERAGE | BLOCKED | NEEDS_CONTEXT
 findings:
   - slug: "<slug of the original finding being reviewed>"
     verdict: confirmed | adjusted | disputed
-    notes: "<required when adjusted or disputed; explain what to change or why the finding is wrong>"
+    mechanism_verified: yes | no | not-attempted   # did you trace the whole execution path?
+    concern_override: critical | significant | moderate | advisory | note   # only when adjusted for severity
+    notes: "<required when adjusted or disputed>"
 ```
 
 See `agents/reviewer.md` for the full rules — the reviewer is
@@ -202,6 +211,49 @@ blocker: |
   committed history other subagents are using).
 ```
 
+## Origin and failure mode
+
+`failure_mode` answers "what does a user see if this ships?" — pick
+`user-visible` only for wrong output, wrong exit code, panic, hang, or
+data loss reachable from input. Perf, ownership, and design costs with no
+symptom yet are `internal`; supply-chain/licensing/process are `policy`;
+prose and metadata are `documentation`. Only critical/significant +
+user-visible findings gate a release; be honest, not dramatic.
+
+`origin.kind`: the audit-context tells you whether prior audits exist
+(`mode:` and `prior_audit:`) and lists their ledgered fixes as
+`ledgered_fixes:` (slug → SHA; empty when `mode: fresh`). Before filing, run
+`git log -S'<a distinctive line from your evidence>' --format='%h %s' -- <path>`
+in the target repo. If the introducing commit is one of the ledgered fix
+SHAs → `caused-by-fix` with that SHA. If your finding matches a prior slug
+that was ledgered `fixed` → `recurrence-of` with that slug (this is a
+regression, say so in `mechanism`). If the introducing commit is newer than
+the prior audit → `new-in-diff`. Otherwise `pre-existing`. In a first
+audit everything is `pre-existing`.
+
+## Class sweep — one mechanism, one finding
+
+When a finding is *mechanism-shaped* — a pattern that can recur anywhere
+(allocation before a limit check, `.position()`/linear scan inside a loop,
+`String` error payloads, recursion without a depth guard, rehashing a
+precomputed fingerprint, `unwrap()` on external input, a feature-gated
+symbol referenced without the gate) — you MUST grep the whole workspace for
+sibling instances before filing, and file **one finding with N `locations`
+and one evidence block per location**, not one finding per file. Say in
+`mechanism` how many sites you found and how you searched. Point findings
+that leave siblings behind are the single largest source of re-audit churn:
+the same class was drip-fed one file per audit across 3–7 audits.
+
+## Scratch files
+
+Your final message is your output, but a long evidence-heavy pass must not
+be lost to one dropped message. You MAY write your in-progress result as
+YAML to `/private/tmp/cased/<audit-id>/<surface>.yaml` (write to a `.tmp`
+name, then rename atomically). Record `target`, `commit`, `surface`,
+`model`, `status`, and your findings there. Never write under the target
+repo or the audit directory. The controller treats these files as process
+evidence — it re-verifies before importing anything into `findings.yaml`.
+
 ## Validation
 
 Before returning, emit the YAML to stdout and mentally validate:
@@ -210,7 +262,8 @@ Before returning, emit the YAML to stdout and mentally validate:
 2. Exactly one of `findings` or `blocker` is present.
 3. Every finding's `slug` is unique within your response.
 4. Every `locations[].start_line` is ≤ `end_line`.
-5. Every `evidence` block's line count matches `end_line - start_line + 1`.
+5. Every `evidence` block's line count equals the SUM over `locations` of
+   `end_line − start_line + 1`.
 6. No narrative-level fields (`thesis`, `verdict`, `title`,
    `assessment`) at the top level of the response.
 
@@ -224,7 +277,9 @@ Your final message IS your output. Never write your analysis, review
 notes, verdicts, or scratch work as files into the target repository —
 no `review-N.md`, no `notes.md`, no temp scripts. The only files an
 audit creates are the audit directory artifacts and tool output
-directories (e.g., `.crustoleum/`). If a temporary file is unavoidable,
-create it in the system temp directory and delete it before returning.
-Stray files left in the repo are a contract violation and are measured
-by the eval harness.
+directories (e.g., `.crustoleum/`). Structured scratch results belong
+under `/private/tmp/cased/<audit-id>/` (see Scratch files above) and are
+left in place for the controller. Any other temporary file goes in the
+system temp directory and is deleted before returning. Stray files left
+in the repo are a contract violation and are measured by the eval
+harness.

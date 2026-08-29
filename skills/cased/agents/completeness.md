@@ -121,6 +121,22 @@ fields for this rubric:
 - `findings[].surface:` — always `"Completeness"` (maps to the narrative title).
 - `findings[].evidence_lang:` — the language of the evidence file.
 
+**Class sweep and origin.** Before returning, for each mechanism-shaped
+finding grep the workspace for sibling instances and merge them into one
+finding with multiple `locations` (see subagent-output-contract.md "Class
+sweep"). Set `failure_mode` and, when the audit-context lists prior
+ledgered fixes, set `origin.kind`/`origin.ref` per the contract.
+
+**Audit the test suite's escape hatches.** Grep tests for `#[ignore]`,
+`#[should_panic]` on non-panic contracts, allowlists / skip lists /
+"known failures" tables, and comments like "understood and acceptable" or
+"expected to fail". A self-documented acceptable failure against a
+documented contract of the crate (round-trip fidelity, spec compliance,
+exit-code mapping) is at least `significant` with
+`failure_mode: user-visible` — it hides a defect in the crate's defining
+capability. One such allowlist survived a full-workspace audit for five
+months.
+
 ## Concern Level Guidance
 
 - `critical` — A documented feature doesn't work at all (panics, stubs, missing wiring)

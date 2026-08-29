@@ -67,8 +67,8 @@ dependencies"**, do this on Codex:
 1. Read the agent definition file (e.g., `skills/cased/agents/security.md`)
 2. Extract the evaluation criteria and tool list from the file
 3. Fill the dispatch template below with that content plus audit
-   context (target repo path, commit SHA, recon summary, finding
-   schema pointer)
+   context (target repo path, commit SHA, audit mode and prior audit,
+   ledgered fixes, release phase, recon summary, finding schema pointer)
 4. Call `spawn_agent(agent_type="worker", message=<filled template>)`
 5. Issue all per-surface spawns together — do not wait between dispatches
 6. `wait` for all agents, then `close_agent` for each
@@ -93,6 +93,12 @@ information you need is missing, return status NEEDS_CONTEXT.
 target_repo: /absolute/path/to/audited/repo
 commit: <full SHA from recon.yaml>
 audit_dir: /absolute/path/to/record/audits/YYYY-MM-DD-HH-slug
+mode: fresh | re-audit
+prior_audit: <prior audit dir basename, or none>
+ledgered_fixes:
+  # slug: SHA, one per prior ledgered fix. Empty list in fresh mode.
+  - <slug>: <sha>
+release_phase: <from recon.yaml meta.audit_profile.release_phase, if known>
 recon_summary: |
   <2-4 sentences from recon.yaml meta + structure + key hotspots>
 findings_schema: /absolute/path/to/skills/cased/references/findings.schema.json

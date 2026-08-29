@@ -34,6 +34,7 @@ var __toESM$1 = (mod, isNodeMode, target) => (target = mod != null ? __create$1(
 let node_fs = require("node:fs");
 let node_url = require("node:url");
 let node_path = require("node:path");
+let node_child_process = require("node:child_process");
 //#region node_modules/yaml/dist/nodes/identity.js
 var require_identity = /* @__PURE__ */ __commonJSMin(((exports) => {
 	const ALIAS = Symbol.for("yaml.alias");
@@ -20868,8 +20869,8 @@ var require_source_map = /* @__PURE__ */ __commonJSMin(((exports) => {
 //#endregion
 //#region node_modules/postcss/lib/previous-map.js
 var require_previous_map = /* @__PURE__ */ __commonJSMin(((exports, module) => {
-	let { existsSync: existsSync$1, readFileSync: readFileSync$1, realpathSync: realpathSync$1 } = require("fs");
-	let { dirname: dirname$2, isAbsolute: isAbsolute$1, join: join$1, relative: relative$1, sep: sep$1 } = require("path");
+	let { existsSync: existsSync$3, readFileSync: readFileSync$3, realpathSync: realpathSync$1 } = require("fs");
+	let { dirname: dirname$2, isAbsolute: isAbsolute$2, join: join$3, relative: relative$1, sep: sep$1 } = require("path");
 	let { SourceMapConsumer, SourceMapGenerator } = require_source_map();
 	function realPath(path) {
 		try {
@@ -20930,12 +20931,12 @@ var require_previous_map = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 				if (!/\.map$/i.test(path)) return void 0;
 				if (!cssFile) return void 0;
 				let rel = relative$1(realPath(dirname$2(cssFile)), realPath(path));
-				if (rel === ".." || rel.startsWith(".." + sep$1) || isAbsolute$1(rel)) return;
+				if (rel === ".." || rel.startsWith(".." + sep$1) || isAbsolute$2(rel)) return;
 			}
 			this.root = dirname$2(path);
-			if (existsSync$1(path)) {
+			if (existsSync$3(path)) {
 				this.mapFile = path;
-				return readFileSync$1(path, "utf-8").toString().trim();
+				return readFileSync$3(path, "utf-8").toString().trim();
 			}
 		}
 		loadMap(file, prev) {
@@ -20956,7 +20957,7 @@ var require_previous_map = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			} else if (this.inline) return this.decodeInline(this.annotation);
 			else if (this.annotation) {
 				let map = this.annotation;
-				if (file) map = join$1(dirname$2(file), map);
+				if (file) map = join$3(dirname$2(file), map);
 				let unknown = this.loadFile(map, file, false);
 				if (unknown) try {
 					/* c8 ignore next 4 */
@@ -20982,7 +20983,7 @@ var require_previous_map = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 //#region node_modules/postcss/lib/input.js
 var require_input = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	let { nanoid } = require_non_secure();
-	let { isAbsolute, resolve: resolve$1 } = require("path");
+	let { isAbsolute: isAbsolute$1, resolve: resolve$1 } = require("path");
 	let { SourceMapConsumer, SourceMapGenerator } = require_source_map();
 	let { fileURLToPath: fileURLToPath$1, pathToFileURL: pathToFileURL$1 } = require("url");
 	let CssSyntaxError = require_css_syntax_error();
@@ -20990,7 +20991,7 @@ var require_input = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	let terminalHighlight = require_terminal_highlight();
 	let lineToIndexCache = Symbol("lineToIndexCache");
 	let sourceMapAvailable = Boolean(SourceMapConsumer && SourceMapGenerator);
-	let pathAvailable = Boolean(resolve$1 && isAbsolute);
+	let pathAvailable = Boolean(resolve$1 && isAbsolute$1);
 	function getLineToIndex(input) {
 		if (input[lineToIndexCache]) return input[lineToIndexCache];
 		let lines = input.css.split("\n");
@@ -21017,7 +21018,7 @@ var require_input = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			this.document = this.css;
 			if (opts.document) this.document = opts.document.toString();
 			if (opts.from) {
-				if (!pathAvailable || /^\w+:\/\//.test(opts.from) || isAbsolute(opts.from)) this.file = opts.from;
+				if (!pathAvailable || /^\w+:\/\//.test(opts.from) || isAbsolute$1(opts.from)) this.file = opts.from;
 				else this.file = resolve$1(opts.from);
 			}
 			if (pathAvailable && sourceMapAvailable) {
@@ -21139,7 +21140,7 @@ var require_input = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 				if (toPosition.source) to = toPosition;
 			}
 			let fromUrl;
-			if (isAbsolute(from.source)) fromUrl = pathToFileURL$1(from.source);
+			if (isAbsolute$1(from.source)) fromUrl = pathToFileURL$1(from.source);
 			else fromUrl = new URL(from.source, this.map.consumer().sourceRoot || pathToFileURL$1(this.map.mapFile));
 			let result = {
 				column: from.column + 1,
@@ -22899,9 +22900,9 @@ var require_postcss = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 }));
 //#endregion
 //#region node_modules/postcss/lib/postcss.mjs
-var import_dist = /* @__PURE__ */ __toESM$1(require_dist$3(), 1);
+var import_dist$1 = /* @__PURE__ */ __toESM$1(require_dist$3(), 1);
 var import__2020 = /* @__PURE__ */ __toESM$1(require__2020(), 1);
-var import_dist$1 = /* @__PURE__ */ __toESM$1(require_dist$2(), 1);
+var import_dist = /* @__PURE__ */ __toESM$1(require_dist$2(), 1);
 var import_postcss = /* @__PURE__ */ __toESM$1(require_postcss(), 1);
 var postcss_default = import_postcss.default;
 import_postcss.default.stringify;
@@ -39818,6 +39819,248 @@ function renderVertical(steps, findingMap, offSpineSteps = []) {
 //#region node_modules/@shikijs/themes/dist/github-light.mjs
 var github_light_default = Object.freeze(JSON.parse("{\"colors\":{\"activityBar.activeBorder\":\"#f9826c\",\"activityBar.background\":\"#fff\",\"activityBar.border\":\"#e1e4e8\",\"activityBar.foreground\":\"#2f363d\",\"activityBar.inactiveForeground\":\"#959da5\",\"activityBarBadge.background\":\"#2188ff\",\"activityBarBadge.foreground\":\"#fff\",\"badge.background\":\"#dbedff\",\"badge.foreground\":\"#005cc5\",\"breadcrumb.activeSelectionForeground\":\"#586069\",\"breadcrumb.focusForeground\":\"#2f363d\",\"breadcrumb.foreground\":\"#6a737d\",\"breadcrumbPicker.background\":\"#fafbfc\",\"button.background\":\"#159739\",\"button.foreground\":\"#fff\",\"button.hoverBackground\":\"#138934\",\"button.secondaryBackground\":\"#e1e4e8\",\"button.secondaryForeground\":\"#1b1f23\",\"button.secondaryHoverBackground\":\"#d1d5da\",\"checkbox.background\":\"#fafbfc\",\"checkbox.border\":\"#d1d5da\",\"debugToolBar.background\":\"#fff\",\"descriptionForeground\":\"#6a737d\",\"diffEditor.insertedTextBackground\":\"#34d05822\",\"diffEditor.removedTextBackground\":\"#d73a4922\",\"dropdown.background\":\"#fafbfc\",\"dropdown.border\":\"#e1e4e8\",\"dropdown.foreground\":\"#2f363d\",\"dropdown.listBackground\":\"#fff\",\"editor.background\":\"#fff\",\"editor.findMatchBackground\":\"#ffdf5d\",\"editor.findMatchHighlightBackground\":\"#ffdf5d66\",\"editor.focusedStackFrameHighlightBackground\":\"#28a74525\",\"editor.foldBackground\":\"#d1d5da11\",\"editor.foreground\":\"#24292e\",\"editor.inactiveSelectionBackground\":\"#0366d611\",\"editor.lineHighlightBackground\":\"#f6f8fa\",\"editor.linkedEditingBackground\":\"#0366d611\",\"editor.selectionBackground\":\"#0366d625\",\"editor.selectionHighlightBackground\":\"#34d05840\",\"editor.selectionHighlightBorder\":\"#34d05800\",\"editor.stackFrameHighlightBackground\":\"#ffd33d33\",\"editor.wordHighlightBackground\":\"#34d05800\",\"editor.wordHighlightBorder\":\"#24943e99\",\"editor.wordHighlightStrongBackground\":\"#34d05800\",\"editor.wordHighlightStrongBorder\":\"#24943e50\",\"editorBracketHighlight.foreground1\":\"#005cc5\",\"editorBracketHighlight.foreground2\":\"#e36209\",\"editorBracketHighlight.foreground3\":\"#5a32a3\",\"editorBracketHighlight.foreground4\":\"#005cc5\",\"editorBracketHighlight.foreground5\":\"#e36209\",\"editorBracketHighlight.foreground6\":\"#5a32a3\",\"editorBracketMatch.background\":\"#34d05840\",\"editorBracketMatch.border\":\"#34d05800\",\"editorCursor.foreground\":\"#044289\",\"editorError.foreground\":\"#cb2431\",\"editorGroup.border\":\"#e1e4e8\",\"editorGroupHeader.tabsBackground\":\"#f6f8fa\",\"editorGroupHeader.tabsBorder\":\"#e1e4e8\",\"editorGutter.addedBackground\":\"#28a745\",\"editorGutter.deletedBackground\":\"#d73a49\",\"editorGutter.modifiedBackground\":\"#2188ff\",\"editorIndentGuide.activeBackground\":\"#d7dbe0\",\"editorIndentGuide.background\":\"#eff2f6\",\"editorLineNumber.activeForeground\":\"#24292e\",\"editorLineNumber.foreground\":\"#1b1f234d\",\"editorOverviewRuler.border\":\"#fff\",\"editorWarning.foreground\":\"#f9c513\",\"editorWhitespace.foreground\":\"#d1d5da\",\"editorWidget.background\":\"#f6f8fa\",\"errorForeground\":\"#cb2431\",\"focusBorder\":\"#2188ff\",\"foreground\":\"#444d56\",\"gitDecoration.addedResourceForeground\":\"#28a745\",\"gitDecoration.conflictingResourceForeground\":\"#e36209\",\"gitDecoration.deletedResourceForeground\":\"#d73a49\",\"gitDecoration.ignoredResourceForeground\":\"#959da5\",\"gitDecoration.modifiedResourceForeground\":\"#005cc5\",\"gitDecoration.submoduleResourceForeground\":\"#959da5\",\"gitDecoration.untrackedResourceForeground\":\"#28a745\",\"input.background\":\"#fafbfc\",\"input.border\":\"#e1e4e8\",\"input.foreground\":\"#2f363d\",\"input.placeholderForeground\":\"#959da5\",\"list.activeSelectionBackground\":\"#e2e5e9\",\"list.activeSelectionForeground\":\"#2f363d\",\"list.focusBackground\":\"#cce5ff\",\"list.hoverBackground\":\"#ebf0f4\",\"list.hoverForeground\":\"#2f363d\",\"list.inactiveFocusBackground\":\"#dbedff\",\"list.inactiveSelectionBackground\":\"#e8eaed\",\"list.inactiveSelectionForeground\":\"#2f363d\",\"notificationCenterHeader.background\":\"#e1e4e8\",\"notificationCenterHeader.foreground\":\"#6a737d\",\"notifications.background\":\"#fafbfc\",\"notifications.border\":\"#e1e4e8\",\"notifications.foreground\":\"#2f363d\",\"notificationsErrorIcon.foreground\":\"#d73a49\",\"notificationsInfoIcon.foreground\":\"#005cc5\",\"notificationsWarningIcon.foreground\":\"#e36209\",\"panel.background\":\"#f6f8fa\",\"panel.border\":\"#e1e4e8\",\"panelInput.border\":\"#e1e4e8\",\"panelTitle.activeBorder\":\"#f9826c\",\"panelTitle.activeForeground\":\"#2f363d\",\"panelTitle.inactiveForeground\":\"#6a737d\",\"pickerGroup.border\":\"#e1e4e8\",\"pickerGroup.foreground\":\"#2f363d\",\"progressBar.background\":\"#2188ff\",\"quickInput.background\":\"#fafbfc\",\"quickInput.foreground\":\"#2f363d\",\"scrollbar.shadow\":\"#6a737d33\",\"scrollbarSlider.activeBackground\":\"#959da588\",\"scrollbarSlider.background\":\"#959da533\",\"scrollbarSlider.hoverBackground\":\"#959da544\",\"settings.headerForeground\":\"#2f363d\",\"settings.modifiedItemIndicator\":\"#2188ff\",\"sideBar.background\":\"#f6f8fa\",\"sideBar.border\":\"#e1e4e8\",\"sideBar.foreground\":\"#586069\",\"sideBarSectionHeader.background\":\"#f6f8fa\",\"sideBarSectionHeader.border\":\"#e1e4e8\",\"sideBarSectionHeader.foreground\":\"#2f363d\",\"sideBarTitle.foreground\":\"#2f363d\",\"statusBar.background\":\"#fff\",\"statusBar.border\":\"#e1e4e8\",\"statusBar.debuggingBackground\":\"#f9826c\",\"statusBar.debuggingForeground\":\"#fff\",\"statusBar.foreground\":\"#586069\",\"statusBar.noFolderBackground\":\"#fff\",\"statusBarItem.prominentBackground\":\"#e8eaed\",\"statusBarItem.remoteBackground\":\"#fff\",\"statusBarItem.remoteForeground\":\"#586069\",\"tab.activeBackground\":\"#fff\",\"tab.activeBorder\":\"#fff\",\"tab.activeBorderTop\":\"#f9826c\",\"tab.activeForeground\":\"#2f363d\",\"tab.border\":\"#e1e4e8\",\"tab.hoverBackground\":\"#fff\",\"tab.inactiveBackground\":\"#f6f8fa\",\"tab.inactiveForeground\":\"#6a737d\",\"tab.unfocusedActiveBorder\":\"#fff\",\"tab.unfocusedActiveBorderTop\":\"#e1e4e8\",\"tab.unfocusedHoverBackground\":\"#fff\",\"terminal.ansiBlack\":\"#24292e\",\"terminal.ansiBlue\":\"#0366d6\",\"terminal.ansiBrightBlack\":\"#959da5\",\"terminal.ansiBrightBlue\":\"#005cc5\",\"terminal.ansiBrightCyan\":\"#3192aa\",\"terminal.ansiBrightGreen\":\"#22863a\",\"terminal.ansiBrightMagenta\":\"#5a32a3\",\"terminal.ansiBrightRed\":\"#cb2431\",\"terminal.ansiBrightWhite\":\"#d1d5da\",\"terminal.ansiBrightYellow\":\"#b08800\",\"terminal.ansiCyan\":\"#1b7c83\",\"terminal.ansiGreen\":\"#28a745\",\"terminal.ansiMagenta\":\"#5a32a3\",\"terminal.ansiRed\":\"#d73a49\",\"terminal.ansiWhite\":\"#6a737d\",\"terminal.ansiYellow\":\"#dbab09\",\"terminal.foreground\":\"#586069\",\"terminal.tab.activeBorder\":\"#f9826c\",\"terminalCursor.background\":\"#d1d5da\",\"terminalCursor.foreground\":\"#005cc5\",\"textBlockQuote.background\":\"#fafbfc\",\"textBlockQuote.border\":\"#e1e4e8\",\"textCodeBlock.background\":\"#f6f8fa\",\"textLink.activeForeground\":\"#005cc5\",\"textLink.foreground\":\"#0366d6\",\"textPreformat.foreground\":\"#586069\",\"textSeparator.foreground\":\"#d1d5da\",\"titleBar.activeBackground\":\"#fff\",\"titleBar.activeForeground\":\"#2f363d\",\"titleBar.border\":\"#e1e4e8\",\"titleBar.inactiveBackground\":\"#f6f8fa\",\"titleBar.inactiveForeground\":\"#6a737d\",\"tree.indentGuidesStroke\":\"#e1e4e8\",\"welcomePage.buttonBackground\":\"#f6f8fa\",\"welcomePage.buttonHoverBackground\":\"#e1e4e8\"},\"displayName\":\"GitHub Light\",\"name\":\"github-light\",\"semanticHighlighting\":true,\"tokenColors\":[{\"scope\":[\"comment\",\"punctuation.definition.comment\",\"string.comment\"],\"settings\":{\"foreground\":\"#6a737d\"}},{\"scope\":[\"constant\",\"entity.name.constant\",\"variable.other.constant\",\"variable.other.enummember\",\"variable.language\"],\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":[\"entity\",\"entity.name\"],\"settings\":{\"foreground\":\"#6f42c1\"}},{\"scope\":\"variable.parameter.function\",\"settings\":{\"foreground\":\"#24292e\"}},{\"scope\":\"entity.name.tag\",\"settings\":{\"foreground\":\"#22863a\"}},{\"scope\":\"keyword\",\"settings\":{\"foreground\":\"#d73a49\"}},{\"scope\":[\"storage\",\"storage.type\"],\"settings\":{\"foreground\":\"#d73a49\"}},{\"scope\":[\"storage.modifier.package\",\"storage.modifier.import\",\"storage.type.java\"],\"settings\":{\"foreground\":\"#24292e\"}},{\"scope\":[\"string\",\"punctuation.definition.string\",\"string punctuation.section.embedded source\"],\"settings\":{\"foreground\":\"#032f62\"}},{\"scope\":\"support\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":\"meta.property-name\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":\"variable\",\"settings\":{\"foreground\":\"#e36209\"}},{\"scope\":\"variable.other\",\"settings\":{\"foreground\":\"#24292e\"}},{\"scope\":\"invalid.broken\",\"settings\":{\"fontStyle\":\"italic\",\"foreground\":\"#b31d28\"}},{\"scope\":\"invalid.deprecated\",\"settings\":{\"fontStyle\":\"italic\",\"foreground\":\"#b31d28\"}},{\"scope\":\"invalid.illegal\",\"settings\":{\"fontStyle\":\"italic\",\"foreground\":\"#b31d28\"}},{\"scope\":\"invalid.unimplemented\",\"settings\":{\"fontStyle\":\"italic\",\"foreground\":\"#b31d28\"}},{\"scope\":\"carriage-return\",\"settings\":{\"background\":\"#d73a49\",\"content\":\"^M\",\"fontStyle\":\"italic underline\",\"foreground\":\"#fafbfc\"}},{\"scope\":\"message.error\",\"settings\":{\"foreground\":\"#b31d28\"}},{\"scope\":\"string variable\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":[\"source.regexp\",\"string.regexp\"],\"settings\":{\"foreground\":\"#032f62\"}},{\"scope\":[\"string.regexp.character-class\",\"string.regexp constant.character.escape\",\"string.regexp source.ruby.embedded\",\"string.regexp string.regexp.arbitrary-repitition\"],\"settings\":{\"foreground\":\"#032f62\"}},{\"scope\":\"string.regexp constant.character.escape\",\"settings\":{\"fontStyle\":\"bold\",\"foreground\":\"#22863a\"}},{\"scope\":\"support.constant\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":\"support.variable\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":\"meta.module-reference\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":\"punctuation.definition.list.begin.markdown\",\"settings\":{\"foreground\":\"#e36209\"}},{\"scope\":[\"markup.heading\",\"markup.heading entity.name\"],\"settings\":{\"fontStyle\":\"bold\",\"foreground\":\"#005cc5\"}},{\"scope\":\"markup.quote\",\"settings\":{\"foreground\":\"#22863a\"}},{\"scope\":\"markup.italic\",\"settings\":{\"fontStyle\":\"italic\",\"foreground\":\"#24292e\"}},{\"scope\":\"markup.bold\",\"settings\":{\"fontStyle\":\"bold\",\"foreground\":\"#24292e\"}},{\"scope\":[\"markup.underline\"],\"settings\":{\"fontStyle\":\"underline\"}},{\"scope\":[\"markup.strikethrough\"],\"settings\":{\"fontStyle\":\"strikethrough\"}},{\"scope\":\"markup.inline.raw\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":[\"markup.deleted\",\"meta.diff.header.from-file\",\"punctuation.definition.deleted\"],\"settings\":{\"background\":\"#ffeef0\",\"foreground\":\"#b31d28\"}},{\"scope\":[\"markup.inserted\",\"meta.diff.header.to-file\",\"punctuation.definition.inserted\"],\"settings\":{\"background\":\"#f0fff4\",\"foreground\":\"#22863a\"}},{\"scope\":[\"markup.changed\",\"punctuation.definition.changed\"],\"settings\":{\"background\":\"#ffebda\",\"foreground\":\"#e36209\"}},{\"scope\":[\"markup.ignored\",\"markup.untracked\"],\"settings\":{\"background\":\"#005cc5\",\"foreground\":\"#f6f8fa\"}},{\"scope\":\"meta.diff.range\",\"settings\":{\"fontStyle\":\"bold\",\"foreground\":\"#6f42c1\"}},{\"scope\":\"meta.diff.header\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":\"meta.separator\",\"settings\":{\"fontStyle\":\"bold\",\"foreground\":\"#005cc5\"}},{\"scope\":\"meta.output\",\"settings\":{\"foreground\":\"#005cc5\"}},{\"scope\":[\"brackethighlighter.tag\",\"brackethighlighter.curly\",\"brackethighlighter.round\",\"brackethighlighter.square\",\"brackethighlighter.angle\",\"brackethighlighter.quote\"],\"settings\":{\"foreground\":\"#586069\"}},{\"scope\":\"brackethighlighter.unmatched\",\"settings\":{\"foreground\":\"#b31d28\"}},{\"scope\":[\"constant.other.reference.link\",\"string.other.link\"],\"settings\":{\"fontStyle\":\"underline\",\"foreground\":\"#032f62\"}}],\"type\":\"light\"}"));
 //#endregion
+//#region src/viewer/prior-audits.mjs
+function parseLedger(md) {
+	let frontMatter = {};
+	let body = md;
+	const fm = md.match(/^---\n([\s\S]*?)\n---\n/);
+	if (fm) {
+		frontMatter = (0, import_dist$1.parse)(fm[1]) ?? {};
+		body = md.slice(fm[0].length);
+	}
+	const entries = [];
+	const sections = body.split(/^## /m).slice(1);
+	for (const sec of sections) {
+		const nl = sec.indexOf("\n");
+		const heading = sec.slice(0, nl).trim();
+		const rest = sec.slice(nl + 1);
+		const fields = {};
+		for (const m of rest.matchAll(/^\*\*([A-Za-z][A-Za-z -]*?):\*\*\s*(.*)$/gm)) fields[m[1].trim()] = m[2].trim();
+		if (!fields.Disposition) continue;
+		const disposition = fields.Disposition.toLowerCase().trim();
+		const addresses = [...(fields.Addresses ?? "").matchAll(/\[([^\]]+)\]/g)].map((m) => m[1]);
+		const commits = [...(fields.Commit ?? "").matchAll(/\b[0-9a-f]{7,40}\b/g)].map((m) => m[0]);
+		entries.push({
+			heading,
+			disposition,
+			addresses,
+			commits,
+			author: fields.Author ?? "",
+			fields,
+			body: rest.trim()
+		});
+	}
+	return {
+		frontMatter,
+		entries
+	};
+}
+function countFindings(findingsPath) {
+	try {
+		return (((0, import_dist$1.parse)((0, node_fs.readFileSync)(findingsPath, "utf8")) ?? {}).narratives ?? []).reduce((n, nar) => n + (nar.findings ?? []).length, 0);
+	} catch {
+		return 0;
+	}
+}
+function findPriorAudits(auditsRoot, currentSlug) {
+	if (!(0, node_fs.existsSync)(auditsRoot)) return [];
+	return (0, node_fs.readdirSync)(auditsRoot).filter((d) => d !== currentSlug && (0, node_fs.statSync)((0, node_path.join)(auditsRoot, d)).isDirectory()).filter((d) => (0, node_fs.existsSync)((0, node_path.join)(auditsRoot, d, "findings.yaml"))).sort().map((slug) => {
+		const dir = (0, node_path.join)(auditsRoot, slug);
+		const ledgerPath = (0, node_path.join)(dir, "actions-taken.md");
+		const hasLedger = (0, node_fs.existsSync)(ledgerPath);
+		return {
+			slug,
+			dir,
+			hasFindings: true,
+			hasLedger,
+			findingCount: countFindings((0, node_path.join)(dir, "findings.yaml")),
+			ledger: hasLedger ? parseLedger((0, node_fs.readFileSync)(ledgerPath, "utf8")) : null
+		};
+	});
+}
+//#endregion
+//#region src/viewer/gates.mjs
+function isBlocking(finding) {
+	return (finding.concern === "critical" || finding.concern === "significant") && (finding.failure_mode ?? "user-visible") === "user-visible";
+}
+function allFindings(doc) {
+	return (doc.narratives ?? []).flatMap((n) => n.findings ?? []);
+}
+function fileLines(repoRoot, p) {
+	const abs = (0, node_path.isAbsolute)(p) ? p : (0, node_path.join)(repoRoot, p);
+	if (!(0, node_fs.existsSync)(abs)) return null;
+	return (0, node_fs.readFileSync)(abs, "utf8").split("\n");
+}
+function checkEvidenceFidelity(doc, repoRoot) {
+	const problems = [];
+	for (const f of allFindings(doc)) {
+		const locs = f.locations ?? [];
+		if (!locs.length || typeof f.evidence !== "string") continue;
+		const evidence = f.evidence.replace(/\n$/, "").split("\n");
+		const expected = [];
+		let missing = false;
+		for (const loc of locs) {
+			const lines = fileLines(repoRoot, loc.path);
+			if (!lines) {
+				problems.push({
+					slug: f.slug,
+					path: loc.path,
+					start_line: loc.start_line,
+					end_line: loc.end_line,
+					problem: "file-missing"
+				});
+				missing = true;
+				break;
+			}
+			expected.push(...lines.slice(loc.start_line - 1, loc.end_line));
+		}
+		if (missing) continue;
+		const first = locs[0];
+		if (expected.length !== evidence.length) {
+			problems.push({
+				slug: f.slug,
+				path: first.path,
+				start_line: first.start_line,
+				end_line: first.end_line,
+				problem: "line-count",
+				expected: String(expected.length),
+				actual: String(evidence.length)
+			});
+			continue;
+		}
+		for (let i = 0; i < expected.length; i++) if (expected[i].trimEnd() !== evidence[i].trimEnd()) {
+			problems.push({
+				slug: f.slug,
+				path: first.path,
+				start_line: first.start_line,
+				end_line: first.end_line,
+				problem: "text-mismatch",
+				expected: expected[i],
+				actual: evidence[i]
+			});
+			break;
+		}
+	}
+	return problems;
+}
+function checkReadmeComplete(text) {
+	const problems = [];
+	if (/^<!--\s*\n\s*README\.md scaffold/m.test(text)) problems.push("scaffold instruction comment still present at top of README.md");
+	const markers = text.match(/<!--\s*AGENT:/g);
+	if (markers) problems.push(`${markers.length} <!-- AGENT: --> placeholder(s) still present in README.md`);
+	return problems;
+}
+function checkAuditProfile(recon) {
+	const p = recon?.meta?.audit_profile;
+	if (!p) return ["recon.yaml meta.audit_profile is missing (pre-runner ≥ this version emits a stub; controller must complete it)"];
+	const problems = [];
+	if (!p.model || p.model === "unknown") problems.push("audit_profile.model is unknown — record the controller model id");
+	if (!p.agent_count) problems.push("audit_profile.agent_count is 0 — record how many analysis agents were dispatched");
+	if (!p.surfaces || p.surfaces.length === 0) problems.push("audit_profile.surfaces is empty — record the surface names dispatched");
+	if (p.mode === "re-audit" && !p.prior_audit) problems.push("audit_profile.mode is re-audit but prior_audit is null");
+	return problems;
+}
+const REQUIRE_COMMIT = /* @__PURE__ */ new Set([
+	"fixed",
+	"mitigated",
+	"superseded"
+]);
+const KNOWN = [
+	"fixed",
+	"mitigated",
+	"accepted",
+	"disputed",
+	"deferred",
+	"escalated",
+	"superseded",
+	"no-measurable-benefit"
+];
+function lintLedger({ ledgerText, findingsDoc, gitLog = null, testCommand = null }) {
+	const out = [];
+	const err = (entry, message) => out.push({
+		entry,
+		level: "error",
+		message
+	});
+	const warn = (entry, message) => out.push({
+		entry,
+		level: "warn",
+		message
+	});
+	const ledger = parseLedger(ledgerText);
+	const fm = ledger.frontMatter;
+	const findings = allFindings(findingsDoc);
+	const known = new Map(findings.map((f) => [f.slug, f]));
+	for (const cf of findingsDoc.carried_forward ?? []) known.set(cf.slug, {
+		slug: cf.slug,
+		concern: "note",
+		effort: "small",
+		carried: true
+	});
+	if (!fm.audit || !fm.status) err(null, "front matter must declare audit and status counts");
+	else {
+		const s = fm.status;
+		const total = findings.length;
+		const others = [
+			"fixed",
+			"mitigated",
+			"accepted",
+			"disputed",
+			"deferred",
+			"escalated",
+			"superseded",
+			"no-measurable-benefit"
+		].reduce((n, k) => n + (Number(s[k]) || 0), 0);
+		if (Number(s.open) !== total - others) err(null, `front matter open=${s.open} but findings(${total}) − dispositioned(${others}) = ${total - others}`);
+	}
+	if (!ledger.entries.length) warn(null, "ledger has no entries");
+	for (const e of ledger.entries) {
+		const f = e.fields;
+		if (!KNOWN.includes(e.disposition)) err(e.heading, `unknown disposition '${e.disposition}'`);
+		if (!f.Addresses) err(e.heading, "missing **Addresses:**");
+		if (!f.Author) err(e.heading, "missing **Author:**");
+		for (const slug of e.addresses) if (!known.has(slug)) err(e.heading, `Addresses unknown slug '${slug}' (not in findings.yaml or carried_forward)`);
+		if (REQUIRE_COMMIT.has(e.disposition) && !e.commits.length) err(e.heading, `disposition ${e.disposition} requires **Commit:** with a SHA`);
+		if (e.disposition === "fixed") {
+			if (!f.Verification) err(e.heading, "fixed requires **Verification:** (workspace-scope commands and results)");
+			else if (!(testCommand ? f.Verification.includes(testCommand) : /--workspace|just test|just check|workspace/.test(f.Verification))) warn(e.heading, `Verification does not cite the workspace-scope gate${testCommand ? ` (${testCommand})` : ""}`);
+			if (!f.Diff) err(e.heading, "fixed requires **Diff:** \"N files, +I −D, C commits\"");
+			else {
+				const m = f.Diff.match(/(\d+)\s+files?,\s*\+(\d+)\s+[−-](\d+),\s*(\d+)\s+commits?/);
+				if (!m) err(e.heading, `Diff not parseable: '${f.Diff}'`);
+				else {
+					const [files, ins, , commits] = m.slice(1).map(Number);
+					const smallest = e.addresses.map((s) => known.get(s)?.effort).filter(Boolean).sort((a, b) => [
+						"trivial",
+						"small",
+						"medium",
+						"large"
+					].indexOf(a) - [
+						"trivial",
+						"small",
+						"medium",
+						"large"
+					].indexOf(b))[0];
+					if (["trivial", "small"].includes(smallest) && (files > 10 || ins > 500) || commits > 3) warn(e.heading, `diff budget exceeded for effort=${smallest ?? "?"} (${files} files, +${ins}, ${commits} commits); consider disposition escalated and human sign-off`);
+				}
+			}
+			if (!f["Blast radius"]) err(e.heading, "fixed requires **Blast radius:** (crates touched vs named; reverse deps; co-varying docs/tests)");
+			if (!f["Coverage lost"] && /\btests?\b/i.test(e.body) && /\b(replace|rewrit|remov|delet)/i.test(e.body)) warn(e.heading, "entry mentions changing tests; state **Coverage lost:** (or \"none\")");
+		}
+		if (e.disposition === "deferred" && !/(milestone|target|issue|#\d+|\d{4}-\d{2})/i.test(e.body)) err(e.heading, "deferred requires a target (milestone, issue, or date) in the body");
+		if ((e.disposition === "disputed" || e.disposition === "accepted") && e.body.replace(/\*\*[^*]+:\*\*.*\n/g, "").trim().length < 40) err(e.heading, `${e.disposition} requires a substantive rationale`);
+		if (gitLog) for (const sha of e.commits) {
+			const info = gitLog(sha);
+			if (!info.exists) {
+				err(e.heading, `commit ${sha} not found in target repo (squash-merge? record the merge SHA)`);
+				continue;
+			}
+			for (const slug of e.addresses) if (!info.trailers.includes(slug)) warn(e.heading, `commit ${sha} lacks 'Audit-Finding: ${slug}' trailer`);
+		}
+	}
+	return out;
+}
+//#endregion
 //#region src/viewer/build-report.mjs
 const FINDINGS_REQUIRED = [
 	"audit_date",
@@ -39834,7 +40077,7 @@ const FINDINGS_REQUIRED = [
 * @returns {object}
 */
 function parseFindings(yamlStr) {
-	const data = import_dist.parse(yamlStr);
+	const data = import_dist$1.parse(yamlStr);
 	for (const field of FINDINGS_REQUIRED) if (data[field] === void 0 || data[field] === null) throw new Error(`findings YAML missing required field: ${field}`);
 	if (!Array.isArray(data.narratives)) throw new Error("findings YAML: narratives must be an array");
 	if (!data.summary?.counts) throw new Error("findings YAML: summary.counts is required");
@@ -39846,7 +40089,7 @@ function parseFindings(yamlStr) {
 * @returns {object}
 */
 function parseRecon(yamlStr) {
-	return import_dist.parse(yamlStr);
+	return import_dist$1.parse(yamlStr);
 }
 /**
 * Resolve the directory containing recon.schema.json and findings.schema.json.
@@ -39876,7 +40119,7 @@ function compileValidators(schemaDir) {
 		allErrors: true,
 		strict: false
 	});
-	import_dist$1.default.default(ajv);
+	import_dist.default.default(ajv);
 	const reconSchema = JSON.parse((0, node_fs.readFileSync)((0, node_path.join)(schemaDir, "recon.schema.json"), "utf8"));
 	const findingsSchema = JSON.parse((0, node_fs.readFileSync)((0, node_path.join)(schemaDir, "findings.schema.json"), "utf8"));
 	return {
@@ -39902,7 +40145,7 @@ function validateYamlFile(filePath, fileLabel, validator) {
 	const content = (0, node_fs.readFileSync)(filePath, "utf8");
 	let data;
 	try {
-		data = import_dist.parse(content);
+		data = import_dist$1.parse(content);
 	} catch (e) {
 		return [{
 			file: fileLabel,
@@ -40066,7 +40309,7 @@ async function renderEvidence(ec, finding) {
 /**
 * Build a glossary sidenote from concern levels present in this report.
 */
-function buildGlossary(counts) {
+function buildGlossary(counts, blocking, backlog) {
 	const defs = {
 		critical: "active exploitability or data loss path",
 		significant: "meaningful risk under realistic conditions",
@@ -40076,13 +40319,14 @@ function buildGlossary(counts) {
 	};
 	const lines = Object.entries(counts).filter(([, v]) => v > 0).map(([level]) => `<strong>${level}</strong> \u2014 ${defs[level] || level}`).join("<br>");
 	if (!lines) return "";
-	return `<span class="sidenote glossary"><strong>Concern levels</strong><br>${lines}<br><br>Each <strong>surface</strong> groups findings into a coherent concern area, not a category.</span>`;
+	return `<span class="sidenote glossary"><strong>Concern levels</strong><br>${lines}<br><br>Blocking: ${blocking} &middot; Backlog: ${backlog}<br><br>Each <strong>surface</strong> groups findings into a coherent concern area, not a category.</span>`;
 }
 function renderHeader(findings) {
 	const counts = findings.summary?.counts || {};
 	const total = Object.values(counts).reduce((a, b) => a + b, 0);
 	const assessment = findings.assessment || "";
-	const glossary = buildGlossary(counts);
+	const { blocking, backlog } = blockingCounts(findings);
+	const glossary = buildGlossary(counts, blocking, backlog);
 	return `    <header>
       <h1>${escHtml(findings.scope || "Audit")} Audit</h1>
       <p class="meta">${findings.audit_date} &middot; <code>${(findings.commit || "").slice(0, 12)}</code> &middot; ${escHtml(findings.scope || "")}</p>
@@ -40156,14 +40400,16 @@ function renderFinding(finding, slugToTitle, evidenceHtml, auditDir) {
       </article>`;
 }
 /**
-* Generate the remediation ledger <section> with a summary table.
-* One row per finding, grouped by narrative. Columns: slug, concern, location, effort, chains.
+* Build the <tr> rows for the findings matching a predicate, in narrative order.
 * @param {object} findings — parsed findings object
-* @returns {string}
+* @param {object} slugToTitle — slug-to-title map for chain references
+* @param {(finding: object) => boolean} predicate
+* @returns {string[]}
 */
-function renderLedger(findings, slugToTitle) {
+function ledgerRows(findings, slugToTitle, predicate) {
 	const rows = [];
 	for (const narrative of findings.narratives || []) for (const finding of narrative.findings || []) {
+		if (!predicate(finding)) continue;
 		const locationCell = (finding.locations || []).map((loc) => `<code>${escHtml(loc.path)}:${loc.start_line}</code>`).join("<br>");
 		const effort = finding.effort ? escHtml(finding.effort) : "—";
 		const chainRefs = finding.chains;
@@ -40184,9 +40430,16 @@ function renderLedger(findings, slugToTitle) {
           <td>${chainsCell}</td>
         </tr>`);
 	}
-	return `    <section id="remediation-ledger" class="ledger">
-      <h2>Remediation Ledger</h2>
-      <table class="ledger-table">
+	return rows;
+}
+/**
+* Wrap ledger rows in a table, or emit an explicit empty marker.
+* @param {string[]} rows
+* @returns {string}
+*/
+function ledgerTable(rows) {
+	if (rows.length === 0) return "      <p><em>none</em></p>";
+	return `      <table class="ledger-table">
         <thead>
           <tr>
             <th>Finding</th>
@@ -40199,7 +40452,28 @@ function renderLedger(findings, slugToTitle) {
         <tbody>
 ${rows.join("\n")}
         </tbody>
-      </table>
+      </table>`;
+}
+/**
+* Generate the remediation ledger <section>, split into a release-gating
+* Blocking table and a Backlog table. One row per finding, grouped by
+* narrative within each section. Columns: slug, concern, location, effort,
+* chains.
+* @param {object} findings — parsed findings object
+* @param {object} slugToTitle — slug-to-title map for chain references
+* @returns {string}
+*/
+function renderLedger(findings, slugToTitle) {
+	const blocking = ledgerRows(findings, slugToTitle, (f) => isBlocking(f));
+	const backlog = ledgerRows(findings, slugToTitle, (f) => !isBlocking(f));
+	return `    <section id="remediation-ledger" class="ledger">
+      <h2>Remediation Ledger</h2>
+      <h3>Blocking</h3>
+      <p>critical/significant with a user-visible failure mode — release-gating</p>
+${ledgerTable(blocking)}
+      <h3>Backlog</h3>
+      <p>everything else — triage to the next milestone by default</p>
+${ledgerTable(backlog)}
     </section>`;
 }
 const SPARK = {
@@ -40289,19 +40563,67 @@ function renderAgentsFindingList(findings) {
 	return lines.join("\n").trimEnd();
 }
 /**
+* Render the carried-forward list: prior findings this audit deliberately did
+* not re-derive. Markdown bullet list; each slug is backticked so it can never
+* be mistaken for a finding-index entry.
+* @param {object} findings — parsed findings YAML
+* @returns {string}
+*/
+function renderCarriedForward(findings) {
+	const cf = findings.carried_forward ?? [];
+	if (!cf.length) return "_None._";
+	return cf.map((c) => `- \`${c.slug}\` — ${c.disposition} in \`${c.prior_audit}\`${c.reason ? ` — ${c.reason}` : ""}`).join("\n");
+}
+/**
+* Render the reconciliation table: what happened to prior audits' fixed
+* findings when this audit re-checked them.
+* @param {object} findings — parsed findings YAML
+* @returns {string}
+*/
+function renderReconciliation(findings) {
+	const rows = findings.reconciliation ?? [];
+	if (!rows.length) return "_No prior fixed findings to reconcile._";
+	const lines = ["| prior finding | audit | status | verified against |", "|---|---|---|---|"];
+	for (const r of rows) lines.push(`| \`${r.prior_slug}\` | \`${r.prior_audit}\` | ${r.status}${r.superseded_by ? ` → \`${r.superseded_by}\`` : ""} | ${r.verified_against ? `\`${r.verified_against}\`` : "—"} |`);
+	return lines.join("\n");
+}
+/**
+* Split this audit's findings into release-gating and backlog counts.
+* @param {object} findings — parsed findings YAML
+* @returns {{blocking: number, backlog: number}}
+*/
+function blockingCounts(findings) {
+	const all = allFindings(findings);
+	const blocking = all.filter(isBlocking).length;
+	return {
+		blocking,
+		backlog: all.length - blocking
+	};
+}
+const RELEASE_PHASE_UNKNOWN = "unspecified — ask the maintainer";
+/**
 * Render the AGENTS.md content by interpolating a template string with
 * audit metadata and the pre-rendered finding list.
 * @param {object} findings — parsed findings YAML
 * @param {string} templateStr — raw template markdown
 * @param {string} auditSlug — directory basename (e.g. "2026-04-12-14-full-crate")
+* @param {object} [opts]
+* @param {object|null} [opts.recon] — parsed recon YAML, for test command / mode / release phase
+* @param {Array} [opts.priorAudits] — findPriorAudits() records for sibling audits
 * @returns {string}
 */
-function renderAgentsMd(findings, templateStr, auditSlug) {
+function renderAgentsMd(findings, templateStr, auditSlug, { recon = null, priorAudits = [] } = {}) {
 	const auditTitle = titleFromScope(findings.scope);
 	let findingCount = 0;
 	for (const n of findings.narratives || []) findingCount += (n.findings || []).length;
 	const findingList = renderAgentsFindingList(findings);
-	return templateStr.replaceAll("{{audit_title}}", auditTitle).replaceAll("{{audit_slug}}", auditSlug).replaceAll("{{audit_scope}}", findings.scope || "").replaceAll("{{audit_date}}", findings.audit_date || "").replaceAll("{{finding_count}}", String(findingCount)).replaceAll("{{finding_list}}", findingList);
+	const { blocking, backlog } = blockingCounts(findings);
+	const testCommand = recon?.testing?.command || "<recon.yaml#testing.command not detected — use the project task runner>";
+	const mode = recon?.meta?.audit_profile?.mode ?? "fresh";
+	const phase = recon?.meta?.audit_profile?.release_phase;
+	const releasePhase = !phase || phase === "unspecified" ? RELEASE_PHASE_UNKNOWN : phase;
+	const priorList = priorAudits.length ? priorAudits.map((p) => `- \`${p.slug}\`${p.hasLedger ? "" : " — **no actions-taken.md** (findings there are untracked)"}`).join("\n") : "_none_";
+	return templateStr.replaceAll("{{audit_title}}", auditTitle).replaceAll("{{audit_slug}}", auditSlug).replaceAll("{{audit_scope}}", findings.scope || "").replaceAll("{{audit_date}}", findings.audit_date || "").replaceAll("{{finding_count}}", String(findingCount)).replaceAll("{{finding_list}}", findingList).replaceAll("{{blocking_count}}", String(blocking)).replaceAll("{{backlog_count}}", String(backlog)).replaceAll("{{test_command}}", testCommand).replaceAll("{{mode}}", mode).replaceAll("{{release_phase}}", releasePhase).replaceAll("{{prior_audits}}", priorList).replaceAll("{{carried_forward_list}}", renderCarriedForward(findings));
 }
 /**
 * Render the README.md scaffold by interpolating the template with audit
@@ -40311,16 +40633,80 @@ function renderAgentsMd(findings, templateStr, auditSlug) {
 * pre-fills structural metadata so the agent knows the scope.
 * @param {object} findings — parsed findings YAML
 * @param {string} templateStr — raw template markdown
+* @param {object} [opts]
+* @param {Array} [opts.priorAudits] — findPriorAudits() records for sibling audits
 * @returns {string}
 */
-function renderReadmeMd(findings, templateStr) {
+function renderReadmeMd(findings, templateStr, { priorAudits = [] } = {}) {
 	const auditTitle = titleFromScope(findings.scope);
 	const narratives = findings.narratives || [];
 	let findingCount = 0;
 	for (const n of narratives) findingCount += (n.findings || []).length;
 	const counts = findings.summary?.counts || {};
 	const findingList = renderAgentsFindingList(findings);
-	return templateStr.replaceAll("{{audit_title}}", auditTitle).replaceAll("{{audit_scope}}", findings.scope || "").replaceAll("{{audit_date}}", findings.audit_date || "").replaceAll("{{audit_commit}}", findings.commit || "").replaceAll("{{finding_count}}", String(findingCount)).replaceAll("{{narrative_count}}", String(narratives.length)).replaceAll("{{finding_list}}", findingList).replaceAll("{{count_critical}}", String(counts.critical ?? 0)).replaceAll("{{count_significant}}", String(counts.significant ?? 0)).replaceAll("{{count_moderate}}", String(counts.moderate ?? 0)).replaceAll("{{count_advisory}}", String(counts.advisory ?? 0)).replaceAll("{{count_note}}", String(counts.note ?? 0));
+	const { blocking, backlog } = blockingCounts(findings);
+	const priorList = priorAudits.length ? priorAudits.map((p) => `- \`${p.slug}\`${p.hasLedger ? "" : " — **no actions-taken.md** (findings there are untracked)"}`).join("\n") : "_none_";
+	return templateStr.replaceAll("{{audit_title}}", auditTitle).replaceAll("{{audit_scope}}", findings.scope || "").replaceAll("{{audit_date}}", findings.audit_date || "").replaceAll("{{audit_commit}}", findings.commit || "").replaceAll("{{finding_count}}", String(findingCount)).replaceAll("{{narrative_count}}", String(narratives.length)).replaceAll("{{finding_list}}", findingList).replaceAll("{{count_critical}}", String(counts.critical ?? 0)).replaceAll("{{count_significant}}", String(counts.significant ?? 0)).replaceAll("{{count_moderate}}", String(counts.moderate ?? 0)).replaceAll("{{count_advisory}}", String(counts.advisory ?? 0)).replaceAll("{{count_note}}", String(counts.note ?? 0)).replaceAll("{{blocking_count}}", String(blocking)).replaceAll("{{backlog_count}}", String(backlog)).replaceAll("{{prior_audits}}", priorList).replaceAll("{{reconciliation_table}}", renderReconciliation(findings)).replaceAll("{{carried_forward_list}}", renderCarriedForward(findings));
+}
+/**
+* Mechanical completeness gate for an audit directory. Returns every reason
+* the audit is not finishable: missing build outputs, an unfilled README
+* scaffold, a stub audit_profile, evidence that does not match the source
+* tree, prior audits whose findings were never dispositioned, and (in
+* re-audit mode) a reconciliation block that contradicts the findings.
+* @param {string} auditDir
+* @param {object} [opts]
+* @param {string|null} [opts.repoRoot] — target repo root; falls back to recon.structure.root
+* @param {boolean} [opts.allowUnledgeredPrior] — downgrade unledgered-prior errors to warnings
+* @returns {{ok: boolean, errors: string[], warnings: string[]}}
+*/
+function finalizeAudit(auditDir, { repoRoot = null, allowUnledgeredPrior = false } = {}) {
+	const errors = [];
+	const warnings = [];
+	const findingsPath = (0, node_path.join)(auditDir, "findings.yaml");
+	const reconPath = (0, node_path.join)(auditDir, "recon.yaml");
+	const readmePath = (0, node_path.join)(auditDir, "README.md");
+	for (const p of [
+		findingsPath,
+		reconPath,
+		readmePath,
+		(0, node_path.join)(auditDir, "report.html"),
+		(0, node_path.join)(auditDir, "AGENTS.md")
+	]) if (!(0, node_fs.existsSync)(p)) errors.push(`missing ${(0, node_path.basename)(p)}`);
+	if (errors.length) return {
+		ok: false,
+		errors,
+		warnings
+	};
+	const findings = parseFindings((0, node_fs.readFileSync)(findingsPath, "utf8"));
+	const recon = parseRecon((0, node_fs.readFileSync)(reconPath, "utf8"));
+	const root = repoRoot ?? recon?.structure?.root ?? (0, node_path.join)(auditDir, "..", "..", "..");
+	errors.push(...checkReadmeComplete((0, node_fs.readFileSync)(readmePath, "utf8")));
+	errors.push(...checkAuditProfile(recon));
+	for (const p of checkEvidenceFidelity(findings, root)) errors.push(`evidence ${p.problem} for ${p.slug} @ ${p.path}:${p.start_line}-${p.end_line}${p.expected !== void 0 ? ` (file: ${JSON.stringify(p.expected)} vs evidence: ${JSON.stringify(p.actual)})` : ""}`);
+	for (const f of allFindings(findings)) if (f.origin && ["caused-by-fix", "recurrence-of"].includes(f.origin.kind) && !f.origin.ref) errors.push(`${f.slug}: origin.kind ${f.origin.kind} requires origin.ref`);
+	const prior = findPriorAudits((0, node_path.join)(auditDir, ".."), (0, node_path.basename)(auditDir));
+	for (const p of prior) if (p.findingCount > 0 && !p.hasLedger) (allowUnledgeredPrior ? warnings : errors).push(`prior audit ${p.slug} has ${p.findingCount} findings and no actions-taken.md — its findings are untracked (pass --allow-unledgered-prior to override)`);
+	if (recon?.meta?.audit_profile?.mode === "re-audit") {
+		if (!findings.reconciliation) errors.push("re-audit mode but findings.yaml has no reconciliation block — every ledgered prior fix needs a still-fixed/regressed/superseded/not-verified row");
+		const regressed = (findings.reconciliation ?? []).filter((r) => r.status === "regressed").map((r) => r.prior_slug);
+		const recurrences = new Set(allFindings(findings).filter((f) => f.origin?.kind === "recurrence-of").map((f) => f.origin.ref));
+		for (const s of regressed) if (!recurrences.has(s)) errors.push(`reconciliation marks ${s} regressed but no finding carries origin {kind: recurrence-of, ref: ${s}}`);
+	}
+	const ledgerPath = (0, node_path.join)(auditDir, "actions-taken.md");
+	if ((0, node_fs.existsSync)(ledgerPath)) {
+		const problems = lintLedger({
+			ledgerText: (0, node_fs.readFileSync)(ledgerPath, "utf8"),
+			findingsDoc: findings,
+			testCommand: recon?.testing?.command || null
+		});
+		for (const p of problems) (p.level === "error" ? errors : warnings).push(`ledger${p.entry ? ` [${p.entry}]` : ""}: ${p.message}`);
+	}
+	return {
+		ok: errors.length === 0,
+		errors,
+		warnings
+	};
 }
 /**
 * Assemble a single self-contained report.html from audit YAML, template, CSS, and fonts.
@@ -40390,16 +40776,28 @@ async function assembleReport(auditDir, opts = {}) {
 }
 if ((0, node_fs.realpathSync)(process.argv[1]) === (0, node_fs.realpathSync)((0, node_url.fileURLToPath)(require("url").pathToFileURL(__filename).href))) (async () => {
 	const rawArgs = process.argv.slice(2);
+	const SUBCOMMANDS = [
+		"build",
+		"validate",
+		"evidence",
+		"ledger",
+		"finalize"
+	];
+	const positional = rawArgs.filter((a) => !a.startsWith("--"));
 	let subcommand = "build";
-	let auditDir = rawArgs[0];
-	if (rawArgs[0] === "validate" || rawArgs[0] === "build") {
-		subcommand = rawArgs[0];
-		auditDir = rawArgs[1];
+	let auditDir = positional[0];
+	if (SUBCOMMANDS.includes(positional[0])) {
+		subcommand = positional[0];
+		auditDir = positional[1];
 	}
 	if (!auditDir) {
-		console.error("Usage: node build-report.mjs [build|validate] <audit-directory>");
-		console.error("  build     (default) assemble report.html and AGENTS.md");
+		console.error("Usage: node build-report.mjs [build|validate|evidence|ledger|finalize] <audit-directory>");
+		console.error("  build     (default) assemble report.html, AGENTS.md, and the README scaffold");
 		console.error("  validate  check recon.yaml and findings.yaml against their schemas");
+		console.error("  evidence  check every finding's evidence block against the source tree");
+		console.error("  ledger    lint actions-taken.md against findings.yaml and git");
+		console.error("  finalize  run every gate; refuse to call the audit finished until they pass");
+		console.error("            [--allow-unledgered-prior]  downgrade unledgered prior audits to warnings");
 		process.exit(1);
 	}
 	const scriptDir = (0, node_path.dirname)((0, node_url.fileURLToPath)(require("url").pathToFileURL(__filename).href));
@@ -40421,6 +40819,69 @@ if ((0, node_fs.realpathSync)(process.argv[1]) === (0, node_fs.realpathSync)((0,
 			console.error(`\n${errors.length} validation error${errors.length === 1 ? "" : "s"}`);
 			process.exit(1);
 		}
+	}
+	if (subcommand === "evidence") {
+		const findingsPath = (0, node_path.join)(auditDir, "findings.yaml");
+		if (!(0, node_fs.existsSync)(findingsPath)) {
+			console.error(`error: ${findingsPath} not found`);
+			process.exit(2);
+		}
+		const problems = checkEvidenceFidelity(parseFindings((0, node_fs.readFileSync)(findingsPath, "utf8")), ((0, node_fs.existsSync)((0, node_path.join)(auditDir, "recon.yaml")) ? parseRecon((0, node_fs.readFileSync)((0, node_path.join)(auditDir, "recon.yaml"), "utf8")) : null)?.structure?.root ?? (0, node_path.join)(auditDir, "..", "..", ".."));
+		for (const p of problems) console.error(`${p.slug} @ ${p.path}:${p.start_line}-${p.end_line}: ${p.problem}${p.expected !== void 0 ? `\n    file:     ${JSON.stringify(p.expected)}\n    evidence: ${JSON.stringify(p.actual)}` : ""}`);
+		console.log(problems.length ? `${problems.length} evidence problem(s)` : "evidence ok");
+		process.exit(problems.length ? 1 : 0);
+	}
+	if (subcommand === "ledger") {
+		const ledgerPath = (0, node_path.join)(auditDir, "actions-taken.md");
+		if (!(0, node_fs.existsSync)(ledgerPath)) {
+			console.error(`error: ${ledgerPath} does not exist`);
+			process.exit(1);
+		}
+		const findingsPath = (0, node_path.join)(auditDir, "findings.yaml");
+		if (!(0, node_fs.existsSync)(findingsPath)) {
+			console.error(`error: ${findingsPath} not found`);
+			process.exit(2);
+		}
+		const findings = parseFindings((0, node_fs.readFileSync)(findingsPath, "utf8"));
+		const recon = (0, node_fs.existsSync)((0, node_path.join)(auditDir, "recon.yaml")) ? parseRecon((0, node_fs.readFileSync)((0, node_path.join)(auditDir, "recon.yaml"), "utf8")) : null;
+		const root = recon?.structure?.root ?? (0, node_path.join)(auditDir, "..", "..", "..");
+		const gitLog = (sha) => {
+			try {
+				return {
+					exists: true,
+					trailers: (0, node_child_process.execFileSync)("git", [
+						"-C",
+						root,
+						"log",
+						"-1",
+						"--format=%(trailers:key=Audit-Finding,valueonly)",
+						sha
+					], { encoding: "utf8" }).split("\n").map((s) => s.trim()).filter(Boolean)
+				};
+			} catch {
+				return {
+					exists: false,
+					trailers: []
+				};
+			}
+		};
+		const out = lintLedger({
+			ledgerText: (0, node_fs.readFileSync)(ledgerPath, "utf8"),
+			findingsDoc: findings,
+			gitLog,
+			testCommand: recon?.testing?.command || null
+		});
+		for (const p of out) console[p.level === "error" ? "error" : "warn"](`${p.level}${p.entry ? ` [${p.entry}]` : ""}: ${p.message}`);
+		const errs = out.filter((p) => p.level === "error").length;
+		console.log(errs ? `${errs} ledger error(s)` : "ledger ok");
+		process.exit(errs ? 1 : 0);
+	}
+	if (subcommand === "finalize") {
+		const r = finalizeAudit(auditDir, { allowUnledgeredPrior: rawArgs.includes("--allow-unledgered-prior") });
+		for (const w of r.warnings) console.warn(`warn: ${w}`);
+		for (const e of r.errors) console.error(`error: ${e}`);
+		console.log(r.ok ? `finalize ok: ${auditDir}` : `${r.errors.length} finalize error(s)`);
+		process.exit(r.ok ? 0 : 1);
 	}
 	const viewerDir = [scriptDir, (0, node_path.join)(scriptDir, "..", "templates")].find((d) => (0, node_fs.existsSync)((0, node_path.join)(d, "template.html")));
 	if (!viewerDir) {
@@ -40446,9 +40907,14 @@ if ((0, node_fs.realpathSync)(process.argv[1]) === (0, node_fs.realpathSync)((0,
 	(0, node_fs.writeFileSync)(outPath, html);
 	console.log(`wrote ${outPath} (${(html.length / 1024).toFixed(0)}KB)`);
 	const findings = parseFindings((0, node_fs.readFileSync)((0, node_path.join)(auditDir, "findings.yaml"), "utf8"));
+	const buildRecon = parseRecon((0, node_fs.readFileSync)((0, node_path.join)(auditDir, "recon.yaml"), "utf8"));
+	const priorAudits = findPriorAudits((0, node_path.join)(auditDir, ".."), (0, node_path.basename)(auditDir));
 	const agentsTemplatePath = (0, node_path.join)(viewerDir, "agents-md-template.md");
 	if ((0, node_fs.existsSync)(agentsTemplatePath)) {
-		const agentsMd = renderAgentsMd(findings, (0, node_fs.readFileSync)(agentsTemplatePath, "utf8"), (0, node_path.basename)(auditDir));
+		const agentsMd = renderAgentsMd(findings, (0, node_fs.readFileSync)(agentsTemplatePath, "utf8"), (0, node_path.basename)(auditDir), {
+			recon: buildRecon,
+			priorAudits
+		});
 		const agentsPath = (0, node_path.join)(auditDir, "AGENTS.md");
 		(0, node_fs.writeFileSync)(agentsPath, agentsMd);
 		console.log(`wrote ${agentsPath} (${(agentsMd.length / 1024).toFixed(1)}KB)`);
@@ -40464,7 +40930,7 @@ if ((0, node_fs.realpathSync)(process.argv[1]) === (0, node_fs.realpathSync)((0,
 	if ((0, node_fs.existsSync)(readmeTemplatePath)) {
 		if ((0, node_fs.existsSync)(readmePath)) console.log(`skipped ${readmePath} (already exists; scaffold never overwrites authored prose)`);
 		else {
-			const readmeMd = renderReadmeMd(findings, (0, node_fs.readFileSync)(readmeTemplatePath, "utf8"));
+			const readmeMd = renderReadmeMd(findings, (0, node_fs.readFileSync)(readmeTemplatePath, "utf8"), { priorAudits });
 			(0, node_fs.writeFileSync)(readmePath, readmeMd);
 			console.log(`wrote ${readmePath} (${(readmeMd.length / 1024).toFixed(1)}KB) — scaffold, agent must fill in`);
 		}
@@ -40472,9 +40938,11 @@ if ((0, node_fs.realpathSync)(process.argv[1]) === (0, node_fs.realpathSync)((0,
 })();
 //#endregion
 exports.assembleReport = assembleReport;
+exports.blockingCounts = blockingCounts;
 exports.buildMetaString = buildMetaString;
 exports.compileValidators = compileValidators;
 exports.escHtml = escHtml;
+exports.finalizeAudit = finalizeAudit;
 exports.formatLocationTitle = formatLocationTitle;
 exports.formatValidationErrors = formatValidationErrors;
 exports.generateSparklines = generateSparklines;
@@ -40483,11 +40951,13 @@ exports.parseFindings = parseFindings;
 exports.parseRecon = parseRecon;
 exports.renderAgentsFindingList = renderAgentsFindingList;
 exports.renderAgentsMd = renderAgentsMd;
+exports.renderCarriedForward = renderCarriedForward;
 exports.renderHeader = renderHeader;
 exports.renderLedger = renderLedger;
 exports.renderNarrative = renderNarrative;
 exports.renderProse = renderProse;
 exports.renderReadmeMd = renderReadmeMd;
+exports.renderReconciliation = renderReconciliation;
 exports.resolveSchemaDir = resolveSchemaDir;
 exports.titleFromScope = titleFromScope;
 exports.validateAuditDir = validateAuditDir;

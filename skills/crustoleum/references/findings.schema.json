@@ -107,6 +107,23 @@
                     "enabled_by": { "type": "array", "items": { "type": "string" } },
                     "related": { "type": "array", "items": { "type": "string" } }
                   }
+                },
+                "origin": {
+                  "type": "object",
+                  "required": ["kind"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": { "type": "string", "enum": ["pre-existing", "new-in-diff", "caused-by-fix", "recurrence-of"],
+                      "description": "How this finding relates to prior audits and fixes. pre-existing: present before the last audit and never reported. new-in-diff: introduced by commits since the prior audit, not by a ledgered fix. caused-by-fix: introduced by a ledgered remediation commit (ref = SHA or prior slug). recurrence-of: a prior slug that was ledgered fixed and is back (ref = prior slug)." },
+                    "ref": { "type": "string", "description": "Commit SHA or prior finding slug the kind refers to. Required for caused-by-fix and recurrence-of." }
+                  },
+                  "if": { "properties": { "kind": { "enum": ["caused-by-fix", "recurrence-of"] } } },
+                  "then": { "required": ["kind", "ref"] }
+                },
+                "failure_mode": {
+                  "type": "string",
+                  "enum": ["user-visible", "internal", "policy", "documentation"],
+                  "description": "What fails if unaddressed. user-visible: wrong output, exit code, panic, data loss, hang reachable by a user. internal: perf/ownership/design cost with no user-visible symptom yet. policy: supply-chain/licensing/process. documentation: prose or metadata drift. Drives release gating: only critical/significant + user-visible block."
                 }
               }
             }
@@ -128,6 +145,37 @@
             "advisory": { "type": "integer" },
             "note": { "type": "integer" }
           }
+        }
+      }
+    },
+    "carried_forward": {
+      "type": "array",
+      "description": "Prior-audit findings with a standing deferred/accepted/mitigated/no-measurable-benefit disposition. Listed for tracking, EXCLUDED from narratives, counts, and the AGENTS.md finding index. Populated in re-audit mode from prior actions-taken.md files. `escalated` is NOT a standing disposition — it is unresolved and must be re-derived by this audit.",
+      "items": {
+        "type": "object",
+        "required": ["slug", "prior_audit", "disposition"],
+        "additionalProperties": false,
+        "properties": {
+          "slug": { "type": "string" },
+          "prior_audit": { "type": "string", "description": "Audit directory basename, e.g. 2026-08-12-10-m13-release-candidate" },
+          "disposition": { "type": "string", "enum": ["deferred", "accepted", "mitigated", "no-measurable-benefit"] },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "reconciliation": {
+      "type": "array",
+      "description": "Re-audit mode: verdict on every prior finding ledgered fixed. still-fixed = fix present and effective; regressed = the defect is back (must also appear as a finding with origin.kind recurrence-of); superseded = a new finding replaces it (superseded_by); not-verified = could not check (say why in the report). still-fixed is the status when the ledgered fix is present and effective — even if that same fix introduced a NEW defect (that new finding carries origin.kind: caused-by-fix). superseded is only for a prior finding that a new finding re-characterizes or replaces.",
+      "items": {
+        "type": "object",
+        "required": ["prior_slug", "prior_audit", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "prior_slug": { "type": "string" },
+          "prior_audit": { "type": "string" },
+          "status": { "type": "string", "enum": ["still-fixed", "regressed", "superseded", "not-verified"] },
+          "superseded_by": { "type": "string", "description": "Slug of the new finding that re-characterizes or replaces this prior finding. Only set when status is superseded — not for a fix that merely introduced a new, separate defect (that case is still-fixed, with the new defect filed as its own finding carrying origin.kind: caused-by-fix)." },
+          "verified_against": { "type": "string", "description": "Fix commit SHA whose diff was re-read" }
         }
       }
     }

@@ -22,6 +22,9 @@ status:
   accepted: {n}
   disputed: {n}
   deferred: {n}
+  escalated: {n}
+  superseded: {n}
+  no-measurable-benefit: {n}
   open: {n}          # findings with no action yet
 ---
 
@@ -34,15 +37,18 @@ Summary of remediation status for the
 
 ## YYYY-MM-DD — {brief description of action}
 
-**Disposition:** {fixed | mitigated | accepted | disputed | deferred}
-**Addresses:** [{finding-slug}](README.md#{anchor}), [{finding-slug}](README.md#{anchor})
-**Commit:** {SHA or PR link}
-**Author:** {who did the work}
+**Disposition:** {fixed | mitigated | accepted | disputed | deferred | escalated | superseded | no-measurable-benefit}
+**Addresses:** [{slug}](README.md#{slug}), …
+**Commit:** {SHA(s)}                       ← required for fixed / mitigated / superseded
+**Author:** {who did the work — model id or person}
+**Verification:** {exact workspace-scope commands and results}   ← required for fixed
+**Blast radius:** {crates touched vs crates named in the finding; reverse deps of changed symbols (`cargo tree --invert -p <crate>`); co-varying docs/tests/config grepped and updated or listed}   ← required for fixed
+**Diff:** {N files, +I −D, C commits}      ← required for fixed
+**Coverage lost:** {none | what an edited/removed test no longer asserts}   ← required when a fix edits an existing test's inputs or expectations
 
-{One to three paragraphs describing what was done. Be specific: what
-changed, in which files, and why this approach was chosen. If the
-disposition is `accepted` or `disputed`, the rationale must be here.
-If `deferred`, include the target date or milestone.}
+{Rationale paragraphs. For disputed/accepted: the evidence. For deferred/
+escalated: the target or the decision needed. For fixed: what changed and
+why this approach — and, if the fix touched a public signature, say so.}
 
 {If code was changed, a brief before/after is appropriate:}
 
@@ -95,9 +101,12 @@ that keeps it honest.
 **Dispositions:**
 
 - `fixed` — The finding is resolved by a code change. The commit field
-  is required and should point to the merge commit or PR.
+  is required and must contain the fix commit SHA(s) (a PR link may
+  accompany it, but a SHA must be present — the ledger lint extracts
+  SHAs). `Verification`, `Blast radius`, and `Diff` are also required.
 - `mitigated` — A compensating control is in place but the root cause
   remains. Explain what the mitigation is and what residual risk exists.
+  Requires **Commit:** with a SHA.
 - `accepted` — The risk is acknowledged and will not be addressed.
   Rationale is mandatory — who made the decision and why. This is not
   a euphemism for "ignored." Legitimate reasons: the attack requires
@@ -112,11 +121,63 @@ that keeps it honest.
 - `deferred` — Acknowledged but not yet addressed. Must include either
   a target date or a milestone/issue reference. A deferred finding
   without a target is an accepted finding in disguise.
+- `escalated` — the fix is out of budget: actual diff ≥ 5× what the effort
+  estimate implied, or a fourth fix commit on the same slug. Stop, record
+  what was learned, and hand the design decision to a human. Not a failure
+  — a circuit breaker. (One "small + medium" pair became 17 commits and
+  8,084 lines with `fixed: 2 / open: 0` on the ledger.)
+- `superseded` — a later action replaces this finding's fix or the finding
+  itself (`superseded_by:` slug or SHA in the body). Requires **Commit:**
+  with a SHA — the SHA of the replacing change. Use instead of
+  re-filing the same concern under a new heading.
+- `no-measurable-benefit` — a performance/ergonomics remediation was
+  implemented or prototyped, measured, and showed no benefit; the change
+  was not kept. Record the measurement. This is a legal, honest outcome —
+  do not ship a null result as `fixed`.
+
+**Verification is workspace-scope, always.** Run the project's canonical
+test command from `recon.yaml#testing.command` (or `AGENTS.md` "Workspace
+test command") across the whole workspace, plus any sibling workspaces
+(`fuzz/`, `xtask/`, `benches/`), package/deny/feature-matrix gates the
+project has (`just check`, `cargo hack --each-feature`, `cargo deny
+check`). "All 103 tests in crate X pass" is not verification — the
+recurrence rate collapsed exactly when ledgers switched from crate-local
+to workspace-scope gates.
+
+**Pushback is an obligation, not an option.** For every finding you MUST
+decide whether it should be `disputed` (mechanism wrong, unreachable,
+misread guard), `deferred` (real but not now — with a target), or
+`no-measurable-benefit`. A ledger with 100% `fixed` over dozens of findings
+is compliance, not diligence. Never fix a `note`-level finding with a
+breaking public change; defer it.
+
+**Fix by subsystem, not by slug.** If ≥ 2 findings touch the same file or
+mechanism, remediate once with the design decision recorded, and list
+every slug in `Addresses`. Sequential per-slug rewrites of one file are the
+signature of churn.
+
+**Regression tests must measure the claimed quantity.** If the finding is
+about allocations, assert allocations (not `Vec` capacity). Name the
+metric in the entry.
 
 **Front matter status counts** should be updated each time a new entry
-is added. The `open` count is `total_findings - (fixed + mitigated +
-accepted + disputed + deferred)`. When `open` reaches 0, all findings
-have been dispositioned (though not necessarily fixed).
+is added. The `open` count is `total_findings` minus the number of
+findings carrying any disposition (`fixed + mitigated + accepted +
+disputed + deferred + escalated + superseded + no-measurable-benefit`).
+When `open` reaches 0, all findings have been dispositioned (though not
+necessarily fixed).
+
+**Checking the ledger.** The entry rules above are enforced mechanically:
+
+```bash
+node "${CLAUDE_SKILL_DIR}/scripts/build-report.js" ledger <audit-directory>
+```
+
+It checks the front-matter arithmetic, unknown slugs and dispositions, the
+required fields per disposition, `Diff` budget against each finding's
+effort estimate, and whether the cited commits exist and carry their
+`Audit-Finding:` trailers. Run it after every batch of entries and fix
+every error before committing the ledger.
 
 **Linking:** Each finding slug in the `Addresses` field links back to
 the finding's anchor in `README.md`. This creates bidirectional
@@ -128,7 +189,18 @@ the specific findings.
 `fixed`, add a new entry with disposition `fixed`. Do not edit the
 original `deferred` entry. The front matter status counts reflect the
 *latest* disposition for each finding — a finding that was deferred
-then fixed counts as `fixed`, not both.
+then fixed counts as `fixed`, not both. When a later action replaces an
+earlier *fix* (rather than the finding's status advancing), give the new
+entry disposition `superseded` and name the replacement with
+`superseded_by:` in its body.
+
+**Carried-forward findings.** In a re-audit, findings with a standing
+disposition from a prior audit live in `findings.yaml#carried_forward`,
+not in this audit's narratives. Do not re-remediate them. The ledger
+still accepts their slugs in `Addresses` if you deliberately act on one.
+Actions on carried-forward slugs do not change this audit's `status`
+counts — they are tracked in the prior audit's ledger; log them there, or
+here with the same slug but leave `status` untouched.
 
 ## Tone
 
