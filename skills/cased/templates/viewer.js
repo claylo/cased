@@ -796,7 +796,11 @@
 	//#region src/viewer/viewer.js
 	document.addEventListener("DOMContentLoaded", () => {
 		const dataEl = document.getElementById("cased-data");
-		dataEl && JSON.parse(dataEl.textContent);
+		if (dataEl) try {
+			JSON.parse(dataEl.textContent);
+		} catch (e) {
+			console.error("cased-data blob is not valid JSON:", e.message);
+		}
 		initAnnotations();
 		initSlides();
 		initNavBar();

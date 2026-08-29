@@ -243,6 +243,22 @@ function median(xs) {
  * @param {string} [opts.hiddenTestOutput] — raw hidden-test output, for per-test results
  * @param {object} [opts.remediation] — expected-findings.yaml `remediation:` block
  */
+/**
+ * Split an operator-authored gate command into argv. Whitespace-separated
+ * words only; shell metacharacters are rejected rather than interpreted, so a
+ * command that needs a pipe or redirect must be wrapped in a script.
+ * @param {string} command
+ * @returns {string[]}
+ */
+export function splitGateCommand(command) {
+  if (/[|&;<>$`'"()\\\n]/.test(command)) {
+    throw new Error(`gate command contains shell metacharacters; wrap it in a script: ${command}`);
+  }
+  const argv = command.trim().split(/\s+/).filter(Boolean);
+  if (!argv.length) throw new Error('gate command is empty');
+  return argv;
+}
+
 export function scoreRemediation({ auditDir, repoRoot, testCommand = null, hiddenTestResult = false, hiddenTestOutput = '', remediation = {} }) {
   const findings = parseFindings(readFileSync(join(auditDir, 'findings.yaml'), 'utf8'));
   const reconPath = join(auditDir, 'recon.yaml');
@@ -253,8 +269,14 @@ export function scoreRemediation({ auditDir, repoRoot, testCommand = null, hidde
   // remediator to name in **Verification:**. They coincide on a live run and
   // diverge in unit tests, where the gate is stubbed but the ledger still
   // has to cite something real.
+  //
+  // `gateCommand` is EXECUTED, so it comes only from operator-authored
+  // sources: the `--test-command` flag or the fixture's expected-findings.yaml.
+  // `recon.testing.command` is written by the session under test and is
+  // never run here (self-audit finding
+  // `eval-scorer-shells-out-model-authored-test-command`).
   const citedCommand = recon?.testing?.command ?? remediation.test_command ?? testCommand ?? null;
-  const gateCommand = testCommand ?? recon?.testing?.command ?? remediation.test_command ?? null;
+  const gateCommand = testCommand ?? remediation.test_command ?? null;
 
   const ledgerPath = join(auditDir, 'actions-taken.md');
   const ledgerPresent = existsSync(ledgerPath);
@@ -300,8 +322,10 @@ export function scoreRemediation({ auditDir, repoRoot, testCommand = null, hidde
 
   let gatePass = false;
   if (gateCommand) {
+    // argv form, no shell: operator gate commands are plain `tool arg arg`.
+    const argv = splitGateCommand(gateCommand);
     try {
-      execFileSync(gateCommand, { cwd: repoRoot, shell: true, stdio: 'ignore' });
+      execFileSync(argv[0], argv.slice(1), { cwd: repoRoot, stdio: 'ignore' });
       gatePass = true;
     } catch { gatePass = false; }
   }

@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseFindings, parseRecon, renderHeader, renderLedger, assembleReport } from '../src/viewer/build-report.mjs';
+import { parseFindings, parseRecon, renderHeader, renderLedger, assembleReport, fillSlots, embedJson, assertAssembled } from '../src/viewer/build-report.mjs';
 import { inferLangFromPath, buildMetaString, formatLocationTitle } from '../src/viewer/build-report.mjs';
 import { titleFromScope, renderAgentsFindingList, renderAgentsMd } from '../src/viewer/build-report.mjs';
 import {
@@ -469,5 +469,58 @@ describe('formatValidationErrors', () => {
     assert.ok(out.includes('/meta — missing commit'));
     assert.ok(out.includes('/narratives/0 — missing slug'));
     assert.ok(out.includes('"missingProperty":"slug"'));
+  });
+});
+
+// Self-audit 2026-08-28: the report broke itself. Two blockers, one describe.
+describe('assembly hardening (template-slot-replace-interprets-dollar-patterns, report-data-blob-script-breakout)', () => {
+  const POISON = "grep -E '^foo$' file  $' $` $& $1 ${x} </script><script>alert(1)</script>  line ";
+
+  it('fillSlots does not interpret $-patterns in the replacement', () => {
+    const out = fillSlots('A<!-- SLOT:x -->B', { x: POISON });
+    assert.equal(out, `A${POISON}B`);
+  });
+
+  it('fillSlots throws on a missing or unknown marker', () => {
+    assert.throws(() => fillSlots('no markers', { x: '1' }), /missing slot marker/);
+    assert.throws(() => fillSlots('<!-- SLOT:y -->', { x: '1' }), /unknown slot marker/);
+  });
+
+  it('fillSlots only recognizes markers in the template, not in filled content', () => {
+    const out = fillSlots('<!-- SLOT:a --><!-- SLOT:b -->', { a: '<!-- SLOT:b -->', b: 'B' });
+    assert.equal(out, '<!-- SLOT:b -->B');
+  });
+
+  it('embedJson never emits </script or raw line terminators, and round-trips', () => {
+    const s = embedJson({ v: POISON });
+    assert.ok(!s.includes('<'));
+    assert.ok(!s.includes('>'));
+    assert.ok(!s.includes('&'));
+    assert.ok(!s.includes(' ') && !s.includes(' '));
+    assert.equal(JSON.parse(s).v, POISON);
+  });
+
+  it('assertAssembled rejects the failure shapes the self-audit produced', () => {
+    assert.throws(() => assertAssembled('<!DOCTYPE html><!DOCTYPE html>'), /one DOCTYPE/);
+    assert.throws(() => assertAssembled('<!DOCTYPE html><script id="cased-data" type="application/json">{oops</script>'), /not valid JSON/);
+    assert.throws(() => assertAssembled('<!DOCTYPE html>'), /cased-data block missing/);
+  });
+
+  it('assembleReport survives poisoned evidence and remediation end to end', async () => {
+    const doc = YAML.parse(findingsYaml);
+    const f = doc.narratives[0].findings[0];
+    f.evidence = POISON + '\n' + f.evidence;
+    f.remediation = f.remediation + '\nPattern: ^[a-z]+$ and ' + POISON;
+    const dir = mkdtempSync(join(tmpdir(), 'cased-test-poison-'));
+    writeFileSync(join(dir, 'findings.yaml'), YAML.stringify(doc));
+    writeFileSync(join(dir, 'recon.yaml'), reconYaml);
+    const html = await assembleReport(dir, { viewerDir: 'src/viewer', fontsDir: 'vendor/fonts', viewerJs: null });
+    assert.equal((html.match(/<!DOCTYPE html>/g) || []).length, 1);
+    assert.equal((html.match(/<\/html>/g) || []).length, 1);
+    const blob = /<script id="cased-data" type="application\/json">([\s\S]*?)<\/script>/.exec(html)[1];
+    const data = JSON.parse(blob);
+    assert.equal(data.findings.narratives[0].findings[0].evidence.startsWith(POISON), true);
+    assert.equal((html.match(/<script id="cased-data"/g) || []).length, 1);
+    rmSync(dir, { recursive: true });
   });
 });

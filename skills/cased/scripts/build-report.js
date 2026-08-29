@@ -40772,7 +40772,60 @@ async function assembleReport(auditDir, opts = {}) {
 	const title = `Cased Report: ${findings.scope} \u2014 ${findings.audit_date}`;
 	const allCss = `${css}\n/* === Expressive Code === */\n${ecBaseStyles}\n${ecThemeStyles}\n${[...blockStyles].join("\n")}`;
 	const allJs = `${viewerJsContent}\n${ecJsContent}`;
-	return template.replace("<!-- SLOT:title -->", escHtml(title)).replace("<!-- SLOT:fonts -->", fontFaceDecls).replace("<!-- SLOT:style -->", allCss).replace("<!-- SLOT:content -->", contentHtml).replace("<!-- SLOT:data -->", JSON.stringify(dataBlob)).replace("<!-- SLOT:viewer -->", allJs);
+	const html = fillSlots(template, {
+		title: escHtml(title),
+		fonts: fontFaceDecls,
+		style: allCss,
+		content: contentHtml,
+		data: embedJson(dataBlob),
+		viewer: allJs
+	});
+	assertAssembled(html);
+	return html;
+}
+/**
+* Fill `<!-- SLOT:name -->` markers in the template. Function-form replace,
+* deliberately: string-form `String.replace` interprets `$'`, `` $` ``, `$&`
+* and `$n` in the *replacement*, so a shell regex anchor in an evidence block
+* or a JSON-Schema pattern in a remediation splices the surrounding document
+* into itself (2026-08-28 self-audit, finding
+* `template-slot-replace-interprets-dollar-patterns`).
+*/
+function fillSlots(template, slots) {
+	const seen = /* @__PURE__ */ new Set();
+	const out = template.replace(/<!-- SLOT:(\w+) -->/g, (marker, name) => {
+		if (!(name in slots)) throw new Error(`template has unknown slot marker ${marker}`);
+		seen.add(name);
+		return slots[name];
+	});
+	for (const name of Object.keys(slots)) if (!seen.has(name)) throw new Error(`template missing slot marker <!-- SLOT:${name} -->`);
+	return out;
+}
+/**
+* Serialize for embedding inside a `<script type="application/json">` block.
+* The HTML parser ends a script element at the first `<\/script` regardless
+* of JSON string context, so `<`, `>`, `&` and the JS line terminators
+* U+2028/U+2029 are `\uXXXX`-escaped. Output is still valid JSON.
+*/
+function embedJson(value) {
+	return JSON.stringify(value).replace(/[<>&\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
+}
+/**
+* Structural sanity check on the assembled document. `finalize` cannot see
+* inside report.html, so `build` must refuse to write a corrupt one.
+*/
+function assertAssembled(html) {
+	const problems = [];
+	const doctypes = (html.match(/<!DOCTYPE html>/gi) || []).length;
+	if (doctypes !== 1) problems.push(`expected exactly one DOCTYPE, found ${doctypes}`);
+	const m = /<script id="cased-data" type="application\/json">([\s\S]*?)<\/script>/.exec(html);
+	if (!m) problems.push("cased-data block missing");
+	else try {
+		JSON.parse(m[1]);
+	} catch (e) {
+		problems.push(`cased-data is not valid JSON: ${e.message}`);
+	}
+	if (problems.length) throw new Error(`assembled report is corrupt:\n  ${problems.join("\n  ")}`);
 }
 if ((0, node_fs.realpathSync)(process.argv[1]) === (0, node_fs.realpathSync)((0, node_url.fileURLToPath)(require("url").pathToFileURL(__filename).href))) (async () => {
 	const rawArgs = process.argv.slice(2);
@@ -40938,10 +40991,13 @@ if ((0, node_fs.realpathSync)(process.argv[1]) === (0, node_fs.realpathSync)((0,
 })();
 //#endregion
 exports.assembleReport = assembleReport;
+exports.assertAssembled = assertAssembled;
 exports.blockingCounts = blockingCounts;
 exports.buildMetaString = buildMetaString;
 exports.compileValidators = compileValidators;
+exports.embedJson = embedJson;
 exports.escHtml = escHtml;
+exports.fillSlots = fillSlots;
 exports.finalizeAudit = finalizeAudit;
 exports.formatLocationTitle = formatLocationTitle;
 exports.formatValidationErrors = formatValidationErrors;
