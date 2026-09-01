@@ -1,8 +1,8 @@
 ---
 audit: 2026-08-28-21-self-audit
-last_updated: 2026-08-28
+last_updated: 2026-09-01
 status:
-  fixed: 7
+  fixed: 8
   mitigated: 0
   accepted: 0
   disputed: 0
@@ -10,7 +10,7 @@ status:
   escalated: 0
   superseded: 0
   no-measurable-benefit: 0
-  open: 35
+  open: 34
 ---
 
 # Actions Taken: Full Repo self Audit of cased at 2365a3f — src/ (viewer, recon, schemas), evals/ (runner, scorer, fixtures), skills/ (cased + crustoleum), scripts/, test/
@@ -53,3 +53,18 @@ Four findings, one commit, because they are the four things a reader checks befo
 - `flow-diagram-tests-excluded-from-suite`: `node --test "test/*.test.mjs"`. Count rose by exactly the 29 the finding predicted; nothing newly failing.
 - `bare-catch-erases-failure-cause`: all nine sites bind the error. `countFindings` → `null` on parse failure, `finalizeAudit` errors on `null` ("unreadable findings.yaml") even under `--allow-unledgered-prior` — test added. git failures split on `e.status === 128` (semantic "no such object / no baseline") vs everything else (throw). Recon config detectors warn on stderr before falling through. Scorer: `workspace_gate_error` set on ENOENT — test added asserting a missing binary and a failing gate are distinguishable.
 - `bundled-third-party-source-missing-license-notices`: `scripts/third-party-notices.mjs` walks rolldown's `//#region node_modules/…` markers, resolves each package's package.json + LICENSE, writes an aggregated notices file; `build-viewer.sh` runs it so check-bundle diffs it. **Count correction:** 44 distinct packages (40 MIT / 2 ISC / 2 BSD-3-Clause), not 81 — the finding counted `@scope/pkg/subpath` regions as distinct packages. Two packages (`cssesc`, `postcss-selector-parser`) publish no LICENSE file to npm; the notices file records them as "declared MIT" and the generator warns. Residual: none of this is copyleft; the BSD non-endorsement clause is satisfied by reproducing the notice.
+
+## 2026-09-01 — evidence gate reads findings.commit and refuses paths outside the repo
+
+**Disposition:** fixed
+**Addresses:** [evidence-gate-reads-outside-the-repo-root](README.md#evidence-gate-reads-outside-the-repo-root)
+**Commit:** b7ade51
+**Author:** claude-fable-5-1 (controller session, Clay reviewing)
+**Verification:** `just test` — 159 pass, 0 fail (153 before; five new gate tests: read-from-commit, file-missing-at-commit, large file over the child_process buffer, unknown-commit fallback, path escape; one new schema test). `node skills/cased/scripts/build-report.js finalize record/audits/2026-08-28-21-self-audit` through the shipped bundle: `finalize ok` (19 evidence errors before this change). `validate` on this audit under the tightened schema: ok.
+**Blast radius:** Files: src/viewer/gates.mjs, src/schemas/findings.schema.json, src/viewer/build-report.mjs (help text only), skills/cased/SKILL.md, evals/README.md, two test files, plus the restamped contract in skills/cased/references/ and skills/crustoleum/references/ and the rebuilt bundle. The finding names gates.mjs:18-23 and the schema; the fix stays there. Public surface: `checkEvidenceFidelity(doc, repoRoot, { commit })` gains an optional third argument defaulting to `doc.commit` — the two existing callers (finalizeAudit, the evidence subcommand) and the eval scorer pass nothing and get the new behaviour. New problem kind `path-escapes-repo` in the returned list; consumers already switch on `problem` strings. Schema: `locations[].path` now has a pattern; this audit's 42 findings and both schema example files validate under it. Eval fixtures ship without `.git`, so the scorer falls back to the working tree there — behaviour unchanged for evals. Co-varying text updated: SKILL.md 3a′, the `evidence` subcommand usage line, evals/README.md metric table.
+**Diff:** 10 files, +211 −30, 1 commit (≈40 lines are the rebuilt bundle and restamped schema copies).
+**Coverage lost:** none — existing tests untouched; the working-tree path is still exercised by the three original gate tests, which run without git.
+
+The finding asked for path containment. The same function had a second, unfiled defect surfaced by remediating this audit: it read evidence from the working tree, so after the seven fixes above `finalize` reported 19 evidence mismatches, 12 of them on findings nobody had touched — their lines drifted because they share a file with a fix. Evidence is a claim about the tree at `findings.commit`, so the gate now reads each cited path with `git show <commit>:./<path>`, resolved once per run via `git cat-file -e`; if git cannot resolve the commit (no repository, unknown object) it falls back to the working tree. `maxBuffer` is raised because the shipped bundle exceeds Node's 1 MB default and the resulting throw was being reported as `file-missing` — caught because this audit cites the bundle in `bundled-third-party-source-missing-license-notices`.
+
+Path containment is enforced twice: the gate rejects absolute or `..`-traversing paths with `path-escapes-repo` before any read, and the schema pattern rejects them at `validate` time. The pattern is a segment grammar rather than lookahead because `ys` (the Rust validator that stamps the contract) has no look-around support.
