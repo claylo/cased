@@ -453,6 +453,15 @@ Fix every reported problem by re-extracting the evidence from the file at
 the cited range — never by retyping. Do not dispatch the reviewer until
 this exits 0.
 
+The gate reads each cited file from git at `findings.commit`, not from the
+working tree, so `findings.commit` must be the commit the agents actually
+read (HEAD of a clean tree). Evidence is a claim about that tree; later
+remediation moving lines around does not invalidate it, which is what lets
+`finalize` stay green after fixes land. Only when git cannot resolve the
+commit (no repository, unknown object) does the gate fall back to the
+working tree. Paths must be repo-relative; absolute or `..` paths are
+refused by both the schema and the gate.
+
 **3b. Evidence review.** Dispatch the `audit-reviewer` subagent
 (agents/reviewer.md) to validate findings against the codebase. Reuse
 the same `<audit-context>` block from Phase 2; see

@@ -3,7 +3,8 @@
 // verdicts on indentation and line ranges) and to refuse to call an audit
 // finished while it is structurally incomplete.
 import { existsSync, readFileSync } from 'node:fs';
-import { join, isAbsolute } from 'node:path';
+import { join, isAbsolute, resolve, sep } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { parseLedger } from './prior-audits.mjs';
 
 export function isBlocking(finding) {
@@ -15,15 +16,46 @@ export function allFindings(doc) {
   return (doc.narratives ?? []).flatMap(n => n.findings ?? []);
 }
 
-function fileLines(repoRoot, p) {
-  const abs = isAbsolute(p) ? p : join(repoRoot, p);
-  if (!existsSync(abs)) return null;
-  const txt = readFileSync(abs, 'utf8');
-  return txt.split('\n');
+/**
+ * A finding path is a claim about a file *inside* the audited tree. Absolute
+ * paths and anything that resolves above repoRoot are refused before any read.
+ */
+function pathEscapesRepo(repoRoot, p) {
+  if (typeof p !== 'string' || !p || isAbsolute(p)) return true;
+  const base = resolve(repoRoot);
+  const abs = resolve(base, p);
+  return abs !== base && !abs.startsWith(base + sep);
 }
 
-export function checkEvidenceFidelity(doc, repoRoot) {
+/**
+ * Evidence is a claim about the tree at `findings.commit`, not the tree on
+ * disk today. When git can resolve that commit we read the file from it, so
+ * remediation moving lines around never invalidates the audit's own evidence.
+ * Returns null when the commit is unknown (no git, no such object) — the
+ * caller then falls back to the working tree.
+ */
+function commitReader(repoRoot, commit) {
+  if (typeof commit !== 'string' || !commit) return null;
+  // maxBuffer: shipped bundles and lockfiles exceed the 1 MB default, and a
+  // truncation throw would be indistinguishable from "path not in commit".
+  const run = args => execFileSync('git', ['-C', repoRoot, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 256 * 1024 * 1024 });
+  try { run(['cat-file', '-e', `${commit}^{commit}`]); } catch { return null; }
+  return p => {
+    try { return run(['show', `${commit}:./${p}`]).split('\n'); } catch { return null; }
+  };
+}
+
+function workingTreeReader(repoRoot) {
+  return p => {
+    const abs = join(repoRoot, p);
+    if (!existsSync(abs)) return null;
+    return readFileSync(abs, 'utf8').split('\n');
+  };
+}
+
+export function checkEvidenceFidelity(doc, repoRoot, { commit = doc?.commit } = {}) {
   const problems = [];
+  const readLines = commitReader(repoRoot, commit) ?? workingTreeReader(repoRoot);
   for (const f of allFindings(doc)) {
     const locs = f.locations ?? [];
     if (!locs.length || typeof f.evidence !== 'string') continue;
@@ -31,7 +63,8 @@ export function checkEvidenceFidelity(doc, repoRoot) {
     const expected = [];
     let missing = false;
     for (const loc of locs) {
-      const lines = fileLines(repoRoot, loc.path);
+      if (pathEscapesRepo(repoRoot, loc.path)) { problems.push({ slug: f.slug, path: loc.path, start_line: loc.start_line, end_line: loc.end_line, problem: 'path-escapes-repo' }); missing = true; break; }
+      const lines = readLines(loc.path);
       if (!lines) { problems.push({ slug: f.slug, path: loc.path, start_line: loc.start_line, end_line: loc.end_line, problem: 'file-missing' }); missing = true; break; }
       expected.push(...lines.slice(loc.start_line - 1, loc.end_line));
     }

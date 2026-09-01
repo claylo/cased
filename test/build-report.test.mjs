@@ -78,6 +78,19 @@ describe('findings contract: origin / failure_mode / carried_forward / reconcili
     doc.reconciliation = [{ prior_slug: 'x', prior_audit: 'y', status: 'maybe' }];
     assert.equal(validateFindings(doc), false);
   });
+
+  it('rejects location paths that are absolute or traverse above the repo', () => {
+    for (const bad of ['/etc/passwd', '../secret.txt', 'src/../../secret.txt', 'C:/win/x.rs', '..']) {
+      const doc = YAML.parse(findingsYaml);
+      doc.narratives[0].findings[0].locations[0].path = bad;
+      assert.equal(validateFindings(doc), false, `expected ${bad} to be rejected`);
+    }
+    for (const ok of ['src/a.rs', 'a.rs', 'src/..dots/a.rs', 'src/a..b.rs', '.github/workflows/ci.yaml']) {
+      const doc = YAML.parse(findingsYaml);
+      doc.narratives[0].findings[0].locations[0].path = ok;
+      assert.equal(validateFindings(doc), true, `expected ${ok} to be accepted: ${JSON.stringify(validateFindings.errors)}`);
+    }
+  });
 });
 
 describe('renderHeader', () => {

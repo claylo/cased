@@ -3,11 +3,22 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { checkEvidenceFidelity, checkReadmeComplete, checkAuditProfile, isBlocking, lintLedger } from '../src/viewer/gates.mjs';
 
 function repoWith(files) {
   const root = mkdtempSync(join(tmpdir(), 'cased-gates-'));
   for (const [p, txt] of Object.entries(files)) { mkdirSync(join(root, p, '..'), { recursive: true }); writeFileSync(join(root, p), txt); }
+  return root;
+}
+function git(root, ...args) {
+  return execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+}
+function gitRepoWith(files) {
+  const root = repoWith(files);
+  git(root, 'init', '-q');
+  git(root, '-c', 'user.name=t', '-c', 'user.email=t@t', 'add', '-A');
+  git(root, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-m', 'audited tree');
   return root;
 }
 const SRC = 'fn a() {\n    let x = 1;\n    let y = 2;\n}\n';
@@ -32,6 +43,46 @@ describe('checkEvidenceFidelity', () => {
     const root = repoWith({ 'src/a.rs': SRC });
     const doc = { narratives: [{ findings: [{ slug: 'multi', locations: [{ path: 'src/a.rs', start_line: 1, end_line: 1 }, { path: 'src/a.rs', start_line: 4, end_line: 4 }], evidence: 'fn a() {\n}\n' }] }] };
     assert.deepEqual(checkEvidenceFidelity(doc, root), []);
+  });
+
+  it('reads evidence from findings.commit, not the working tree, once the code has moved on', () => {
+    const root = gitRepoWith({ 'src/a.rs': SRC });
+    const commit = git(root, 'rev-parse', 'HEAD');
+    // a remediation shifts every line down by two
+    writeFileSync(join(root, 'src/a.rs'), '// fixed\n// header\n' + SRC);
+    const doc = { commit, narratives: [{ findings: [{ slug: 'ok', locations: [{ path: 'src/a.rs', start_line: 2, end_line: 3 }], evidence: '    let x = 1;\n    let y = 2;\n' }] }] };
+    assert.deepEqual(checkEvidenceFidelity(doc, root), []);
+  });
+  it('reports file-missing for a path that exists in the working tree but not at findings.commit', () => {
+    const root = gitRepoWith({ 'src/a.rs': SRC });
+    const commit = git(root, 'rev-parse', 'HEAD');
+    writeFileSync(join(root, 'src/new.rs'), SRC);
+    const doc = { commit, narratives: [{ findings: [{ slug: 'later', locations: [{ path: 'src/new.rs', start_line: 2, end_line: 3 }], evidence: '    let x = 1;\n    let y = 2;\n' }] }] };
+    assert.deepEqual(checkEvidenceFidelity(doc, root).map(p => [p.slug, p.problem]), [['later', 'file-missing']]);
+  });
+  it('reads files larger than the child_process default buffer from findings.commit', () => {
+    // a shipped bundle is > 1 MB; execFileSync's default maxBuffer would truncate and throw
+    const big = SRC + '// pad\n'.repeat(400_000);
+    const root = gitRepoWith({ 'dist/bundle.js': big });
+    const commit = git(root, 'rev-parse', 'HEAD');
+    const doc = { commit, narratives: [{ findings: [{ slug: 'big', locations: [{ path: 'dist/bundle.js', start_line: 2, end_line: 3 }], evidence: '    let x = 1;\n    let y = 2;\n' }] }] };
+    assert.deepEqual(checkEvidenceFidelity(doc, root), []);
+  });
+  it('falls back to the working tree when the commit is unknown to git', () => {
+    const root = gitRepoWith({ 'src/a.rs': SRC });
+    const doc = { commit: 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef', narratives: [{ findings: [{ slug: 'ok', locations: [{ path: 'src/a.rs', start_line: 2, end_line: 3 }], evidence: '    let x = 1;\n    let y = 2;\n' }] }] };
+    assert.deepEqual(checkEvidenceFidelity(doc, root), []);
+  });
+  it('refuses absolute and traversing paths without reading them', () => {
+    const root = repoWith({ 'src/a.rs': SRC });
+    const outside = join(root, '..', 'cased-gates-outside.txt');
+    writeFileSync(outside, 'secret\n');
+    const doc = { narratives: [{ findings: [
+      { slug: 'abs', locations: [{ path: outside, start_line: 1, end_line: 1 }], evidence: 'secret\n' },
+      { slug: 'dotdot', locations: [{ path: '../cased-gates-outside.txt', start_line: 1, end_line: 1 }], evidence: 'secret\n' },
+      { slug: 'nested', locations: [{ path: 'src/../../cased-gates-outside.txt', start_line: 1, end_line: 1 }], evidence: 'secret\n' },
+    ] }] };
+    assert.deepEqual(checkEvidenceFidelity(doc, root).map(p => [p.slug, p.problem]), [['abs', 'path-escapes-repo'], ['dotdot', 'path-escapes-repo'], ['nested', 'path-escapes-repo']]);
   });
 });
 

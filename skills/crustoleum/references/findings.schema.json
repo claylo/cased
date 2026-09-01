@@ -59,7 +59,11 @@
                     "type": "object",
                     "required": ["path", "start_line", "end_line"],
                     "properties": {
-                      "path": { "type": "string" },
+                      "path": {
+                        "type": "string",
+                        "description": "Repo-relative, forward-slash path inside the audited tree. Absolute paths, drive letters, backslashes, and any `..` segment are rejected. (Segment grammar rather than lookahead: the ys validator's regex engine has no look-around.)",
+                        "pattern": "^([^/\\\\.][^/\\\\:][^/\\\\]*|[^/\\\\.]|\\.[^/\\\\.][^/\\\\]*|\\.\\.[^/\\\\]+|\\.)(/([^/\\\\.][^/\\\\]*|\\.[^/\\\\.][^/\\\\]*|\\.\\.[^/\\\\]+|\\.))*$"
+                      },
                       "start_line": { "type": "integer" },
                       "end_line": { "type": "integer" }
                     }

@@ -20870,7 +20870,7 @@ var require_source_map = /* @__PURE__ */ __commonJSMin(((exports) => {
 //#region node_modules/postcss/lib/previous-map.js
 var require_previous_map = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	let { existsSync: existsSync$3, readFileSync: readFileSync$3, realpathSync: realpathSync$1 } = require("fs");
-	let { dirname: dirname$2, isAbsolute: isAbsolute$2, join: join$3, relative: relative$1, sep: sep$1 } = require("path");
+	let { dirname: dirname$2, isAbsolute: isAbsolute$2, join: join$3, relative: relative$1, sep: sep$2 } = require("path");
 	let { SourceMapConsumer, SourceMapGenerator } = require_source_map();
 	function realPath(path) {
 		try {
@@ -20931,7 +20931,7 @@ var require_previous_map = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 				if (!/\.map$/i.test(path)) return void 0;
 				if (!cssFile) return void 0;
 				let rel = relative$1(realPath(dirname$2(cssFile)), realPath(path));
-				if (rel === ".." || rel.startsWith(".." + sep$1) || isAbsolute$2(rel)) return;
+				if (rel === ".." || rel.startsWith(".." + sep$2) || isAbsolute$2(rel)) return;
 			}
 			this.root = dirname$2(path);
 			if (existsSync$3(path)) {
@@ -20983,7 +20983,7 @@ var require_previous_map = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 //#region node_modules/postcss/lib/input.js
 var require_input = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	let { nanoid } = require_non_secure();
-	let { isAbsolute: isAbsolute$1, resolve: resolve$1 } = require("path");
+	let { isAbsolute: isAbsolute$1, resolve: resolve$2 } = require("path");
 	let { SourceMapConsumer, SourceMapGenerator } = require_source_map();
 	let { fileURLToPath: fileURLToPath$1, pathToFileURL: pathToFileURL$1 } = require("url");
 	let CssSyntaxError = require_css_syntax_error();
@@ -20991,7 +20991,7 @@ var require_input = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	let terminalHighlight = require_terminal_highlight();
 	let lineToIndexCache = Symbol("lineToIndexCache");
 	let sourceMapAvailable = Boolean(SourceMapConsumer && SourceMapGenerator);
-	let pathAvailable = Boolean(resolve$1 && isAbsolute$1);
+	let pathAvailable = Boolean(resolve$2 && isAbsolute$1);
 	function getLineToIndex(input) {
 		if (input[lineToIndexCache]) return input[lineToIndexCache];
 		let lines = input.css.split("\n");
@@ -21019,7 +21019,7 @@ var require_input = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			if (opts.document) this.document = opts.document.toString();
 			if (opts.from) {
 				if (!pathAvailable || /^\w+:\/\//.test(opts.from) || isAbsolute$1(opts.from)) this.file = opts.from;
-				else this.file = resolve$1(opts.from);
+				else this.file = resolve$2(opts.from);
 			}
 			if (pathAvailable && sourceMapAvailable) {
 				let map = new PreviousMap(this.css, opts);
@@ -21121,7 +21121,7 @@ var require_input = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 		}
 		mapResolve(file) {
 			if (/^\w+:\/\//.test(file)) return file;
-			return resolve$1(this.map.consumer().sourceRoot || this.map.root || ".", file);
+			return resolve$2(this.map.consumer().sourceRoot || this.map.root || ".", file);
 		}
 		origin(line, column, endLine, endColumn) {
 			if (!this.map) return false;
@@ -21379,12 +21379,12 @@ var require_fromJSON = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 //#endregion
 //#region node_modules/postcss/lib/map-generator.js
 var require_map_generator = /* @__PURE__ */ __commonJSMin(((exports, module) => {
-	let { dirname: dirname$1, relative, resolve, sep } = require("path");
+	let { dirname: dirname$1, relative, resolve: resolve$1, sep: sep$1 } = require("path");
 	let { SourceMapConsumer, SourceMapGenerator } = require_source_map();
 	let { pathToFileURL } = require("url");
 	let Input = require_input();
 	let sourceMapAvailable = Boolean(SourceMapConsumer && SourceMapGenerator);
-	let pathAvailable = Boolean(dirname$1 && resolve && relative && sep);
+	let pathAvailable = Boolean(dirname$1 && resolve$1 && relative && sep$1);
 	var MapGenerator = class {
 		constructor(stringify, root, opts, cssString) {
 			this.stringify = stringify;
@@ -21579,7 +21579,7 @@ var require_map_generator = /* @__PURE__ */ __commonJSMin(((exports, module) => 
 			let cached = this.memoizedPaths.get(file);
 			if (cached) return cached;
 			let from = this.opts.to ? dirname$1(this.opts.to) : ".";
-			if (typeof this.mapOpts.annotation === "string") from = dirname$1(resolve(from, this.mapOpts.annotation));
+			if (typeof this.mapOpts.annotation === "string") from = dirname$1(resolve$1(from, this.mapOpts.annotation));
 			let path = relative(from, file);
 			this.memoizedPaths.set(file, path);
 			return path;
@@ -21638,7 +21638,7 @@ var require_map_generator = /* @__PURE__ */ __commonJSMin(((exports, module) => 
 		toUrl(path) {
 			let cached = this.memoizedURLs.get(path);
 			if (cached) return cached;
-			if (sep === "\\") path = path.replace(/\\/g, "/");
+			if (sep$1 === "\\") path = path.replace(/\\/g, "/");
 			let url = encodeURI(path).replace(/[#?]/g, encodeURIComponent);
 			this.memoizedURLs.set(path, url);
 			return url;
@@ -39893,13 +39893,65 @@ function isBlocking(finding) {
 function allFindings(doc) {
 	return (doc.narratives ?? []).flatMap((n) => n.findings ?? []);
 }
-function fileLines(repoRoot, p) {
-	const abs = (0, node_path.isAbsolute)(p) ? p : (0, node_path.join)(repoRoot, p);
-	if (!(0, node_fs.existsSync)(abs)) return null;
-	return (0, node_fs.readFileSync)(abs, "utf8").split("\n");
+/**
+* A finding path is a claim about a file *inside* the audited tree. Absolute
+* paths and anything that resolves above repoRoot are refused before any read.
+*/
+function pathEscapesRepo(repoRoot, p) {
+	if (typeof p !== "string" || !p || (0, node_path.isAbsolute)(p)) return true;
+	const base = (0, node_path.resolve)(repoRoot);
+	const abs = (0, node_path.resolve)(base, p);
+	return abs !== base && !abs.startsWith(base + node_path.sep);
 }
-function checkEvidenceFidelity(doc, repoRoot) {
+/**
+* Evidence is a claim about the tree at `findings.commit`, not the tree on
+* disk today. When git can resolve that commit we read the file from it, so
+* remediation moving lines around never invalidates the audit's own evidence.
+* Returns null when the commit is unknown (no git, no such object) — the
+* caller then falls back to the working tree.
+*/
+function commitReader(repoRoot, commit) {
+	if (typeof commit !== "string" || !commit) return null;
+	const run = (args) => (0, node_child_process.execFileSync)("git", [
+		"-C",
+		repoRoot,
+		...args
+	], {
+		encoding: "utf8",
+		stdio: [
+			"ignore",
+			"pipe",
+			"ignore"
+		],
+		maxBuffer: 268435456
+	});
+	try {
+		run([
+			"cat-file",
+			"-e",
+			`${commit}^{commit}`
+		]);
+	} catch {
+		return null;
+	}
+	return (p) => {
+		try {
+			return run(["show", `${commit}:./${p}`]).split("\n");
+		} catch {
+			return null;
+		}
+	};
+}
+function workingTreeReader(repoRoot) {
+	return (p) => {
+		const abs = (0, node_path.join)(repoRoot, p);
+		if (!(0, node_fs.existsSync)(abs)) return null;
+		return (0, node_fs.readFileSync)(abs, "utf8").split("\n");
+	};
+}
+function checkEvidenceFidelity(doc, repoRoot, { commit = doc?.commit } = {}) {
 	const problems = [];
+	const readLines = commitReader(repoRoot, commit) ?? workingTreeReader(repoRoot);
 	for (const f of allFindings(doc)) {
 		const locs = f.locations ?? [];
 		if (!locs.length || typeof f.evidence !== "string") continue;
@@ -39907,7 +39959,18 @@ function checkEvidenceFidelity(doc, repoRoot) {
 		const expected = [];
 		let missing = false;
 		for (const loc of locs) {
-			const lines = fileLines(repoRoot, loc.path);
+			if (pathEscapesRepo(repoRoot, loc.path)) {
+				problems.push({
+					slug: f.slug,
+					path: loc.path,
+					start_line: loc.start_line,
+					end_line: loc.end_line,
+					problem: "path-escapes-repo"
+				});
+				missing = true;
+				break;
+			}
+			const lines = readLines(loc.path);
 			if (!lines) {
 				problems.push({
 					slug: f.slug,
@@ -40860,7 +40923,7 @@ if ((0, node_fs.realpathSync)(process.argv[1]) === (0, node_fs.realpathSync)((0,
 		console.error("Usage: node build-report.mjs [build|validate|evidence|ledger|finalize] <audit-directory>");
 		console.error("  build     (default) assemble report.html, AGENTS.md, and the README scaffold");
 		console.error("  validate  check recon.yaml and findings.yaml against their schemas");
-		console.error("  evidence  check every finding's evidence block against the source tree");
+		console.error("  evidence  check every finding's evidence block against the tree at findings.commit (working tree if git cannot resolve it)");
 		console.error("  ledger    lint actions-taken.md against findings.yaml and git");
 		console.error("  finalize  run every gate; refuse to call the audit finished until they pass");
 		console.error("            [--allow-unledgered-prior]  downgrade unledgered prior audits to warnings");

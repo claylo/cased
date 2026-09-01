@@ -37,7 +37,7 @@ doesn't depend on whether the session itself ran finalize cleanly:
 |---|---|
 | `audit_profile_complete` | `recon.yaml#meta.audit_profile` has no missing fields (`checkAuditProfile`) |
 | `readme_complete` | no scaffold placeholders left in `README.md` (`checkReadmeComplete`) |
-| `evidence_problems` | count of findings whose `evidence` doesn't byte-match the cited file lines (`checkEvidenceFidelity`) |
+| `evidence_problems` | count of findings whose `evidence` doesn't byte-match the cited file lines at `findings.commit` — the working tree when git can't resolve that commit (`checkEvidenceFidelity`) |
 | `finalize_ok` | `build-report.mjs finalize` would exit clean against this audit dir |
 | `finalize_errors` | the errors `finalize` would report, if any |
 | `origin_coverage` | fraction of findings with `origin.kind` set |

@@ -1014,7 +1014,7 @@ if (realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url
       console.error('Usage: node build-report.mjs [build|validate|evidence|ledger|finalize] <audit-directory>');
       console.error('  build     (default) assemble report.html, AGENTS.md, and the README scaffold');
       console.error('  validate  check recon.yaml and findings.yaml against their schemas');
-      console.error('  evidence  check every finding\'s evidence block against the source tree');
+      console.error('  evidence  check every finding\'s evidence block against the tree at findings.commit (working tree if git cannot resolve it)');
       console.error('  ledger    lint actions-taken.md against findings.yaml and git');
       console.error('  finalize  run every gate; refuse to call the audit finished until they pass');
       console.error('            [--allow-unledgered-prior]  downgrade unledgered prior audits to warnings');
