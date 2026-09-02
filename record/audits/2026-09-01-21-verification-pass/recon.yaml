@@ -1,0 +1,390 @@
+---
+meta:
+  project: cased
+  commit: 9f7e30a2be4c799fe0239c6581a8ee0d6fd708bc
+  timestamp: 2026-09-01T21:14:00-04:00
+  scope: "VERIFICATION PASS (re-audit mode, run <12h after the 2026-09-01
+    remediation batch — not a closing audit). Full-repo re-audit of cased at
+    9f7e30a: src/ (viewer, recon, schemas), evals/ (runner, scorer, fixtures),
+    skills/ (cased + crustoleum prose), scripts/, test/, .github/. Ingests the
+    2026-08-28-21-self-audit ledger (12 fixed, 30 open, 0 standing
+    dispositions). Excludes vendor/, node_modules/, record/audits/**, *.html,
+    evals/runs/**, the rolldown bundles (skills/cased/scripts/build-report.js,
+    skills/cased/templates/viewer.js), THIRD-PARTY-NOTICES.md, and the stamped
+    references/ copies (generated from src/schemas)."
+  audit_profile:
+    mode: re-audit
+    prior_audit: 2026-08-28-21-self-audit
+    model: claude-fable-5-1
+    effort: default
+    agent_count: 6
+    surfaces:
+      - security
+      - error-handling
+      - code-quality
+      - completeness
+      - dependencies
+      - api-design
+    severity_floor: note
+    excluded_tools:
+      - "performance agent: no hot paths — build-time tooling, one-shot CLI (same waiver as the prior audit)"
+      - "npm audit: devDependencies only; no runtime deps shipped (skill is pre-bundled); package.json unchanged since 2365a3f"
+      - "crustoleum run-tools: the 13 Rust files are eval fixtures with seeded defects, not product code"
+    skill_versions:
+      cased: 9f7e30a
+      crustoleum: 9f7e30a
+    release_phase: pre-publish
+structure:
+  root: /Users/clay/source/claylo/cased
+  total_files: 113
+  total_lines: 25101
+  languages:
+    - language: Markdown
+      files: 44
+      lines: 8671
+      percentage: 34.5
+    - language: JavaScript
+      files: 24
+      lines: 6765
+      percentage: 27.0
+    - language: YAML
+      files: 7
+      lines: 3805
+      percentage: 15.2
+    - language: JSON
+      files: 10
+      lines: 2607
+      percentage: 10.4
+    - language: Shell
+      files: 8
+      lines: 1544
+      percentage: 6.2
+    - language: CSS
+      files: 2
+      lines: 1090
+      percentage: 4.3
+    - language: Rust
+      files: 13
+      lines: 500
+      percentage: 2.0
+    - language: Just
+      files: 3
+      lines: 105
+      percentage: 0.4
+  modules:
+    - name: viewer
+      path: src/viewer
+      files: 13
+      lines: 3090
+      entry_points:
+        - name: build-report CLI (validate|build|evidence|ledger|finalize)
+          path: src/viewer/build-report.mjs
+          line: 1044
+          kind: cli_main
+        - name: assembleReport (now validates before rendering)
+          path: src/viewer/build-report.mjs
+          line: 892
+          kind: public_fn
+        - name: finalizeAudit
+          path: src/viewer/build-report.mjs
+          line: 816
+          kind: public_fn
+        - name: checkEvidenceFidelity (reads git show <findings.commit>)
+          path: src/viewer/gates.mjs
+          line: 87
+          kind: public_fn
+        - name: checkSummaryCounts
+          path: src/viewer/gates.mjs
+          line: 38
+          kind: public_fn
+        - name: lintLedger
+          path: src/viewer/gates.mjs
+          line: 140
+          kind: public_fn
+      dependencies:
+        - target: schemas
+          weight: 2
+    - name: recon
+      path: src/recon
+      files: 2
+      lines: 874
+      entry_points:
+        - name: recon pre-runner (bash)
+          path: src/recon/recon
+          line: 1
+          kind: cli_main
+        - name: buildReconObject
+          path: src/recon/recon-to-yaml.mjs
+          line: 507
+          kind: public_fn
+      dependencies:
+        - target: schemas
+          weight: 1
+    - name: schemas
+      path: src/schemas
+      files: 6
+      lines: 1990
+      entry_points:
+        - name: build-schemas.sh (validates examples via validate-examples.mjs, stamps contract)
+          path: src/schemas/build-schemas.sh
+          line: 1
+          kind: cli_main
+        - name: validate-examples.mjs (ajv, same setup as the bundle)
+          path: src/schemas/validate-examples.mjs
+          line: 1
+          kind: cli_main
+      dependencies:
+        - target: viewer
+          weight: 1
+    - name: evals
+      path: evals/scripts
+      files: 3
+      lines: 1073
+      entry_points:
+        - name: run-eval (bash; --mode audit|remediate; --isolation sandbox|none; drives headless claude/codex)
+          path: evals/scripts/run-eval
+          line: 1
+          kind: cli_main
+        - name: score-eval CLI
+          path: evals/scripts/score-eval.mjs
+          line: 530
+          kind: cli_main
+      dependencies:
+        - target: viewer
+          weight: 2
+    - name: eval-fixtures
+      path: evals/fixtures
+      files: 20
+      lines: 839
+      entry_points:
+        - name: reaudit-rs setup.sh (rebuilds git history in a workdir)
+          path: evals/fixtures/reaudit-rs/setup.sh
+          line: 1
+          kind: cli_main
+    - name: build-scripts
+      path: scripts
+      files: 2
+      lines: 119
+      entry_points:
+        - name: build-viewer.sh (rolldown bundle + copy into skills/cased + third-party notices)
+          path: scripts/build-viewer.sh
+          line: 1
+          kind: cli_main
+        - name: third-party-notices.mjs
+          path: scripts/third-party-notices.mjs
+          line: 1
+          kind: cli_main
+      dependencies:
+        - target: viewer
+          weight: 1
+        - target: schemas
+          weight: 1
+    - name: skill-cased
+      path: skills/cased
+      files: 27
+      lines: 8090
+      entry_points:
+        - name: SKILL.md (agent-facing workflow)
+          path: skills/cased/SKILL.md
+          line: 1
+          kind: exported_symbol
+    - name: skill-crustoleum
+      path: skills/crustoleum
+      files: 23
+      lines: 4517
+      entry_points:
+        - name: SKILL.md
+          path: skills/crustoleum/SKILL.md
+          line: 1
+          kind: exported_symbol
+        - name: run-tools (cargo tool orchestration)
+          path: skills/crustoleum/scripts/run-tools
+          line: 1
+          kind: cli_main
+    - name: tests
+      path: test
+      files: 11
+      lines: 2370
+    - name: ci
+      path: .github
+      files: 3
+      lines: 123
+      entry_points:
+        - name: ci.yaml (test + contract jobs; node only, yaml-schema dropped)
+          path: .github/workflows/ci.yaml
+          line: 1
+          kind: cli_main
+dependencies:
+  manifest: package.json
+  items:
+    - name: ajv
+      version: ^8.18.0
+      kind: direct
+    - name: ajv-formats
+      version: ^3.0.1
+      kind: direct
+    - name: yaml
+      version: ^2.8.3
+      kind: direct
+    - name: rolldown
+      version: ^1.0.0-rc.14
+      kind: direct
+    - name: "@expressive-code/core"
+      version: ^0.44.1
+      kind: direct
+    - name: "@expressive-code/plugin-frames"
+      version: ^0.44.1
+      kind: direct
+    - name: "@expressive-code/plugin-line-numbers"
+      version: ^0.44.1
+      kind: direct
+    - name: "@expressive-code/plugin-text-markers"
+      version: ^0.44.1
+      kind: direct
+    - name: "@shikijs/core"
+      version: ^4.0.2
+      kind: direct
+    - name: "@shikijs/engine-javascript"
+      version: ^4.0.2
+      kind: direct
+    - name: "@shikijs/langs"
+      version: ^4.0.2
+      kind: direct
+    - name: "@shikijs/themes"
+      version: ^4.0.2
+      kind: direct
+    - name: rough-notation
+      version: ^0.5.1
+      kind: direct
+churn:
+  period: "last 12 months (project age: ~5.5 months, started 2026-03-21);
+    active months April and August–September 2026. 13 commits since the prior
+    audit at 2365a3f (51 files, +10717 −173; ~10k of the insertions are the
+    rebuilt bundle, the generated THIRD-PARTY-NOTICES.md, and audit records)."
+  hotspots:
+    - path: skills/cased/SKILL.md
+      commits: 22
+      authors: 1
+      last_touched: 2026-09-01
+      monthly_commits: [0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 4, 0]
+    - path: src/viewer/build-report.mjs
+      commits: 15
+      authors: 1
+      last_touched: 2026-09-01
+      monthly_commits: [0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 4, 0]
+    - path: Justfile
+      commits: 13
+      authors: 1
+      last_touched: 2026-08-28
+      monthly_commits: [0, 0, 0, 0, 0, 1, 5, 0, 0, 0, 7, 0]
+    - path: test/build-report.test.mjs
+      commits: 12
+      authors: 1
+      last_touched: 2026-09-01
+      monthly_commits: [0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 4, 0]
+    - path: evals/scripts/run-eval
+      commits: 10
+      authors: 1
+      last_touched: 2026-09-01
+      monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0]
+    - path: evals/README.md
+      commits: 10
+      authors: 1
+      last_touched: 2026-09-01
+      monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0]
+    - path: scripts/build-viewer.sh
+      commits: 7
+      authors: 1
+      last_touched: 2026-08-28
+      monthly_commits: [0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 1, 0]
+    - path: src/schemas/findings.schema.json
+      commits: 5
+      authors: 1
+      last_touched: 2026-09-01
+      monthly_commits: [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0]
+    - path: src/viewer/gates.mjs
+      commits: 3
+      authors: 1
+      last_touched: 2026-09-01
+      monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0]
+    - path: test/gates.test.mjs
+      commits: 3
+      authors: 1
+      last_touched: 2026-09-01
+      monthly_commits: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0]
+  recent_activity:
+    total_commits: 33
+    active_authors: 1
+    files_changed: 183
+testing:
+  runner: just
+  command: just test
+  sources:
+    - Justfile
+  notes: >
+    `just test` runs `node --test "test/*.test.mjs"` (glob since 67c42c8; 174
+    tests at 9f7e30a). Other gates: `just check-contract` (schema stamp drift,
+    now validates examples with ajv via src/schemas/validate-examples.mjs),
+    `just check-bundle` (rolldown bundle drift), `just build-smoke`. Evals
+    (`just eval …`) spend real tokens and are not part of `just test`. Any tool
+    the Justfile wraps must be invoked through its recipe.
+boundaries:
+  - name: shell_execution
+    description: Bash scripts that spawn git, tokei, cargo, node, rsync, and
+      headless LLM CLIs (claude -p, codex exec) with paths and prompts
+      interpolated
+    modules:
+      - recon
+      - evals
+      - eval-fixtures
+      - build-scripts
+      - schemas
+    notes: "Since the prior audit: run-eval sandboxes the session by default
+      (Claude native sandbox via --settings, allowUnsandboxedCommands=false)
+      and allowlists Bash by command prefix; the scorer executes only
+      operator-authored gate commands in argv form. Fixture names, audit dir
+      paths, model/effort flags still flow into command lines."
+  - name: untrusted_yaml_ingest
+    description: Model-authored findings.yaml / recon.yaml / actions-taken.md
+      parsed and rendered into HTML, and used to drive git commands
+    modules:
+      - viewer
+      - evals
+    notes: "Since the prior audit: slots filled by function-form replace; the
+      data blob is \\uXXXX-escaped; header/glossary/ledger/flow sinks escaped;
+      links scheme-allowlisted; build validates before rendering; counts derived;
+      evidence gate reads git show <findings.commit> and refuses paths outside
+      the repo. Remaining sinks and the schema's openness to unknown keys are
+      the things to re-check."
+  - name: filesystem_writes
+    description: build-report writes report.html/AGENTS.md/CLAUDE.md/README
+      scaffold into the audit dir; build-viewer copies into skills/; setup.sh
+      rm -rf .git and rewrites a workdir; run-eval writes .cargo/audit.toml into
+      the eval workdir under sandbox isolation
+    modules:
+      - viewer
+      - build-scripts
+      - eval-fixtures
+      - evals
+    notes: Destructive operations (rm -rf .git in setup.sh) gated by preflight;
+      scaffold overwrite rules (README never overwritten; CLAUDE.md only if
+      absent)
+  - name: contract_stamping
+    description: src/schemas is canonical; copies stamped into skills/*/references;
+      bundle copied into skills/cased/scripts; validation of the examples now
+      runs through the same ajv the bundle ships
+    modules:
+      - schemas
+      - build-scripts
+    notes: Drift is a correctness risk for every downstream audit; CI gates
+      check-contract/check-bundle (both green since 67c42c8)
+  - name: skill_prose_contract
+    description: SKILL.md, agent prompts, references, and templates form a
+      behavioural contract that models follow; contradictions between prose and
+      gates are defects
+    modules:
+      - skill-cased
+      - skill-crustoleum
+    notes: Docs win over code by project rule; gates in src/viewer must match
+      what prose promises. SKILL.md 3a′ now describes the git-show evidence
+      gate; findings.md.footer says do not author summary.counts.
