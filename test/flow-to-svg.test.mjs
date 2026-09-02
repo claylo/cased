@@ -60,6 +60,20 @@ describe('finding annotations', () => {
     { slug: 'finding-b', title: 'Minor Issue', concern: 'moderate', chains: {} },
   ];
 
+  it('escapes the concern badge like the title beside it', () => {
+    const flow = [
+      { id: 's1', label: 'Start', type: 'start' },
+      { id: 's2', label: 'Step', findings: ['finding-x'] },
+      { id: 's3', label: 'Next' },
+      { id: 's4', label: 'More' },
+      { id: 's5', label: 'End', type: 'end' },
+    ];
+    const hostile = [{ slug: 'finding-x', title: 'T', concern: 'moderate<script>alert(1)</script>', chains: {} }];
+    const svg = flowToSvg(flow, hostile);
+    assert.ok(!svg.includes('<script>'), 'concern reached the SVG raw');
+    assert.ok(svg.includes('MODERATE&lt;SCRIPT&gt;'));
+  });
+
   it('renders vertical finding as margin sidenote with hairline connector', () => {
     const flow = [
       { id: 's1', label: 'Start', type: 'start' },

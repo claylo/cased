@@ -892,13 +892,8 @@ narratives:
         effort: trivial
         effort_notes: "Change one word"
 
-summary:
-  counts:
-    critical: 0
-    significant: 2
-    moderate: 3
-    advisory: 8
-    note: 5
+# No `summary.counts`: the concern histogram is derived from the findings
+# above by the renderers. If you author one anyway, `finalize` checks it.
 
 carried_forward:
   - slug: hooks-timeout-not-configurable
@@ -919,8 +914,14 @@ reconciliation:
 ## Field Notes
 
 **`concern`.** Use one of `critical`, `significant`, `moderate`,
-`advisory`, or `note`. These map to the summary counts and the viewer's
-concern-badge colors. No other values are valid.
+`advisory`, or `note`. These drive the viewer's concern-badge colors and
+the summary histogram. No other values are valid.
+
+**`summary.counts`.** Do not author it. The report header, README scaffold,
+and AGENTS.md derive the per-concern counts from `narratives[].findings[]`.
+If a document carries `summary.counts` anyway, `finalize` errors on any
+level that disagrees with the findings and on any key that is not a
+concern level.
 
 **`slug`.** Kebab-case, lowercase, digits allowed. Must be unique across
 the whole audit. The slug becomes the anchor in `README.md` and the
@@ -983,7 +984,7 @@ able to drive a breaking change.
 
 `carried_forward` lists prior deferred/accepted/mitigated/no-measurable-benefit
 findings so they are tracked but not re-derived. They are excluded from
-`summary.counts`, from narratives, and from the AGENTS.md finding index.
+the derived concern counts, from narratives, and from the AGENTS.md finding index.
 `escalated` is deliberately not in that set: an escalated finding is
 unresolved — it was handed to a human, not settled — so a re-audit must
 re-derive it as a live finding rather than carry it forward. `reconciliation`

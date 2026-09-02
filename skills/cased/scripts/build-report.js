@@ -39727,7 +39727,7 @@ function renderFindingAnnotations({ step, x, y, findingMap, findingPositions, pa
 			connectorDrawn = true;
 		}
 		parts.push(`<text x="${V.marginTextX}" y="${titleY}" font-size="9" font-weight="600" fill="${style.fill}">${esc(displayTitle)}</text>`);
-		parts.push(`<text x="${V.marginTextX}" y="${badgeY}" font-size="7" fill="${style.badge}" font-weight="500" letter-spacing="0.5">${finding.concern.toUpperCase()}</text>`);
+		parts.push(`<text x="${V.marginTextX}" y="${badgeY}" font-size="7" fill="${style.badge}" font-weight="500" letter-spacing="0.5">${esc(String(finding.concern ?? "").toUpperCase())}</text>`);
 		findingPositions[slug] = { y: titleY };
 	}
 }
@@ -39892,6 +39892,51 @@ function isBlocking(finding) {
 }
 function allFindings(doc) {
 	return (doc.narratives ?? []).flatMap((n) => n.findings ?? []);
+}
+const CONCERN_LEVELS = [
+	"critical",
+	"significant",
+	"moderate",
+	"advisory",
+	"note"
+];
+/**
+* The per-concern histogram, derived from the findings themselves. This is
+* the only source of truth for counts: the renderers use it directly, and
+* an authored `summary.counts` block is checked against it, never trusted.
+*/
+function concernCounts(doc) {
+	const counts = Object.fromEntries(CONCERN_LEVELS.map((l) => [l, 0]));
+	for (const f of allFindings(doc)) if (f.concern in counts) counts[f.concern] += 1;
+	return counts;
+}
+/**
+* If the document authors `summary.counts`, every level must agree with
+* the findings and no key may be outside the concern vocabulary.
+*/
+function checkSummaryCounts(doc) {
+	const authored = doc?.summary?.counts;
+	if (!authored || typeof authored !== "object") return [];
+	const actual = concernCounts(doc);
+	const problems = [];
+	for (const [level, n] of Object.entries(authored)) {
+		if (!(level in actual)) {
+			problems.push({
+				level,
+				authored: n,
+				actual: null,
+				problem: "unknown-level"
+			});
+			continue;
+		}
+		if (Number(n) !== actual[level]) problems.push({
+			level,
+			authored: n,
+			actual: actual[level],
+			problem: "count-mismatch"
+		});
+	}
+	return problems;
 }
 /**
 * A finding path is a claim about a file *inside* the audited tree. Absolute
@@ -40137,8 +40182,7 @@ const FINDINGS_REQUIRED = [
 	"scope",
 	"commit",
 	"assessment",
-	"narratives",
-	"summary"
+	"narratives"
 ];
 /**
 * Parse and validate a findings YAML string.
@@ -40150,7 +40194,6 @@ function parseFindings(yamlStr) {
 	const data = import_dist$1.parse(yamlStr);
 	for (const field of FINDINGS_REQUIRED) if (data[field] === void 0 || data[field] === null) throw new Error(`findings YAML missing required field: ${field}`);
 	if (!Array.isArray(data.narratives)) throw new Error("findings YAML: narratives must be an array");
-	if (!data.summary?.counts) throw new Error("findings YAML: summary.counts is required");
 	return data;
 }
 /**
@@ -40292,13 +40335,41 @@ function renderProse(s) {
 	let match;
 	while ((match = pattern.exec(str)) !== null) {
 		if (match.index > lastIndex) tokens.push(escHtml(str.slice(lastIndex, match.index)));
-		if (match[1] !== void 0) tokens.push(`<a href="${escHtml(match[2])}">${escHtml(match[1])}</a>`);
-		else if (match[3] !== void 0) tokens.push(`<strong>${escHtml(match[3])}</strong>`);
+		if (match[1] !== void 0) {
+			const href = safeHref(match[2]);
+			tokens.push(href === null ? escHtml(match[1]) : `<a href="${escHtml(href)}" rel="noopener noreferrer">${escHtml(match[1])}</a>`);
+		} else if (match[3] !== void 0) tokens.push(`<strong>${escHtml(match[3])}</strong>`);
 		else if (match[4] !== void 0) tokens.push(`<code>${escHtml(match[4])}</code>`);
 		lastIndex = match.index + match[0].length;
 	}
 	if (lastIndex < str.length) tokens.push(escHtml(str.slice(lastIndex)));
 	return tokens.join("");
+}
+const SAFE_LINK_PROTOCOLS = /* @__PURE__ */ new Set([
+	"http:",
+	"https:",
+	"mailto:"
+]);
+/**
+* Return the href to emit for a model-authored markdown link, or null when
+* the link must be rendered as plain text. Prose is untrusted input (it is
+* written by agents that have read an untrusted repository), so only an
+* allowlist of schemes plus fragments and relative paths become anchors.
+* The URL parser is used for the scheme decision so that whitespace, case
+* and control-character disguises (` javascript:`, `java\tscript:`) resolve
+* the way a browser would resolve them.
+*/
+function safeHref(raw) {
+	const href = String(raw ?? "").trim();
+	if (!href) return null;
+	let parsed;
+	try {
+		parsed = new URL(href, "https://relative.invalid/base/");
+	} catch {
+		return null;
+	}
+	if (parsed.host === "relative.invalid") return parsed.protocol === "https:" ? href : null;
+	return SAFE_LINK_PROTOCOLS.has(parsed.protocol) ? href : null;
 }
 /**
 * Format a location object as a title string for code frames.
@@ -40387,22 +40458,22 @@ function buildGlossary(counts, blocking, backlog) {
 		advisory: "design choice that limits future safety",
 		note: "observation worth recording"
 	};
-	const lines = Object.entries(counts).filter(([, v]) => v > 0).map(([level]) => `<strong>${level}</strong> \u2014 ${defs[level] || level}`).join("<br>");
+	const lines = Object.entries(counts).filter(([, v]) => v > 0).map(([level]) => `<strong>${escHtml(level)}</strong> \u2014 ${escHtml(defs[level] || level)}`).join("<br>");
 	if (!lines) return "";
 	return `<span class="sidenote glossary"><strong>Concern levels</strong><br>${lines}<br><br>Blocking: ${blocking} &middot; Backlog: ${backlog}<br><br>Each <strong>surface</strong> groups findings into a coherent concern area, not a category.</span>`;
 }
 function renderHeader(findings) {
-	const counts = findings.summary?.counts || {};
+	const counts = concernCounts(findings);
 	const total = Object.values(counts).reduce((a, b) => a + b, 0);
 	const assessment = findings.assessment || "";
 	const { blocking, backlog } = blockingCounts(findings);
 	const glossary = buildGlossary(counts, blocking, backlog);
 	return `    <header>
       <h1>${escHtml(findings.scope || "Audit")} Audit</h1>
-      <p class="meta">${findings.audit_date} &middot; <code>${(findings.commit || "").slice(0, 12)}</code> &middot; ${escHtml(findings.scope || "")}</p>
+      <p class="meta">${escHtml(findings.audit_date)} &middot; <code>${escHtml((findings.commit || "").slice(0, 12))}</code> &middot; ${escHtml(findings.scope || "")}</p>
 ${assessment ? `      <p class="assessment">${glossary}${renderProse(assessment)}</p>` : ""}
       <div class="summary-bar">
-${Object.entries(counts).filter(([, v]) => v > 0).map(([level, count]) => `        <span class="summary-count" data-concern="${level}">${count} ${level}</span>`).join("\n")}
+${Object.entries(counts).filter(([, v]) => v > 0).map(([level, count]) => `        <span class="summary-count" data-concern="${escHtml(level)}">${count} ${escHtml(level)}</span>`).join("\n")}
         <span class="summary-total">${total} findings</span>
       </div>
     </header>`;
@@ -40480,7 +40551,7 @@ function ledgerRows(findings, slugToTitle, predicate) {
 	const rows = [];
 	for (const narrative of findings.narratives || []) for (const finding of narrative.findings || []) {
 		if (!predicate(finding)) continue;
-		const locationCell = (finding.locations || []).map((loc) => `<code>${escHtml(loc.path)}:${loc.start_line}</code>`).join("<br>");
+		const locationCell = (finding.locations || []).map((loc) => `<code>${escHtml(loc.path)}:${escHtml(loc.start_line)}</code>`).join("<br>");
 		const effort = finding.effort ? escHtml(finding.effort) : "—";
 		const chainRefs = finding.chains;
 		const enables = chainRefs && Array.isArray(chainRefs.enables) ? chainRefs.enables : [];
@@ -40712,7 +40783,7 @@ function renderReadmeMd(findings, templateStr, { priorAudits = [] } = {}) {
 	const narratives = findings.narratives || [];
 	let findingCount = 0;
 	for (const n of narratives) findingCount += (n.findings || []).length;
-	const counts = findings.summary?.counts || {};
+	const counts = concernCounts(findings);
 	const findingList = renderAgentsFindingList(findings);
 	const { blocking, backlog } = blockingCounts(findings);
 	const priorList = priorAudits.length ? priorAudits.map((p) => `- \`${p.slug}\`${p.hasLedger ? "" : " — **no actions-taken.md** (findings there are untracked)"}`).join("\n") : "_none_";
@@ -40753,6 +40824,7 @@ function finalizeAudit(auditDir, { repoRoot = null, allowUnledgeredPrior = false
 	const root = repoRoot ?? recon?.structure?.root ?? (0, node_path.join)(auditDir, "..", "..", "..");
 	errors.push(...checkReadmeComplete((0, node_fs.readFileSync)(readmePath, "utf8")));
 	errors.push(...checkAuditProfile(recon));
+	for (const p of checkSummaryCounts(findings)) errors.push(p.problem === "unknown-level" ? `summary.counts.${p.level} is not a concern level` : `summary.counts.${p.level} is ${p.authored} but the findings contain ${p.actual}`);
 	for (const p of checkEvidenceFidelity(findings, root)) errors.push(`evidence ${p.problem} for ${p.slug} @ ${p.path}:${p.start_line}-${p.end_line}${p.expected !== void 0 ? ` (file: ${JSON.stringify(p.expected)} vs evidence: ${JSON.stringify(p.actual)})` : ""}`);
 	for (const f of allFindings(findings)) if (f.origin && ["caused-by-fix", "recurrence-of"].includes(f.origin.kind) && !f.origin.ref) errors.push(`${f.slug}: origin.kind ${f.origin.kind} requires origin.ref`);
 	const prior = findPriorAudits((0, node_path.join)(auditDir, ".."), (0, node_path.basename)(auditDir));
@@ -40795,6 +40867,10 @@ function finalizeAudit(auditDir, { repoRoot = null, allowUnledgeredPrior = false
 */
 async function assembleReport(auditDir, opts = {}) {
 	const { viewerDir, fontsDir, viewerJs } = opts;
+	const schemaDir = opts.schemaDir ?? resolveSchemaDir((0, node_path.dirname)((0, node_url.fileURLToPath)(require("url").pathToFileURL(__filename).href)));
+	if (!schemaDir) throw new Error("cannot locate recon.schema.json and findings.schema.json; refusing to render an unvalidated document");
+	const validationErrors = validateAuditDir(auditDir, schemaDir);
+	if (validationErrors.length) throw new Error(`refusing to render: ${validationErrors.length} validation error(s)\n${formatValidationErrors(validationErrors)}`);
 	const findingsYaml = (0, node_fs.readFileSync)((0, node_path.join)(auditDir, "findings.yaml"), "utf8");
 	const reconYaml = (0, node_fs.readFileSync)((0, node_path.join)(auditDir, "recon.yaml"), "utf8");
 	const findings = parseFindings(findingsYaml);
@@ -41092,6 +41168,7 @@ exports.renderProse = renderProse;
 exports.renderReadmeMd = renderReadmeMd;
 exports.renderReconciliation = renderReconciliation;
 exports.resolveSchemaDir = resolveSchemaDir;
+exports.safeHref = safeHref;
 exports.titleFromScope = titleFromScope;
 exports.validateAuditDir = validateAuditDir;
 exports.validateYamlFile = validateYamlFile;

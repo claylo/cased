@@ -105,7 +105,7 @@ function renderFindingAnnotations({ step, x, y, findingMap, findingPositions, pa
       connectorDrawn = true;
     }
     parts.push(`<text x="${V.marginTextX}" y="${titleY}" font-size="9" font-weight="600" fill="${style.fill}">${esc(displayTitle)}</text>`);
-    parts.push(`<text x="${V.marginTextX}" y="${badgeY}" font-size="7" fill="${style.badge}" font-weight="500" letter-spacing="0.5">${finding.concern.toUpperCase()}</text>`);
+    parts.push(`<text x="${V.marginTextX}" y="${badgeY}" font-size="7" fill="${style.badge}" font-weight="500" letter-spacing="0.5">${esc(String(finding.concern ?? '').toUpperCase())}</text>`);
     findingPositions[slug] = { y: titleY };
   }
 }

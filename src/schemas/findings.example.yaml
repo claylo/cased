@@ -876,13 +876,8 @@ narratives:
         effort: trivial
         effort_notes: "Change one word"
 
-summary:
-  counts:
-    critical: 0
-    significant: 2
-    moderate: 3
-    advisory: 8
-    note: 5
+# No `summary.counts`: the concern histogram is derived from the findings
+# above by the renderers. If you author one anyway, `finalize` checks it.
 
 carried_forward:
   - slug: hooks-timeout-not-configurable

@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseFindings, parseRecon, renderHeader, renderLedger, assembleReport, fillSlots, embedJson, assertAssembled } from '../src/viewer/build-report.mjs';
+import { parseFindings, parseRecon, renderHeader, renderLedger, renderProse, renderReadmeMd, escHtml, assembleReport, fillSlots, embedJson, assertAssembled } from '../src/viewer/build-report.mjs';
 import { inferLangFromPath, buildMetaString, formatLocationTitle } from '../src/viewer/build-report.mjs';
 import { titleFromScope, renderAgentsFindingList, renderAgentsMd } from '../src/viewer/build-report.mjs';
 import {
@@ -79,6 +79,22 @@ describe('findings contract: origin / failure_mode / carried_forward / reconcili
     assert.equal(validateFindings(doc), false);
   });
 
+  it('accepts a document with no summary block — counts are derived, not authored', () => {
+    const doc = YAML.parse(findingsYaml);
+    delete doc.summary;
+    assert.equal(validateFindings(doc), true, JSON.stringify(validateFindings.errors));
+    assert.doesNotThrow(() => parseFindings(YAML.stringify(doc)));
+  });
+
+  it('README scaffold counts are derived from the findings', () => {
+    const findings = parseFindings(findingsYaml);
+    findings.summary = { counts: { critical: 9, significant: 9, moderate: 9, advisory: 9, note: 9 } };
+    const all = findings.narratives.flatMap(n => n.findings);
+    const moderate = all.filter(f => f.concern === 'moderate').length;
+    const out = renderReadmeMd(findings, 'm={{count_moderate}} c={{count_critical}}');
+    assert.equal(out, `m=${moderate} c=${all.filter(f => f.concern === 'critical').length}`);
+  });
+
   it('rejects location paths that are absolute or traverse above the repo', () => {
     for (const bad of ['/etc/passwd', '../secret.txt', 'src/../../secret.txt', 'C:/win/x.rs', '..']) {
       const doc = YAML.parse(findingsYaml);
@@ -99,6 +115,74 @@ describe('renderHeader', () => {
     const html = renderHeader(findings);
     assert.ok(html.includes('<h1>'));
     assert.ok(html.includes('summary-bar'));
+  });
+  it('escapes audit_date and commit like the neighbouring scope', () => {
+    const findings = parseFindings(findingsYaml);
+    findings.audit_date = '2026-01-01<img src=x onerror=alert(1)>';
+    findings.commit = '"><script>x</script>abcdef';
+    const html = renderHeader(findings);
+    assert.ok(!html.includes('<img'), 'audit_date reached the header raw');
+    assert.ok(!html.includes('<script>'), 'commit reached the header raw');
+    assert.ok(html.includes('&lt;img'));
+  });
+  it('derives the summary bar and glossary from the findings, not from summary.counts', () => {
+    const findings = parseFindings(findingsYaml);
+    findings.summary = { counts: { critical: 9, significant: 9, moderate: 9, advisory: 9, note: 9, 'x" onmouseover="alert(1)': 1 } };
+    const html = renderHeader(findings);
+    const all = findings.narratives.flatMap(n => n.findings);
+    const moderate = all.filter(f => f.concern === 'moderate').length;
+    assert.ok(html.includes(`>${moderate} moderate<`), `expected ${moderate} moderate in the summary bar`);
+    assert.ok(html.includes(`${all.length} findings`));
+    assert.ok(!html.includes('9 critical'));
+    assert.ok(!html.includes('onmouseover="alert'), 'an authored counts key reached an attribute');
+  });
+  it('renders without a summary block at all', () => {
+    const findings = parseFindings(findingsYaml);
+    delete findings.summary;
+    const html = renderHeader(findings);
+    assert.ok(html.includes('summary-bar'));
+  });
+});
+
+describe('renderProse links', () => {
+  const link = (text, href) => renderProse(`see [${text}](${href}) now`);
+  it('emits anchors for http, https, mailto, fragments, and relative paths with noopener', () => {
+    for (const href of ['https://example.com/a?b=c', 'http://example.com', 'mailto:sec@example.com', '#finding-slug', 'README.md#slug', '../src/a.rs']) {
+      const html = link('x', href);
+      assert.ok(html.includes(`<a href="${escHtml(href)}" rel="noopener noreferrer">x</a>`), `expected an anchor for ${href}: ${html}`);
+    }
+  });
+  it('renders the link text as plain text for javascript:, data:, vbscript:, and disguised schemes', () => {
+    for (const href of ['javascript:alert(1)', 'JAVASCRIPT:alert(1)', ' javascript:alert(1)', 'java\tscript:alert(1)', 'data:text/html,<script>alert(1)</script>', 'vbscript:msgbox', 'file:///etc/passwd']) {
+      const html = link('click', href);
+      assert.ok(!html.includes('<a '), `expected no anchor for ${JSON.stringify(href)}: ${html}`);
+      assert.ok(html.includes('click'));
+      assert.ok(!html.includes('<script>'));
+    }
+  });
+});
+
+describe('renderLedger', () => {
+  it('escapes start_line beside the escaped path', () => {
+    const findings = parseFindings(findingsYaml);
+    findings.narratives[0].findings[0].locations[0].start_line = '1<b>x</b>';
+    const html = renderLedger(findings);
+    assert.ok(!html.includes('<b>x</b>'));
+    assert.ok(html.includes('1&lt;b&gt;x'));
+  });
+});
+
+describe('assembleReport refuses an unvalidated document', () => {
+  it('rejects a findings.yaml that fails the schema instead of rendering it', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'cased-test-invalid-'));
+    const doc = YAML.parse(findingsYaml);
+    doc.narratives[0].findings[0].concern = 'catastrophic';
+    writeFileSync(join(dir, 'findings.yaml'), YAML.stringify(doc));
+    writeFileSync(join(dir, 'recon.yaml'), reconYaml);
+    await assert.rejects(
+      assembleReport(dir, { viewerDir: 'src/viewer', fontsDir: 'vendor/fonts', viewerJs: null }),
+      /concern|validation/i,
+    );
   });
 });
 

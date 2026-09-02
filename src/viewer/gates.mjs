@@ -16,6 +16,37 @@ export function allFindings(doc) {
   return (doc.narratives ?? []).flatMap(n => n.findings ?? []);
 }
 
+export const CONCERN_LEVELS = ['critical', 'significant', 'moderate', 'advisory', 'note'];
+
+/**
+ * The per-concern histogram, derived from the findings themselves. This is
+ * the only source of truth for counts: the renderers use it directly, and
+ * an authored `summary.counts` block is checked against it, never trusted.
+ */
+export function concernCounts(doc) {
+  const counts = Object.fromEntries(CONCERN_LEVELS.map(l => [l, 0]));
+  for (const f of allFindings(doc)) {
+    if (f.concern in counts) counts[f.concern] += 1;
+  }
+  return counts;
+}
+
+/**
+ * If the document authors `summary.counts`, every level must agree with
+ * the findings and no key may be outside the concern vocabulary.
+ */
+export function checkSummaryCounts(doc) {
+  const authored = doc?.summary?.counts;
+  if (!authored || typeof authored !== 'object') return [];
+  const actual = concernCounts(doc);
+  const problems = [];
+  for (const [level, n] of Object.entries(authored)) {
+    if (!(level in actual)) { problems.push({ level, authored: n, actual: null, problem: 'unknown-level' }); continue; }
+    if (Number(n) !== actual[level]) problems.push({ level, authored: n, actual: actual[level], problem: 'count-mismatch' });
+  }
+  return problems;
+}
+
 /**
  * A finding path is a claim about a file *inside* the audited tree. Absolute
  * paths and anything that resolves above repoRoot are refused before any read.

@@ -3,7 +3,7 @@
   "$id": "https://cased.dev/schemas/findings.schema.json",
   "title": "Cased Findings",
   "type": "object",
-  "required": ["audit_date", "scope", "commit", "assessment", "narratives", "summary"],
+  "required": ["audit_date", "scope", "commit", "assessment", "narratives"],
   "properties": {
     "audit_date": { "type": "string", "format": "date" },
     "scope": { "type": "string" },
@@ -137,11 +137,11 @@
     },
     "summary": {
       "type": "object",
-      "required": ["counts"],
+      "description": "Optional. The concern histogram is derived from narratives[].findings[] by the renderers; if `counts` is authored here, `finalize` errors on any level that disagrees with the findings.",
       "properties": {
         "counts": {
           "type": "object",
-          "required": ["critical", "significant", "moderate", "advisory", "note"],
+          "additionalProperties": false,
           "properties": {
             "critical": { "type": "integer" },
             "significant": { "type": "integer" },

@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { checkEvidenceFidelity, checkReadmeComplete, checkAuditProfile, isBlocking, lintLedger } from '../src/viewer/gates.mjs';
+import { checkEvidenceFidelity, checkReadmeComplete, checkAuditProfile, checkSummaryCounts, concernCounts, isBlocking, lintLedger } from '../src/viewer/gates.mjs';
 
 function repoWith(files) {
   const root = mkdtempSync(join(tmpdir(), 'cased-gates-'));
@@ -83,6 +83,39 @@ describe('checkEvidenceFidelity', () => {
       { slug: 'nested', locations: [{ path: 'src/../../cased-gates-outside.txt', start_line: 1, end_line: 1 }], evidence: 'secret\n' },
     ] }] };
     assert.deepEqual(checkEvidenceFidelity(doc, root).map(p => [p.slug, p.problem]), [['abs', 'path-escapes-repo'], ['dotdot', 'path-escapes-repo'], ['nested', 'path-escapes-repo']]);
+  });
+});
+
+describe('checkSummaryCounts', () => {
+  const doc = () => ({ narratives: [
+    { findings: [{ slug: 'a', concern: 'significant' }, { slug: 'b', concern: 'moderate' }] },
+    { findings: [{ slug: 'c', concern: 'moderate' }] },
+  ] });
+  it('passes when the authored counts match the findings', () => {
+    const d = doc();
+    d.summary = { counts: { critical: 0, significant: 1, moderate: 2, advisory: 0, note: 0 } };
+    assert.deepEqual(checkSummaryCounts(d), []);
+  });
+  it('passes when no summary.counts is authored', () => {
+    assert.deepEqual(checkSummaryCounts(doc()), []);
+  });
+  it('reports every level whose authored count disagrees with the findings', () => {
+    const d = doc();
+    d.summary = { counts: { critical: 1, significant: 1, moderate: 1, advisory: 0, note: 0 } };
+    const problems = checkSummaryCounts(d);
+    assert.deepEqual(problems.map(p => [p.level, p.authored, p.actual]), [['critical', 1, 0], ['moderate', 1, 2]]);
+  });
+  it('reports a key that is not a concern level', () => {
+    const d = doc();
+    d.summary = { counts: { critical: 0, significant: 1, moderate: 2, advisory: 0, note: 0, bogus: 3 } };
+    assert.deepEqual(checkSummaryCounts(d).map(p => p.level), ['bogus']);
+  });
+});
+
+describe('concernCounts', () => {
+  it('returns every level, zero-filled, in canonical order', () => {
+    const d = { narratives: [{ findings: [{ concern: 'note' }, { concern: 'note' }, { concern: 'critical' }] }] };
+    assert.deepEqual(concernCounts(d), { critical: 1, significant: 0, moderate: 0, advisory: 0, note: 2 });
   });
 });
 
