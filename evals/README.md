@@ -109,6 +109,17 @@ of held-out tests the session never saw — see **Remediation mode** below.
 The run directory name carries a `-remediate` suffix in remediate mode so
 the two modes' runs for the same fixture never collide.
 
+`--isolation sandbox` (default) runs the session inside the harness's own
+OS sandbox — seatbelt on macOS, bubblewrap on Linux for `claude`;
+`-s workspace-write` for `codex` — so writes are confined to the workspace
+copy and the cased scratch directory. `--isolation none` drops the OS
+boundary and relies on the Bash command-prefix allowlist alone; the run
+header says so loudly. Either way Bash is never blanket-allowed: a command
+prefix outside the list in `run-eval` is auto-denied and the audit stalls
+visibly in the transcript. `CASED_EVAL_ISOLATION` sets the default. The
+runner assumes one operator and first-party fixtures; see the trust note at
+the top of `run-eval` before pointing it at anything else.
+
 Each run is a full multi-agent audit — minutes of wall clock, real token
 spend. Matrices are deliberate acts, not CI-per-push. The scorer itself is
 free and runs in `just test`.

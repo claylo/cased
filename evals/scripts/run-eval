@@ -16,8 +16,28 @@
 #   evals/runs/<fixture>/<timestamp>-<platform>-<model>-<effort>[-remediate]/
 #
 # Usage:
-#   run-eval [--mode audit|remediate] [--platform claude] [--model MODEL]
-#            [--effort EFFORT] <fixture>
+#   run-eval [--mode audit|remediate] [--platform claude|codex] [--model MODEL]
+#            [--effort EFFORT] [--isolation sandbox|none] <fixture>
+#
+# TRUST LEVEL. The session reads a repository and acts on what it reads,
+# which is exactly the shape prompt injection targets, and the scorer then
+# trusts artifacts that session wrote. The runner assumes ONE operator and
+# FIRST-PARTY fixtures under evals/fixtures/. Do not point it at a
+# third-party repository without reading the isolation notes below.
+#
+#   --isolation sandbox  (default) the harness's own OS sandbox: on the
+#                        claude platform, seatbelt (macOS) / bubblewrap
+#                        (Linux) confines writes to the workspace and the
+#                        scratch dirs listed in SANDBOX_SETTINGS; codex runs
+#                        under `-s workspace-write`. Tool calls are still
+#                        limited to ALLOWED_TOOLS.
+#   --isolation none     no OS confinement; the session runs with the
+#                        operator's full user rights, gated only by the
+#                        ALLOWED_TOOLS command-prefix allowlist. Use it when
+#                        a fixture needs something the sandbox refuses, and
+#                        say so in the run notes.
+#
+# CASED_EVAL_ISOLATION in the environment sets the default for both.
 #
 # Each run is a full multi-agent session: expect minutes and real token
 # spend. Run matrices deliberately, not in CI-per-push.
@@ -31,14 +51,16 @@ PLATFORM="claude"
 MODEL="default"
 EFFORT="default"
 MODE="audit"
+ISOLATION="${CASED_EVAL_ISOLATION:-sandbox}"
 FIXTURE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --platform) PLATFORM="$2"; shift 2 ;;
-    --model)    MODEL="$2"; shift 2 ;;
-    --effort)   EFFORT="$2"; shift 2 ;;
-    --mode)     MODE="$2"; shift 2 ;;
+    --platform)  PLATFORM="$2"; shift 2 ;;
+    --model)     MODEL="$2"; shift 2 ;;
+    --effort)    EFFORT="$2"; shift 2 ;;
+    --mode)      MODE="$2"; shift 2 ;;
+    --isolation) ISOLATION="$2"; shift 2 ;;
     --help|-h)
       grep '^#' "$0" | grep -v '^#!' | sed 's/^# \{0,1\}//' >&2
       exit 0
@@ -51,6 +73,11 @@ done
 case "$MODE" in
   audit|remediate) ;;
   *) echo "error: --mode must be audit or remediate (got '$MODE')" >&2; exit 1 ;;
+esac
+
+case "$ISOLATION" in
+  sandbox|none) ;;
+  *) echo "error: --isolation must be sandbox or none (got '$ISOLATION')" >&2; exit 1 ;;
 esac
 
 if [[ -z "$FIXTURE" ]]; then
@@ -135,11 +162,39 @@ fi
 # Tools the audit pipeline needs. Declared explicitly so the run survives
 # CLAUDE_CODE_SUBPROCESS_ENV_SCRUB hardening, which forces permission mode
 # back to default and would otherwise auto-deny every tool call headlessly.
-ALLOWED_TOOLS="Bash,Read,Write,Edit,Glob,Grep,Task,Skill,TodoWrite"
+#
+# Bash is allowlisted by command prefix, not blanket: the pipeline runs the
+# recon wrapper (bash), build-report (node), the workspace gates (cargo,
+# just), tokei, and git, plus the read-only shell idioms auditors reach for
+# (ls, wc, find, grep, head, tail, diff, mkdir for the audit dir). A prefix
+# not in this list is auto-denied headlessly, which stalls the audit
+# visibly in the transcript rather than silently widening what it may run.
+# Extend the list when a legitimate command shows up denied; do not put
+# `Bash` back.
+ALLOWED_TOOLS="Read,Write,Edit,Glob,Grep,Task,Skill,TodoWrite"
+for prefix in bash node cargo just tokei git ls wc find grep rg head tail diff mkdir; do
+  ALLOWED_TOOLS="$ALLOWED_TOOLS,Bash($prefix:*)"
+done
+
+# Sandbox policy for the claude platform. Three settings carry the weight:
+#   allowUnsandboxedCommands=false — by default a command that hits the
+#     sandbox wall may be retried OUTSIDE it, and in headless acceptEdits
+#     that retry runs with no prompt. Off, the wall is final.
+#   failIfUnavailable=true — a host without seatbelt/bubblewrap fails the
+#     run instead of silently degrading to --isolation none.
+#   strictAllowlist=true — an unlisted domain is denied, not prompted.
+# Writes: the workspace (cwd) and $TMPDIR are allowed implicitly; the cased
+# scratch root and cargo's registry/advisory caches are added so `cargo
+# audit`/`cargo test` and the skill's scratch policy work inside the wall.
+# Network: crates.io and GitHub for cargo fetches and advisory DBs. The
+# model API is the harness's own process, not a Bash child, so it is
+# unaffected.
+SANDBOX_SETTINGS='{"sandbox":{"enabled":true,"failIfUnavailable":true,"autoAllowBashIfSandboxed":true,"allowUnsandboxedCommands":false,"filesystem":{"allowWrite":["/private/tmp/cased","~/.cargo/registry","~/.cargo/advisory-db"]},"network":{"allowedDomains":["crates.io","*.crates.io","github.com","*.github.com","*.githubusercontent.com"],"strictAllowlist":true}}}'
 
 case "$PLATFORM" in
   claude)
     CMD=(claude -p "$PROMPT" --output-format text --permission-mode acceptEdits --allowedTools "$ALLOWED_TOOLS")
+    [[ "$ISOLATION" == "sandbox" ]] && CMD+=(--settings "$SANDBOX_SETTINGS")
     [[ "$MODEL" != "default" ]] && CMD+=(--model "$MODEL")
     ;;
   codex)
@@ -154,11 +209,15 @@ case "$PLATFORM" in
     # session state persisted to seed future runs. Auth still works;
     # everything the eval needs (multi_agent, model, sandbox) is forced
     # explicitly below.
-    CMD=(codex exec --skip-git-repo-check -s workspace-write
+    CMD=(codex exec --skip-git-repo-check
          --ephemeral --ignore-user-config
-         --enable multi_agent
-         -c 'sandbox_workspace_write.network_access=true'
-         "$CODEX_PROMPT")
+         --enable multi_agent)
+    if [[ "$ISOLATION" == "sandbox" ]]; then
+      CMD+=(-s workspace-write -c 'sandbox_workspace_write.network_access=true')
+    else
+      CMD+=(-s danger-full-access)
+    fi
+    CMD+=("$CODEX_PROMPT")
     [[ "$MODEL" != "default" ]] && CMD+=(--model "$MODEL")
     [[ "$EFFORT" != "default" ]] && CMD+=(-c "model_reasoning_effort=\"$EFFORT\"")
     ;;
@@ -169,7 +228,12 @@ case "$PLATFORM" in
 esac
 
 echo "run-eval: $FIXTURE on $PLATFORM/$MODEL/$EFFORT ($MODE)" >&2
-echo "  workdir: $WORKDIR" >&2
+echo "  workdir:   $WORKDIR" >&2
+if [[ "$ISOLATION" == "none" ]]; then
+  echo "  isolation: NONE — session runs with your full user rights, gated only by the command-prefix allowlist" >&2
+else
+  echo "  isolation: sandbox (writes confined to the workspace and scratch dirs)" >&2
+fi
 ( cd "$WORKDIR" && "${CMD[@]}" ) | tee "$RUN_DIR/transcript.txt" >&2 || {
   echo "error: $MODE run failed; transcript in $RUN_DIR/transcript.txt" >&2
   exit 1
