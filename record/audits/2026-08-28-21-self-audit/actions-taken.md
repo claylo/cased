@@ -2,7 +2,7 @@
 audit: 2026-08-28-21-self-audit
 last_updated: 2026-09-01
 status:
-  fixed: 8
+  fixed: 11
   mitigated: 0
   accepted: 0
   disputed: 0
@@ -10,7 +10,7 @@ status:
   escalated: 0
   superseded: 0
   no-measurable-benefit: 0
-  open: 34
+  open: 31
 ---
 
 # Actions Taken: Full Repo self Audit of cased at 2365a3f — src/ (viewer, recon, schemas), evals/ (runner, scorer, fixtures), skills/ (cased + crustoleum), scripts/, test/
@@ -68,3 +68,16 @@ Four findings, one commit, because they are the four things a reader checks befo
 The finding asked for path containment. The same function had a second, unfiled defect surfaced by remediating this audit: it read evidence from the working tree, so after the seven fixes above `finalize` reported 19 evidence mismatches, 12 of them on findings nobody had touched — their lines drifted because they share a file with a fix. Evidence is a claim about the tree at `findings.commit`, so the gate now reads each cited path with `git show <commit>:./<path>`, resolved once per run via `git cat-file -e`; if git cannot resolve the commit (no repository, unknown object) it falls back to the working tree. `maxBuffer` is raised because the shipped bundle exceeds Node's 1 MB default and the resulting throw was being reported as `file-missing` — caught because this audit cites the bundle in `bundled-third-party-source-missing-license-notices`.
 
 Path containment is enforced twice: the gate rejects absolute or `..`-traversing paths with `path-escapes-repo` before any read, and the schema pattern rejects them at `validate` time. The pattern is a segment grammar rather than lookahead because `ys` (the Rust validator that stamps the contract) has no look-around support.
+
+## 2026-09-01 — escape every metadata sink, allowlist link schemes, derive concern counts
+
+**Disposition:** fixed
+**Addresses:** [unescaped-metadata-in-report-markup](README.md#unescaped-metadata-in-report-markup), [prose-links-allow-javascript-uris](README.md#prose-links-allow-javascript-uris), [summary-counts-never-cross-checked](README.md#summary-counts-never-cross-checked)
+**Commit:** 44b419c
+**Author:** claude-fable-5-1 (controller session, Clay reviewing)
+**Verification:** `just test` — 174 pass, 0 fail (159 before; 15 new tests: header/ledger/flow-badge escaping, link allow and deny lists incl. whitespace and tab disguises, build refusing an invalid document, derived header and README counts, `checkSummaryCounts` match/mismatch/unknown-key, `concernCounts`). `just build-smoke` ok. Self-audit through the shipped bundle: `validate` ok, `build` (report.html and AGENTS.md byte-identical to the committed ones), `finalize ok`.
+**Blast radius:** Files: src/viewer/build-report.mjs, src/viewer/flow-to-svg.js, src/viewer/gates.mjs, src/schemas/findings.schema.json, src/schemas/findings.example.yaml, src/schemas/findings.md.footer, three test files, plus the rebuilt bundle and the contract restamped into skills/cased/references/ and skills/crustoleum/references/. The findings name build-report.mjs (five sinks, renderProse, renderHeader), flow-to-svg.js and the schema's summary block; the fix stays within those plus gates.mjs, where the counts helpers belong beside the other gates. Public surface: `parseFindings` no longer throws on a missing `summary`; schema drops `summary` from `required` and sets `additionalProperties: false` on `summary.counts` (this audit's findings.yaml and both example files validate); `assembleReport` now throws on a document that fails the schema (new optional `schemaDir` opt; the CLI passes nothing and resolves it the way `validate` does); new exports `safeHref`, `concernCounts`, `checkSummaryCounts`, `CONCERN_LEVELS`; anchors gain `rel="noopener noreferrer"`. `renderReadmeMd` and `renderAgentsMd` count placeholders now derive from the findings. Co-varying text: findings.md.footer (concern note rewritten, new `summary.counts` note, carried_forward sentence), the canonical example's `summary` block removed — it had been miscounting its own findings (advisory 8 vs 10, note 5 vs 3), which is the finding demonstrated in the contract itself. No SKILL.md or agent prompt told the controller to author counts, so nothing there to change.
+**Diff:** 16 files, +356 −79, 1 commit (≈120 of the insertions are the rebuilt bundle and restamped copies).
+**Coverage lost:** none — existing tests untouched; the canonical example still exercises every render path, now with derived counts.
+
+Three findings, one mechanism: text reaching the report without passing the escaper or a check. `unescaped-metadata-in-report-markup` wraps all five sinks the reviewer's sweep found — audit_date, commit, the counts keys (glossary text, `data-concern` attribute, summary-bar text), `start_line`, and the flow badge's `concern` — in the escaper already in scope at each site; separately, `build` now runs the compiled validators before rendering and refuses a document that fails, so the enum-bound fields the badges and gates key on are guaranteed at render time rather than by a process step a session can skip. `prose-links-allow-javascript-uris`: `safeHref` parses the target with `new URL(href, 'https://relative.invalid/base/')` — fragments and relative paths resolve to the placeholder host and pass, anything else passes only with an http, https or mailto protocol; using the parser rather than a string prefix means ` javascript:` and `java\tscript:` are rejected the way a browser would honour them. `summary-counts-never-cross-checked`: took the finding's second option — the field carried no information the findings did not — and kept its first as the safety net: renderers derive the histogram via `concernCounts`, the schema makes `summary` optional and closes `counts` to the five levels, and `finalizeAudit` errors on any authored count that disagrees or any key outside the vocabulary.
