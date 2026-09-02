@@ -41,8 +41,8 @@ history is reachable here via `git log --follow`.
 
 ```bash
 just test            # node --test (build-report, recon, eval scorer)
-just check-bundle    # rebuild viewer bundle, fail on drift (needs ys: cargo install yaml-schema)
-just check-contract  # restamp schema contract, fail on drift (needs ys: cargo install yaml-schema)
+just check-bundle    # rebuild viewer bundle, fail on drift
+just check-contract  # restamp schema contract, fail on drift (validates examples with the bundle's ajv)
 just build-example   # full pipeline against example/ data
 just eval <fixture>  # live audit eval — real tokens, minutes; not for CI
 ```

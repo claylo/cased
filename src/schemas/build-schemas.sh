@@ -3,7 +3,7 @@
 # Validate schema examples against their JSON Schemas and stamp the shared
 # contract into every consumer skill's references directory.
 #
-# Requires: jq, ys (cargo install yaml-schema).
+# Requires: jq, node (with node_modules installed — `npm ci`).
 #
 # src/schemas/ is the single canonical source for the audit contract. Each
 # consumer listed for a schema gets identical stamped copies of the schema,
@@ -11,10 +11,12 @@
 # never edit their references/ copies — `just check-contract` fails CI on
 # any drift.
 #
-# For each schema (recon, findings):
-#   1. Validate the example YAML directly against the schema via ys.
-#      (ajv validates the parsed-JSON path at audit time via build-report.)
+#   1. Validate both example YAML files against their schemas with the same
+#      ajv configuration build-report uses at audit time
+#      (src/schemas/validate-examples.mjs). One validator, one regex dialect:
+#      what passes here is exactly what passes `build-report.js validate`.
 #   2. Fail the build on any validation error.
+#   For each schema (recon, findings):
 #   3. Generate the markdown reference: header prose + fenced example + footer prose.
 #   4. Copy schema, example, and generated markdown into each consumer skill.
 
@@ -26,13 +28,22 @@ TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 # Required tooling check — fail loudly rather than producing silent drift.
-for bin in jq ys; do
+for bin in jq node; do
   if ! command -v "$bin" >/dev/null 2>&1; then
     echo "error: required tool '$bin' not found in PATH" >&2
-    [[ "$bin" == "ys" ]] && echo "  install: cargo install yaml-schema --locked" >&2
     exit 1
   fi
 done
+if [[ ! -d "$REPO_ROOT/node_modules" ]]; then
+  echo "error: $REPO_ROOT/node_modules missing — run 'npm ci' first" >&2
+  exit 1
+fi
+
+echo "=== validating schema examples ==="
+if ! node "$SCHEMA_DIR/validate-examples.mjs" "$SCHEMA_DIR"; then
+  echo "error: schema examples failed validation" >&2
+  exit 1
+fi
 
 build_one() {
   local name="$1"
@@ -56,12 +67,6 @@ build_one() {
   # Sanity-check the schema itself is valid JSON.
   if ! jq empty "$schema" >/dev/null 2>&1; then
     echo "error: $schema is not valid JSON" >&2
-    exit 1
-  fi
-
-  # Validate the canonical example against the schema.
-  if ! ys -f "$schema" "$example"; then
-    echo "error: $example failed validation against $schema" >&2
     exit 1
   fi
 

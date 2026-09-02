@@ -24,7 +24,7 @@ jobs:
           cache: npm
       - uses: taiki-e/install-action@3d7d7cd5ac7f994c1892ae0c06165095b9139094 # v2.85.1
         with:
-          tool: just,yaml-schema
+          tool: just
       - run: npm ci
       - run: just test
       - run: just check-bundle
@@ -35,7 +35,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
       - uses: taiki-e/install-action@3d7d7cd5ac7f994c1892ae0c06165095b9139094 # v2.85.1
         with:
-          tool: just,yaml-schema
+          tool: just
+      - run: npm ci
       - run: just check-contract
