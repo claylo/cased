@@ -120,6 +120,15 @@ visibly in the transcript. `CASED_EVAL_ISOLATION` sets the default. The
 runner assumes one operator and first-party fixtures; see the trust note at
 the top of `run-eval` before pointing it at anything else.
 
+One tool needs help inside the wall: cargo-audit's advisory-db fetch does
+not use the sandbox proxy (cargo's registry fetch and cargo-deny do). Under
+`sandbox`, the runner refreshes `~/.cargo/advisory-db` outside the sandbox
+before the session starts and drops a `.cargo/audit.toml` (`fetch = false`,
+`stale = true`) into the workdir so the session's `cargo audit` scans the
+fresh local DB. That file is part of the baseline commit; recon will list
+it. `cargo udeps` still cannot run sandboxed — it needs the nightly rustup
+proxy — and sessions record it as an excluded tool.
+
 Each run is a full multi-agent audit — minutes of wall clock, real token
 spend. Matrices are deliberate acts, not CI-per-push. The scorer itself is
 free and runs in `just test`.
@@ -320,6 +329,25 @@ radius/Coverage lost gate decision documented under **Remediation mode**
 above (6/6 vs. 4/6 across the ledger's fixed entries, which is a superset of
 the session-only `fixed: 5` remediation counts above since two of the
 ledger's `fixed` entries are pre-seeded by `setup.sh` before `eval-baseline`).
+
+**First sandboxed run** — `evals/runs/error-handling-rs/2026-09-01-202221-claude-default-default`
+(`--isolation sandbox` default, Bash prefix allowlist, cased commit `c8eff06`;
+22m23s wall clock), recorded verbatim from `score.txt`:
+
+- recall 7/7, unexpected 13, false positives 0, calibration misses 0
+- `artifacts`: `finalize_ok` true, `origin_coverage` 1, `failure_mode_coverage` 1,
+  `blocking` 3, `backlog` 15, `class_sweep_multi_location` 7,
+  `audit_profile_complete` true, `readme_complete` true, `evidence_problems` 0
+
+Against the 2026-08-10 unsandboxed `claude`/`default` run of the same
+fixture (recall 7/7, unexpected 6, calibration misses 1): the wall neither
+cost recall nor stalled the pipeline — no command in the transcript was
+auto-denied. What the session could not do it recorded honestly as excluded
+tools in `recon.yaml`: `cargo audit`/`cargo deny` (advisory-db lock outside
+the allowed paths and a fetch that bypasses the sandbox proxy — both since
+addressed by the runner, see **Running**) and `cargo udeps` (nightly proxy).
+It also could not `rm -rf target/` afterwards, because `rm` is deliberately
+not on the prefix list.
 
 ## Not yet built
 

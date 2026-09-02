@@ -104,6 +104,26 @@ mkdir -p "$WORKDIR"
 rsync -a --exclude expected-findings.yaml --exclude target \
   --exclude setup.sh --exclude hidden-tests "$FIXTURE_DIR/" "$WORKDIR/"
 
+# cargo-audit's advisory-db fetch does not go through the sandbox's network
+# proxy (observed: "IO error talking to the server" for github.com while
+# cargo's own registry fetch and cargo-deny both succeed). So under sandbox
+# isolation the runner refreshes the advisory DB HERE, outside the wall, and
+# tells the session's cargo-audit not to fetch via a project-local
+# .cargo/audit.toml. The file lands in the baseline commit, so recon sees one
+# config file the fixture did not ship; a fixture that ships its own is left
+# alone. `-f` points the refresh at the workdir lockfile from RUN_DIR, which
+# has no audit.toml, so this invocation still fetches.
+if [[ "$ISOLATION" == "sandbox" && -f "$WORKDIR/Cargo.lock" ]]; then
+  if command -v cargo-audit >/dev/null 2>&1; then
+    (cd "$RUN_DIR" && cargo audit -q -f "$WORKDIR/Cargo.lock" >/dev/null 2>&1) \
+      || echo "warn: advisory-db refresh failed; the session's cargo audit will run stale" >&2
+  fi
+  if [[ ! -e "$WORKDIR/.cargo/audit.toml" ]]; then
+    mkdir -p "$WORKDIR/.cargo"
+    printf '[database]\nfetch = false\nstale = true\n' > "$WORKDIR/.cargo/audit.toml"
+  fi
+fi
+
 # The audit expects a git repo (recon runs git log for churn data).
 git -C "$WORKDIR" init -q
 git -C "$WORKDIR" add -A
@@ -189,7 +209,7 @@ done
 # Network: crates.io and GitHub for cargo fetches and advisory DBs. The
 # model API is the harness's own process, not a Bash child, so it is
 # unaffected.
-SANDBOX_SETTINGS='{"sandbox":{"enabled":true,"failIfUnavailable":true,"autoAllowBashIfSandboxed":true,"allowUnsandboxedCommands":false,"filesystem":{"allowWrite":["/private/tmp/cased","~/.cargo/registry","~/.cargo/advisory-db"]},"network":{"allowedDomains":["crates.io","*.crates.io","github.com","*.github.com","*.githubusercontent.com"],"strictAllowlist":true}}}'
+SANDBOX_SETTINGS='{"sandbox":{"enabled":true,"failIfUnavailable":true,"autoAllowBashIfSandboxed":true,"allowUnsandboxedCommands":false,"filesystem":{"allowWrite":["/private/tmp/cased","~/.cargo/registry","~/.cargo/.package-cache","~/.cargo/.global-cache","~/.cargo/advisory-db","~/.cargo/advisory-db..lock","~/.cargo/advisory-dbs"]},"network":{"allowedDomains":["crates.io","*.crates.io","github.com","*.github.com","*.githubusercontent.com"],"strictAllowlist":true}}}'
 
 case "$PLATFORM" in
   claude)
