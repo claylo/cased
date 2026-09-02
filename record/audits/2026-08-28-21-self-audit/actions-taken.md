@@ -2,7 +2,7 @@
 audit: 2026-08-28-21-self-audit
 last_updated: 2026-09-01
 status:
-  fixed: 11
+  fixed: 12
   mitigated: 0
   accepted: 0
   disputed: 0
@@ -10,7 +10,7 @@ status:
   escalated: 0
   superseded: 0
   no-measurable-benefit: 0
-  open: 31
+  open: 30
 ---
 
 # Actions Taken: Full Repo self Audit of cased at 2365a3f — src/ (viewer, recon, schemas), evals/ (runner, scorer, fixtures), skills/ (cased + crustoleum), scripts/, test/
@@ -81,3 +81,16 @@ Path containment is enforced twice: the gate rejects absolute or `..`-traversing
 **Coverage lost:** none — existing tests untouched; the canonical example still exercises every render path, now with derived counts.
 
 Three findings, one mechanism: text reaching the report without passing the escaper or a check. `unescaped-metadata-in-report-markup` wraps all five sinks the reviewer's sweep found — audit_date, commit, the counts keys (glossary text, `data-concern` attribute, summary-bar text), `start_line`, and the flow badge's `concern` — in the escaper already in scope at each site; separately, `build` now runs the compiled validators before rendering and refuses a document that fails, so the enum-bound fields the badges and gates key on are guaranteed at render time rather than by a process step a session can skip. `prose-links-allow-javascript-uris`: `safeHref` parses the target with `new URL(href, 'https://relative.invalid/base/')` — fragments and relative paths resolve to the placeholder host and pass, anything else passes only with an http, https or mailto protocol; using the parser rather than a string prefix means ` javascript:` and `java\tscript:` are rejected the way a browser would honour them. `summary-counts-never-cross-checked`: took the finding's second option — the field carried no information the findings did not — and kept its first as the safety net: renderers derive the histogram via `concernCounts`, the schema makes `summary` optional and closes `counts` to the five levels, and `finalizeAudit` errors on any authored count that disagrees or any key outside the vocabulary.
+
+## 2026-09-01 — sandbox the headless eval session by default, allowlist Bash by prefix
+
+**Disposition:** fixed
+**Addresses:** [eval-runner-drives-unsandboxed-headless-session](README.md#eval-runner-drives-unsandboxed-headless-session)
+**Commit:** c8eff06, 7b3e626
+**Author:** claude-fable-5-1 (controller session, Clay reviewing; Clay chose the two-level design — sole eval operator, no container mode)
+**Verification:** Live eval under the new default — `just eval error-handling-rs` at c8eff06, run `evals/runs/error-handling-rs/2026-09-01-202221-claude-default-default`, 22m23s: recall 7/7, unexpected 13, false positives 0, calibration misses 0, `finalize_ok` true, `evidence_problems` 0; no command in the transcript was auto-denied by the prefix allowlist. Policy probed directly in headless acceptEdits sessions: write under /private/tmp/cased OK, write to /tmp denied, retry with `dangerouslyDisableSandbox` still denied, https://example.com 403 from the sandbox proxy, https://index.crates.io 200; against a crate with eight dependencies `cargo generate-lockfile`, `cargo audit` (with the runner's audit.toml), `cargo audit --no-fetch`, `cargo deny check advisories` all OK inside the wall. `bash -n` and `shellcheck -S warning` clean on run-eval; `--help` shows the new usage; invalid `--isolation` values rejected.
+**Blast radius:** Files: evals/scripts/run-eval, evals/README.md. The finding names run-eval:138-142 and 157-161 (the two platform branches); the fix stays in that file plus its README. Public surface: new `--isolation sandbox|none` flag and `CASED_EVAL_ISOLATION` env default (sandbox); `ALLOWED_TOOLS` is now a prefix list, not blanket `Bash`; the codex branch maps `none` to `-s danger-full-access`. Under sandbox with a Cargo.lock present the runner writes `.cargo/audit.toml` into the workdir before the baseline commit, so recon sees one config file the fixture did not ship (a fixture shipping its own is left alone). Callers: the `just eval` recipe passes args through unchanged; the scorer is untouched — `eval-scorer-shells-out-model-authored-test-command` (fixed f4812fe) already closed the downstream half of this chain. Co-varying text: run-eval's header carries the trust statement the remediation asked for; evals/README.md documents the flag, the cargo-audit workaround, and records the run as a baseline.
+**Diff:** 2 files, +135 −12, 2 commits.
+**Coverage lost:** none — no tests touched; run-eval has no unit tests (live-run tool).
+
+The finding's remediation offered two routes — narrow the allowlist, or run inside a sandbox — and both landed, because they bound different things: the sandbox bounds what a command can touch, the allowlist bounds which commands run at all, and on `--isolation none` the allowlist is the only gate left. The sandbox is Claude Code's own (seatbelt/bubblewrap) passed via `--settings`; three keys carry the weight and are documented in the script: `allowUnsandboxedCommands=false` (by default a command that hits the wall may be retried outside it, and in headless acceptEdits that retry runs unprompted — with it off the probe confirmed the retry stays denied), `failIfUnavailable=true` (a host without the sandbox fails the run instead of silently degrading to none), `strictAllowlist=true` (unlisted domains are denied, not prompted). The first live run exposed two things the policy had not accounted for, fixed in 7b3e626: the advisory-db lock is `~/.cargo/advisory-db..lock`, a sibling of the allowed directory, and cargo-audit's git fetch does not go through the sandbox proxy while cargo's registry fetch and cargo-deny do — so the runner refreshes the advisory DB outside the wall and tells the session's cargo-audit not to fetch. The session also excluded `cargo udeps`, blaming "the nightly rustup proxy". That is not a sandbox limit: inside the same policy, `cargo +nightly udeps`, `rustup toolchain list`, `command -v cargo-udeps`, and crustoleum's `run-tools udeps` (which spells `+nightly` itself and writes `udeps.txt` with findings) all succeed. What actually happened in the live run is that run-tools recorded udeps as `not run` — its `has_cmd cargo-udeps && has_nightly` guard evaluated false once — and the whole tool run finished within a second; the guard failure did not reproduce and is unexplained. (Plain `cargo udeps` on the stable default does fail, because rustc rejects `-Z binary-dep-depinfo`, but run-tools never issues that form.) Residual: `rm` is deliberately off the prefix list, so a session cannot clean `target/` after itself. Design choice on record: Clay declined a container mode — the runner has one operator and first-party fixtures, and the trust statement at the top of run-eval says so.

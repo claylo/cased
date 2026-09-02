@@ -126,8 +126,12 @@ not use the sandbox proxy (cargo's registry fetch and cargo-deny do). Under
 before the session starts and drops a `.cargo/audit.toml` (`fetch = false`,
 `stale = true`) into the workdir so the session's `cargo audit` scans the
 fresh local DB. That file is part of the baseline commit; recon will list
-it. `cargo udeps` still cannot run sandboxed — it needs the nightly rustup
-proxy — and sessions record it as an excluded tool.
+it. `cargo +nightly udeps` runs fine inside the wall when a nightly
+toolchain is installed, and so does crustoleum's `run-tools udeps`. A
+session that reports udeps as blocked by "the nightly rustup proxy" is
+mistaken; check `.crustoleum/summary.md` for `not run` (the tool's
+nightly/binary guard evaluated false) versus a real sandbox denial, which
+names the path or host it refused.
 
 Each run is a full multi-agent audit — minutes of wall clock, real token
 spend. Matrices are deliberate acts, not CI-per-push. The scorer itself is
@@ -345,7 +349,11 @@ cost recall nor stalled the pipeline — no command in the transcript was
 auto-denied. What the session could not do it recorded honestly as excluded
 tools in `recon.yaml`: `cargo audit`/`cargo deny` (advisory-db lock outside
 the allowed paths and a fetch that bypasses the sandbox proxy — both since
-addressed by the runner, see **Running**) and `cargo udeps` (nightly proxy).
+addressed by the runner, see **Running**) and `cargo udeps`, which the
+session attributed to "the nightly rustup proxy". That one is not a sandbox
+limit: run-tools' own summary shows udeps as `not run` (its nightly/binary
+guard evaluated false once, unreproduced), and `run-tools udeps` completes
+with findings inside the same policy in isolation.
 It also could not `rm -rf target/` afterwards, because `rm` is deliberately
 not on the prefix list.
 
